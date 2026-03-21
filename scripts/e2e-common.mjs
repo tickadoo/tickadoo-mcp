@@ -30,6 +30,7 @@ const EXPECTED_CATEGORY_ENUM = [
   "cruises",
   "sports",
 ];
+const EXPECTED_SORT_ENUM = ["relevance", "popular", "price_low", "price_high", "rating"];
 
 function firstTextContent(result) {
   return result?.content?.find(item => item.type === "text")?.text ?? "";
@@ -153,15 +154,26 @@ export async function runE2ESmoke(client, options = {}) {
 
   const searchTool = toolsResult.tools.find(tool => tool.name === "search_experiences");
   const categorySchema = searchTool?.inputSchema?.properties?.category;
+  const sortSchema = searchTool?.inputSchema?.properties?.sort;
   const categoryEnum = Array.isArray(categorySchema?.enum)
     ? categorySchema.enum
     : Array.isArray(categorySchema?.anyOf)
       ? categorySchema.anyOf.find(option => Array.isArray(option?.enum))?.enum
       : undefined;
+  const sortEnum = Array.isArray(sortSchema?.enum)
+    ? sortSchema.enum
+    : Array.isArray(sortSchema?.anyOf)
+      ? sortSchema.anyOf.find(option => Array.isArray(option?.enum))?.enum
+      : undefined;
   requireCondition(Array.isArray(categoryEnum), `search_experiences tools/list schema is missing a category enum. Received: ${JSON.stringify(searchTool?.inputSchema)}`);
   requireCondition(
     JSON.stringify(categoryEnum) === JSON.stringify(EXPECTED_CATEGORY_ENUM),
     `search_experiences category enum did not match the expected Gemini-facing list. Received: ${JSON.stringify(categoryEnum)}`,
+  );
+  requireCondition(Array.isArray(sortEnum), `search_experiences tools/list schema is missing a sort enum. Received: ${JSON.stringify(searchTool?.inputSchema)}`);
+  requireCondition(
+    JSON.stringify(sortEnum) === JSON.stringify(EXPECTED_SORT_ENUM),
+    `search_experiences sort enum did not match the expected list. Received: ${JSON.stringify(sortEnum)}`,
   );
 
   const resourcesResult = await client.listResources();
@@ -188,6 +200,10 @@ export async function runE2ESmoke(client, options = {}) {
     `search_experiences(${searchCity}) structuredContent did not include a description.`,
   );
   requireCondition(
+    typeof firstExperience?.popular === "boolean",
+    `search_experiences(${searchCity}) structuredContent did not include a popular flag.`,
+  );
+  requireCondition(
     firstExperience.description.length <= 150,
     `search_experiences(${searchCity}) structuredContent description exceeded 150 chars. Received: ${firstExperience.description}`,
   );
@@ -210,10 +226,35 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const searchJson = parseJsonText(firstTextContent(searchJsonResult), `search_experiences(${searchCity}, format=json)`);
   requireCondition(searchJson.city === expectedSlug, `search_experiences(${searchCity}, format=json) returned unexpected city: ${JSON.stringify(searchJson)}`);
+  requireCondition(searchJson.sort === "relevance", `search_experiences(${searchCity}, format=json) did not echo the default sort. Received: ${JSON.stringify(searchJson)}`);
   requireCondition(searchJson.showing === 2, `search_experiences(${searchCity}, format=json) did not honor max_results=2. Received: ${JSON.stringify(searchJson)}`);
   requireCondition(Array.isArray(searchJson.results) && searchJson.results.length === 2, `search_experiences(${searchCity}, format=json) did not return 2 results.`);
   requireCondition(typeof searchJson.results[0]?.title === "string", `search_experiences(${searchCity}, format=json) missing result title.`);
   requireTrackedBookingUrl(searchJson.results[0]?.booking_url, `search_experiences(${searchCity}, format=json)`);
+
+  const popularSortResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, sort: "popular", language: "en", format: "json", max_results: 5 },
+  });
+  const popularSortJson = parseJsonText(firstTextContent(popularSortResult), `search_experiences(${searchCity}, sort=popular, format=json)`);
+  requireCondition(popularSortJson.sort === "popular", `search_experiences(${searchCity}, sort=popular, format=json) did not echo sort=popular. Received: ${JSON.stringify(popularSortJson)}`);
+  requireCondition(Array.isArray(popularSortJson.results) && popularSortJson.results.length > 0, `search_experiences(${searchCity}, sort=popular, format=json) returned no results.`);
+  requireCondition(popularSortJson.results[0]?.popular === true, `search_experiences(${searchCity}, sort=popular, format=json) did not put a popular result first. Received: ${JSON.stringify(popularSortJson)}`);
+  const popularFlags = popularSortJson.results.map(result => result?.popular === true);
+  const firstNonPopularIndex = popularFlags.indexOf(false);
+  if (firstNonPopularIndex !== -1) {
+    requireCondition(
+      !popularFlags.slice(firstNonPopularIndex).includes(true),
+      `search_experiences(${searchCity}, sort=popular, format=json) did not keep popular results ahead of non-popular ones. Received: ${JSON.stringify(popularSortJson)}`,
+    );
+  }
+  const popularRatings = popularSortJson.results
+    .filter(result => result?.popular === true)
+    .map(result => result?.rating ?? -1);
+  requireCondition(
+    JSON.stringify(popularRatings) === JSON.stringify([...popularRatings].sort((left, right) => right - left)),
+    `search_experiences(${searchCity}, sort=popular, format=json) did not keep popular results in rating-desc order. Received: ${JSON.stringify(popularSortJson)}`,
+  );
 
   const querySearchResult = await client.callTool({
     name: "search_experiences",

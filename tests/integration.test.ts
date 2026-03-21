@@ -14,12 +14,14 @@ type TextContentItem = { type: "text"; text: string };
 type SearchStructuredContent = {
   city?: string;
   citySlug?: string;
+  sort?: string;
   totalExperiences?: number;
   experiences?: Array<{
     tickadooProductId: string;
     slug: string;
     title: string;
     description?: string;
+    popular?: boolean;
     priceAmount?: number;
     priceCurrency?: string;
     bookingUrl: string;
@@ -98,6 +100,7 @@ const expectedCategoryEnum = [
   "cruises",
   "sports",
 ];
+const expectedSortEnum = ["relevance", "popular", "price_low", "price_high", "rating"];
 const expectedUtmParams = new URLSearchParams(
   process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
 );
@@ -200,6 +203,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     const cards = parseExperienceCards(text);
     expect(cards.length).toBeGreaterThan(3);
     const searchStructured = getStructuredContent<SearchStructuredContent>(result);
+    expect(searchStructured.sort).toBe("relevance");
 
     const [firstCard] = cards;
     expect(firstCard.title).toBeTruthy();
@@ -215,6 +219,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(firstExperience).toBeTruthy();
     expect(firstExperience?.description).toBeTruthy();
     expect(firstExperience?.description?.length).toBeLessThanOrEqual(150);
+    expect(typeof firstExperience?.popular).toBe("boolean");
     expect(firstExperience?.priceAmount).toBeGreaterThan(0);
     expect(firstExperience?.priceCurrency).toMatch(/^[A-Z]{3}$/);
     expectTrackedBookingUrl(firstExperience?.bookingUrl);
@@ -223,6 +228,7 @@ describe.sequential("tickadoo MCP live integration", () => {
         "bookingUrl",
         "description",
         "imageUrl",
+        "popular",
         "priceAmount",
         "priceCurrency",
         "slug",
@@ -235,23 +241,68 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(cards.map(card => card.title)).toEqual(sortedTitles);
   }, 30_000);
 
-  it("search_experiences exposes the canonical category enum in tools/list", async () => {
+  it("search_experiences exposes the canonical category and sort enums in tools/list", async () => {
     const toolsResult = await client.listTools();
     const searchTool = toolsResult.tools.find(tool => tool.name === "search_experiences");
-    const categorySchema = (searchTool?.inputSchema as {
+    const searchSchema = (searchTool?.inputSchema as {
       properties?: {
         category?: {
           enum?: string[];
           anyOf?: Array<{ enum?: string[] }>;
         };
+        sort?: {
+          enum?: string[];
+          anyOf?: Array<{ enum?: string[] }>;
+        };
       };
-    } | undefined)?.properties?.category;
+    } | undefined)?.properties;
+
+    const categorySchema = searchSchema?.category;
+    const sortSchema = searchSchema?.sort;
 
     const categoryEnum = Array.isArray(categorySchema?.enum)
       ? categorySchema.enum
       : categorySchema?.anyOf?.find(option => Array.isArray(option.enum))?.enum;
+    const sortEnum = Array.isArray(sortSchema?.enum)
+      ? sortSchema.enum
+      : sortSchema?.anyOf?.find(option => Array.isArray(option.enum))?.enum;
 
     expect(categoryEnum).toEqual(expectedCategoryEnum);
+    expect(sortEnum).toEqual(expectedSortEnum);
+  }, 30_000);
+
+  it("search_experiences supports popular sorting", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", sort: "popular", max_results: 5, language: "en", format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      sort?: string;
+      results?: Array<{
+        title?: string;
+        popular?: boolean;
+        rating?: number | null;
+        booking_url?: string;
+      }>;
+    }>(firstTextContent(result), "search_experiences(sort=popular, format=json)");
+
+    expect(json.sort).toBe("popular");
+    expect(json.results?.length).toBeGreaterThan(0);
+    expect(json.results?.[0]?.popular).toBe(true);
+    expectTrackedBookingUrl(json.results?.[0]?.booking_url);
+
+    const popularFlags = (json.results ?? []).map(entry => entry.popular === true);
+    const firstNonPopularIndex = popularFlags.indexOf(false);
+    if (firstNonPopularIndex !== -1) {
+      expect(popularFlags.slice(firstNonPopularIndex)).not.toContain(true);
+    }
+
+    const popularRatings = (json.results ?? [])
+      .filter(entry => entry.popular)
+      .map(entry => entry.rating ?? -1);
+    expect(popularRatings).toEqual([...popularRatings].sort((left, right) => right - left));
   }, 30_000);
 
   it("search_experiences supports min_price and max_price filtering", async () => {
@@ -280,6 +331,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(result.isError).not.toBe(true);
     const json = parseJsonText<{
       city?: string;
+      sort?: string;
       total?: number;
       showing?: number;
       results?: Array<{
@@ -291,6 +343,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     }>(firstTextContent(result), "search_experiences(format=json)");
 
     expect(json.city).toBe("las-vegas");
+    expect(json.sort).toBe("relevance");
     expect(json.showing).toBe(2);
     expect(json.total).toBeGreaterThanOrEqual(2);
     expect(json.results).toHaveLength(2);

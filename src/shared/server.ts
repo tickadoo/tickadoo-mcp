@@ -37,6 +37,7 @@ import {
   formatJsonText,
   formatProduct,
   formatSearchFiltersLine,
+  formatSearchSortLine,
   genericJsonError,
   NEARBY_NEXT_STEP_HINT,
   nearbyEmptyRecoveryJson,
@@ -80,15 +81,24 @@ const AVAILABLE_SEARCH_CATEGORIES = [
   "cruises",
   "sports",
 ] as const;
+export const SEARCH_SORT_OPTIONS = [
+  "relevance",
+  "popular",
+  "price_low",
+  "price_high",
+  "rating",
+] as const;
 const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
 const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
 
 type SearchCategory = (typeof AVAILABLE_SEARCH_CATEGORIES)[number];
+export type SearchSort = (typeof SEARCH_SORT_OPTIONS)[number];
 type LogWriter = (message: string) => void;
 type ToolLogSummary = Record<string, boolean | number | string | undefined>;
 type CreateTickadooServerOptions = {
   logWriter?: LogWriter;
 };
+const SEARCH_SORT_OPTION_SET = new Set<string>(SEARCH_SORT_OPTIONS);
 
 const SEARCH_CATEGORY_ALIASES: Record<string, SearchCategory> = {
   theatre: "theatre",
@@ -197,6 +207,10 @@ function formatAvailableSearchCategories(): string {
   return AVAILABLE_SEARCH_CATEGORIES.join(", ");
 }
 
+function formatAvailableSearchSorts(): string {
+  return SEARCH_SORT_OPTIONS.join(", ");
+}
+
 const READ_ONLY_TOOL_ANNOTATIONS = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -220,6 +234,87 @@ function compareProductsForDisplay(a: Product, b: Product): number {
 
 function sortProductsForDisplay(products: Product[]): Product[] {
   return [...products].sort(compareProductsForDisplay);
+}
+
+function productHasImage(product: Product): boolean {
+  return Boolean(product.desktopFeatureImageUrl || product.verticalImageUrl);
+}
+
+function productHasDescription(product: Product): boolean {
+  return typeof product.description === "string" && product.description.trim().length > 0;
+}
+
+export function isPopularSearchProduct(product: Product): boolean {
+  return (
+    product.minPrice != null
+    && productHasImage(product)
+    && (product.averageRating ?? 0) >= 4.0
+    && productHasDescription(product)
+  );
+}
+
+function compareProductsByRating(a: Product, b: Product): number {
+  const ratingDelta = (b.averageRating ?? -1) - (a.averageRating ?? -1);
+  if (ratingDelta !== 0) return ratingDelta;
+
+  const pricedFirst = Number(a.minPrice == null) - Number(b.minPrice == null);
+  if (pricedFirst !== 0) return pricedFirst;
+
+  if (a.minPrice != null && b.minPrice != null) {
+    const priceDelta = a.minPrice - b.minPrice;
+    if (priceDelta !== 0) return priceDelta;
+  }
+
+  return a.title.localeCompare(b.title);
+}
+
+function compareProductsByPriceLow(a: Product, b: Product): number {
+  const pricedFirst = Number(a.minPrice == null) - Number(b.minPrice == null);
+  if (pricedFirst !== 0) return pricedFirst;
+
+  if (a.minPrice != null && b.minPrice != null) {
+    const priceDelta = a.minPrice - b.minPrice;
+    if (priceDelta !== 0) return priceDelta;
+  }
+
+  const ratingDelta = (b.averageRating ?? -1) - (a.averageRating ?? -1);
+  if (ratingDelta !== 0) return ratingDelta;
+
+  return a.title.localeCompare(b.title);
+}
+
+function compareProductsByPriceHigh(a: Product, b: Product): number {
+  const pricedFirst = Number(a.minPrice == null) - Number(b.minPrice == null);
+  if (pricedFirst !== 0) return pricedFirst;
+
+  if (a.minPrice != null && b.minPrice != null) {
+    const priceDelta = b.minPrice - a.minPrice;
+    if (priceDelta !== 0) return priceDelta;
+  }
+
+  const ratingDelta = (b.averageRating ?? -1) - (a.averageRating ?? -1);
+  if (ratingDelta !== 0) return ratingDelta;
+
+  return a.title.localeCompare(b.title);
+}
+
+function compareProductsByPopularity(a: Product, b: Product): number {
+  const popularDelta = Number(isPopularSearchProduct(b)) - Number(isPopularSearchProduct(a));
+  if (popularDelta !== 0) return popularDelta;
+
+  return compareProductsByRating(a, b);
+}
+
+export function sortProductsForSearch(products: Product[], sort: SearchSort = "relevance"): Product[] {
+  const comparator = {
+    relevance: compareProductsForDisplay,
+    popular: compareProductsByPopularity,
+    price_low: compareProductsByPriceLow,
+    price_high: compareProductsByPriceHigh,
+    rating: compareProductsByRating,
+  } satisfies Record<SearchSort, (left: Product, right: Product) => number>;
+
+  return [...products].sort(comparator[sort]);
 }
 
 export function productMatchesPriceRange(product: Product, minPrice?: number, maxPrice?: number): boolean {
@@ -639,6 +734,21 @@ function normalizeResponseFormat(value: unknown): ResponseFormat | undefined {
   return value === "text" || value === "json" ? value : undefined;
 }
 
+function normalizeSearchSortInput(value: unknown): SearchSort | undefined {
+  if (typeof value !== "string") {
+    return value == null ? "relevance" : undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return SEARCH_SORT_OPTION_SET.has(normalized)
+    ? normalized as SearchSort
+    : undefined;
+}
+
 function normalizeLanguageInput(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return value == null ? DEFAULT_LANGUAGE : undefined;
@@ -827,6 +937,7 @@ function validateSearchArgs(args: {
   max_price?: number;
   category?: string;
   query?: string;
+  sort?: string;
   format?: string;
 }): ValidationResult<{
   city: string;
@@ -836,6 +947,7 @@ function validateSearchArgs(args: {
   maxPrice?: number;
   category?: string;
   query?: string;
+  sort: SearchSort;
   format: ResponseFormat;
 }> {
   const format = normalizeResponseFormat(args.format ?? "text");
@@ -920,6 +1032,17 @@ function validateSearchArgs(args: {
     };
   }
 
+  const sort = normalizeSearchSortInput(args.sort);
+  if (!sort) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid sort. Use one of ${formatAvailableSearchSorts()} (got: ${formatValue(args.sort)}).`,
+      ),
+    };
+  }
+
   return {
     ok: true,
     data: {
@@ -930,6 +1053,7 @@ function validateSearchArgs(args: {
       maxPrice: args.max_price,
       category: args.category?.trim(),
       query: args.query?.trim(),
+      sort,
       format,
     },
   };
@@ -1125,7 +1249,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), and optional min/max price filtering in the local currency. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), optional min/max price filtering in the local currency, and optional sorting (${formatAvailableSearchSorts()}). ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -1134,6 +1258,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}. Matching is fuzzy, so singular forms like "tour" still map to "tours" internally.`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
+      sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
@@ -1158,6 +1283,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         maxPrice,
         category,
         query,
+        sort,
         format,
       } = validated.data;
 
@@ -1181,7 +1307,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             return {
               response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
               resultCount: 0,
-              summary: { city, format },
+              summary: { city, query, sort, format },
             };
           }
         }
@@ -1191,7 +1317,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             return {
               response: await buildSearchMissResponse(format, city, language, []),
               resultCount: 0,
-              summary: { city, format },
+              summary: { city, query, sort, format },
             };
           }
 
@@ -1202,7 +1328,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               noCoverageRecoveryJson(cityName),
             ),
             resultCount: 0,
-            summary: { city, format },
+            summary: { city, query, sort, format },
           };
         }
 
@@ -1225,12 +1351,18 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               ),
             ),
             resultCount: 0,
-            summary: { city, format },
+            summary: { city, query, sort, format },
           };
         }
 
         const queryFilteredProducts = filterProductsByQuery(categoryFilteredProducts, query);
         const matchingProducts = filterProductsByPrice(queryFilteredProducts, minPrice, maxPrice);
+        const appliedFilters = buildAppliedSearchFilters(language, {
+          category: category ? canonicalizeSearchCategory(category) ?? category : undefined,
+          query,
+          minPrice,
+          maxPrice,
+        });
         if (!matchingProducts.length) {
           const message = buildNoResultsMessage(cityName, {
             category,
@@ -1243,32 +1375,25 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               format,
               message,
               {
-                city: citySlug,
-                city_name: cityName,
-                total: 0,
-                showing: 0,
-                results: [],
+                ...searchJsonPayload(citySlug, cityName, 0, [], {
+                  filters: appliedFilters,
+                  language,
+                  sort,
+                }),
                 message,
-                ...(category ? { category } : {}),
-                ...(query ? { query } : {}),
-                ...(minPrice != null ? { min_price: minPrice } : {}),
-                ...(maxPrice != null ? { max_price: maxPrice } : {}),
               },
             ),
             resultCount: 0,
-            summary: { city, query, format },
+            summary: { city, query, sort, format },
           };
         }
 
-        const rankedProducts = sortProductsForDisplay(matchingProducts);
-        const topProducts = rankedProducts.slice(0, maxResults);
+        const rankedProducts = sortProductsForSearch(matchingProducts, sort);
+        const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
+          ...product,
+          popular: isPopularSearchProduct(product),
+        }));
         const searchContext = buildSearchContext(cityName);
-        const appliedFilters = buildAppliedSearchFilters(language, {
-          category: category ? canonicalizeSearchCategory(category) ?? category : undefined,
-          query,
-          minPrice,
-          maxPrice,
-        });
         const omittedResults = buildOmittedResultsSummary(
           products.length,
           categoryFilteredProducts,
@@ -1283,6 +1408,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         );
         const resultIntro = [
           buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext),
+          formatSearchSortLine(sort),
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
         ].filter(Boolean).join("\n");
@@ -1295,6 +1421,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             filters: appliedFilters,
             language,
             omittedResults,
+            sort,
           },
         );
         return {
@@ -1309,6 +1436,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               structuredContent: {
                 city: cityName,
                 citySlug,
+                sort,
                 totalExperiences: matchingProducts.length,
                 ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
                 ...(query ? { query } : {}),
@@ -1322,13 +1450,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: topProducts.length,
-          summary: { city, query, format },
+          summary: { city, query, sort, format },
         };
       } catch (error) {
         return {
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { city, query, format },
+          summary: { city, query, sort, format },
         };
       }
     }),

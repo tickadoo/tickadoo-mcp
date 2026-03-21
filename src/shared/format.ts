@@ -26,6 +26,10 @@ type NearbyCitySuggestion = {
   experienceCount: number;
 };
 
+type SearchDisplayProduct = Product & {
+  popular?: boolean;
+};
+
 export type SearchAppliedFilters = {
   category?: string;
   query?: string;
@@ -96,6 +100,14 @@ export function formatSearchFiltersLine(filters?: SearchAppliedFilters): string 
   }
 
   return `🔎 Filters: ${Object.entries(payload).map(([key, value]) => `${key}=${value}`).join(", ")}`;
+}
+
+export function formatSearchSortLine(sort = "relevance"): string | undefined {
+  if (sort === "relevance") {
+    return undefined;
+  }
+
+  return `🔀 Sort: ${sort}`;
 }
 
 export function formatOmittedResultsHint(omittedResults?: SearchOmittedResults): string | undefined {
@@ -288,7 +300,7 @@ export function summarizeProductDescription(description: string | null | undefin
   return `${truncated.slice(0, safeBoundary).trimEnd()}...`;
 }
 
-export function productStructuredData(product: Product, bookingPath = product.slug, language = "en") {
+export function productStructuredData(product: SearchDisplayProduct, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const priceAmount = product.minPrice ?? undefined;
   const priceCurrency = priceAmount != null ? product.currency : undefined;
@@ -300,12 +312,13 @@ export function productStructuredData(product: Product, bookingPath = product.sl
     description,
     priceAmount,
     priceCurrency,
+    ...(product.popular != null ? { popular: product.popular } : {}),
     bookingUrl: buildBookingUrl(bookingPath, language),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };
 }
 
-export function productJsonData(product: Product, bookingPath = product.slug, language = "en") {
+export function productJsonData(product: SearchDisplayProduct, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const imageUrl = product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? null;
 
@@ -313,6 +326,7 @@ export function productJsonData(product: Product, bookingPath = product.slug, la
     title: product.title,
     slug: product.slug,
     description: description ?? null,
+    ...(product.popular != null ? { popular: product.popular } : {}),
     price: product.minPrice != null
       ? {
           amount: product.minPrice,
@@ -332,11 +346,12 @@ export function searchJsonPayload(
   citySlug: string,
   cityName: string,
   total: number,
-  products: Product[],
+  products: SearchDisplayProduct[],
   options?: {
     filters?: SearchAppliedFilters;
     language?: string;
     omittedResults?: SearchOmittedResults;
+    sort?: string;
   },
 ) {
   const filters = searchAppliedFiltersJson(options?.filters);
@@ -345,6 +360,7 @@ export function searchJsonPayload(
   return {
     city: citySlug,
     city_name: cityName,
+    sort: options?.sort ?? "relevance",
     total,
     showing: products.length,
     ...(filters ? { filters } : {}),

@@ -12,6 +12,7 @@ import {
   formatOmittedResultsHint,
   formatProduct,
   formatSearchFiltersLine,
+  formatSearchSortLine,
   nearbyJsonPayload,
   productJsonData,
   productStructuredData,
@@ -109,11 +110,12 @@ describe("product formatting", () => {
     const description = "Experience a dazzling 60-minute cabaret journey through pop culture with live vocals, bold choreography, and immersive staging.";
     const product = makeProduct({ description });
 
-    expect(productStructuredData(product, product.slug, "de")).toMatchObject({
+    expect(productStructuredData({ ...product, popular: true }, product.slug, "de")).toMatchObject({
       tickadooProductId: "product-id",
       slug: "product-slug",
       title: "Product",
       description,
+      popular: true,
       priceAmount: 25,
       priceCurrency: "GBP",
       bookingUrl: "https://www.tickadoo.com/de/product-slug?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
@@ -123,9 +125,10 @@ describe("product formatting", () => {
   it("builds structured json payloads for search and nearby results", () => {
     const product = makeProduct({ slug: "ghost-tour" });
 
-    expect(productJsonData(product, product.slug, "de")).toMatchObject({
+    expect(productJsonData({ ...product, popular: true }, product.slug, "de")).toMatchObject({
       title: "Product",
       slug: "ghost-tour",
+      popular: true,
       booking_url: "https://www.tickadoo.com/de/ghost-tour?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
       price: {
         amount: 25,
@@ -136,8 +139,9 @@ describe("product formatting", () => {
       },
     });
 
-    expect(searchJsonPayload("london", "London", 10, [product], {
+    expect(searchJsonPayload("london", "London", 10, [{ ...product, popular: true }], {
       language: "de",
+      sort: "popular",
       filters: {
         query: "ghost tour",
         maxPrice: 50,
@@ -152,6 +156,7 @@ describe("product formatting", () => {
     })).toMatchObject({
       city: "london",
       city_name: "London",
+      sort: "popular",
       total: 10,
       showing: 1,
       filters: {
@@ -241,6 +246,8 @@ describe("product formatting", () => {
       maxPrice: 50,
       language: "de",
     })).toBe("🔎 Filters: category=tours, max_price=50, language=de");
+    expect(formatSearchSortLine("popular")).toBe("🔀 Sort: popular");
+    expect(formatSearchSortLine("relevance")).toBeUndefined();
 
     expect(formatOmittedResultsHint({
       total: 196,
