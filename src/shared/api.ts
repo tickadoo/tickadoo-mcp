@@ -34,7 +34,7 @@ function isRetryableFetchError(error: unknown): boolean {
 
 function normalizeApiError(error: unknown): Error {
   if (error instanceof Error && error.name === "AbortError") {
-    return new Error(`tickadoo API request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    return new Error(`tickadoo API request timed out after ${REQUEST_TIMEOUT_MS}ms. Please try again in a moment.`);
   }
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -195,7 +195,7 @@ export async function resolveProductBySlug(slugOrPath: string, language: string)
     });
 
   if (!slugMatches.length) {
-    throw new Error(`Could not resolve tickadoo slug "${slug}" to an experience.`);
+    throw new Error(`Could not resolve tickadoo slug "${slug}" to an experience. Try searching by city first to find the canonical tickadoo slug.`);
   }
 
   const citySlugs = [...new Set(
@@ -208,11 +208,11 @@ export async function resolveProductBySlug(slugOrPath: string, language: string)
   )];
 
   if (!citySlugs.length) {
-    throw new Error(`Could not infer a city for slug "${slug}". Try a full path like "/london/${slug}".`);
+    throw new Error(`Could not infer a city for slug "${slug}". Try a full path like "/london/${slug}", or search by city first.`);
   }
 
   if (!exactPathMatches.length && citySlugs.length > 1) {
-    throw new Error(`Slug "${slug}" matched multiple experiences. Pass a full tickadoo path like "/city/${slug}".`);
+    throw new Error(`Slug "${slug}" matched multiple experiences. Pass a full tickadoo path like "/city/${slug}", or search by city first.`);
   }
 
   for (const page of slugMatches) {
@@ -230,7 +230,7 @@ export async function resolveProductBySlug(slugOrPath: string, language: string)
     }
   }
 
-  throw new Error(`Could not resolve tickadoo slug "${slug}" to a bookable experience.`);
+  throw new Error(`Could not resolve tickadoo slug "${slug}" to a bookable experience. Try searching by city first to find a current tickadoo slug.`);
 }
 
 export async function getExperienceDetails(

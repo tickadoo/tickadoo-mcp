@@ -36,6 +36,10 @@ function requireCondition(condition, message) {
   }
 }
 
+function requireErrorResult(result, label) {
+  requireCondition(result?.isError === true, `${label} did not return isError=true. Received: ${JSON.stringify(result)}`);
+}
+
 function requireToolAnnotations(tool, label) {
   requireCondition(Boolean(tool), `${label} was not returned by tools/list.`);
   requireCondition(tool.annotations?.readOnlyHint === true, `${label} is missing readOnlyHint=true. Received: ${JSON.stringify(tool)}`);
@@ -103,8 +107,22 @@ export async function runE2ESmoke(client, options = {}) {
     arguments: { city: missingCity, language: "en" },
   });
   const missingSearchText = firstTextContent(missingSearchResult);
-  requireIncludes(missingSearchText, "No experiences found", `search_experiences(${missingCity})`);
-  requireExcludes(missingSearchText, "Error:", `search_experiences(${missingCity})`);
+  requireIncludes(missingSearchText, "No exact city match found", `search_experiences(${missingCity})`);
+  requireErrorResult(missingSearchResult, `search_experiences(${missingCity})`);
+
+  const blankSearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: "   ", language: "en" },
+  });
+  requireIncludes(firstTextContent(blankSearchResult), "City is required", "search_experiences(blank city)");
+  requireErrorResult(blankSearchResult, "search_experiences(blank city)");
+
+  const invalidSearchLimitResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, max_results: 0, language: "en" },
+  });
+  requireIncludes(firstTextContent(invalidSearchLimitResult), "Invalid max_results", "search_experiences(max_results=0)");
+  requireErrorResult(invalidSearchLimitResult, "search_experiences(max_results=0)");
 
   const nearbyResult = await client.callTool({
     name: "find_nearby_experiences",
@@ -128,12 +146,50 @@ export async function runE2ESmoke(client, options = {}) {
     `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include an imageUrl.`,
   );
 
+  const invalidNearbyLatitudeResult = await client.callTool({
+    name: "find_nearby_experiences",
+    arguments: {
+      latitude: 999,
+      longitude: nearbyLongitude,
+      radius_km: nearbyRadiusKm,
+      language: "en",
+    },
+  });
+  requireIncludes(firstTextContent(invalidNearbyLatitudeResult), "Latitude must be between -90 and 90", "find_nearby_experiences(latitude=999)");
+  requireErrorResult(invalidNearbyLatitudeResult, "find_nearby_experiences(latitude=999)");
+
+  const invalidNearbyRadiusResult = await client.callTool({
+    name: "find_nearby_experiences",
+    arguments: {
+      latitude: nearbyLatitude,
+      longitude: nearbyLongitude,
+      radius_km: 0,
+      language: "en",
+    },
+  });
+  requireIncludes(firstTextContent(invalidNearbyRadiusResult), "Invalid radius_km", "find_nearby_experiences(radius_km=0)");
+  requireErrorResult(invalidNearbyRadiusResult, "find_nearby_experiences(radius_km=0)");
+
   const citiesResult = await client.callTool({
     name: "list_cities",
     arguments: { query: cityQuery, limit: cityLimit, language: "en" },
   });
   const citiesText = firstTextContent(citiesResult);
   requireIncludes(citiesText, cityQuery, `list_cities(query=${cityQuery})`);
+
+  const invalidCitiesQueryResult = await client.callTool({
+    name: "list_cities",
+    arguments: { query: "   ", language: "en" },
+  });
+  requireIncludes(firstTextContent(invalidCitiesQueryResult), "Invalid query", "list_cities(query=blank)");
+  requireErrorResult(invalidCitiesQueryResult, "list_cities(query=blank)");
+
+  const invalidCitiesLimitResult = await client.callTool({
+    name: "list_cities",
+    arguments: { limit: 0, language: "en" },
+  });
+  requireIncludes(firstTextContent(invalidCitiesLimitResult), "Invalid limit", "list_cities(limit=0)");
+  requireErrorResult(invalidCitiesLimitResult, "list_cities(limit=0)");
 
   const directoryResult = await client.callTool({
     name: "list_cities",
@@ -164,6 +220,17 @@ export async function runE2ESmoke(client, options = {}) {
   requireMissingKey(detailsResult.structuredContent, "provider", `get_experience_details(slug=${detailsSlug}) structuredContent`);
   requireMissingKey(detailsResult.structuredContent, "providerId", `get_experience_details(slug=${detailsSlug}) structuredContent`);
 
+  const blankDetailsSlugResult = await client.callTool({
+    name: "get_experience_details",
+    arguments: {
+      slug: "   ",
+      days: detailsDays,
+      language: "en",
+    },
+  });
+  requireIncludes(firstTextContent(blankDetailsSlugResult), "Invalid slug", "get_experience_details(slug=blank)");
+  requireErrorResult(blankDetailsSlugResult, "get_experience_details(slug=blank)");
+
   const bogusDetailsResult = await client.callTool({
     name: "get_experience_details",
     arguments: {
@@ -174,10 +241,8 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const bogusDetailsText = firstTextContent(bogusDetailsResult);
   requireIncludes(bogusDetailsText, "Could not resolve tickadoo slug", `get_experience_details(slug=${bogusDetailsSlug})`);
-  requireCondition(
-    bogusDetailsResult.isError === true,
-    `get_experience_details(slug=${bogusDetailsSlug}) did not return an error result.`,
-  );
+  requireIncludes(bogusDetailsText, "searching by city first", `get_experience_details(slug=${bogusDetailsSlug})`);
+  requireErrorResult(bogusDetailsResult, `get_experience_details(slug=${bogusDetailsSlug})`);
 
   const resourceResult = await client.readResource({ uri: REQUIRED_RESOURCE });
   const resourceText = resourceResult.contents?.[0]?.text ?? "";
