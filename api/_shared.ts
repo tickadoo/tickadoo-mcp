@@ -1,12 +1,22 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import serverManifest from "../server.json";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+let serverManifest: Record<string, any>;
+try {
+  const manifestPath = resolve(__dirname, "..", "server.json");
+  serverManifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+} catch {
+  serverManifest = { version: "1.1.0", remotes: [{ type: "streamable-http", url: "https://mcp.tickadoo.com/mcp" }], _meta: { "io.modelcontextprotocol.registry/publisher-provided": { license: "MIT", tools: [{ name: "search_experiences", description: "Search for bookable experiences in any city" }, { name: "find_nearby_experiences", description: "Find experiences near coordinates" }, { name: "list_cities", description: "List all 700+ supported cities" }, { name: "get_experience_details", description: "Get detailed info for a specific experience" }] } } };
+}
 
 export const CONTENT_SECURITY_POLICY = "default-src 'none'; connect-src https://api.tickadoo.com https://content.tickadoo.com https://www.tickadoo.com";
 export const RESPONSE_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 export const DISCOVERY_CACHE_CONTROL = "public, max-age=3600";
 
 const discoveryTools = serverManifest._meta?.["io.modelcontextprotocol.registry/publisher-provided"]?.tools ?? [];
-const primaryRemote = serverManifest.remotes?.find(remote => remote.type === "streamable-http") ?? serverManifest.remotes?.[0];
+const primaryRemote = serverManifest.remotes?.find((remote: any) => remote.type === "streamable-http") ?? serverManifest.remotes?.[0];
 
 export function buildHealthPayload() {
   return {
