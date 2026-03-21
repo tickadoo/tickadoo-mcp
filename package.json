@@ -5,13 +5,14 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "dev:http": "tsx scripts/dev-http.ts",
     "sync:html": "node scripts/sync-html.mjs",
     "e2e:http": "node scripts/e2e-http.mjs",
-    "e2e:stdio": "node scripts/e2e-stdio.mjs"
+    "e2e:stdio": "node scripts/e2e-stdio.mjs",
+    "test": "vitest run"
   },
   "keywords": [
     "mcp",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^22.19.15",
     "tsx": "^4.19.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }
