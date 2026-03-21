@@ -218,6 +218,21 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(cards.some(card => normalizeCategoryText(card.block).includes("comedy"))).toBe(true);
   }, 30_000);
 
+  it("search_experiences handles null-slug products during category filtering", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "london", category: "tours", max_results: 5, language: "en" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const text = firstTextContent(result);
+    expect(text).toContain("London");
+    expect(text.toLowerCase()).toContain("tours");
+
+    const cards = parseExperienceCards(text);
+    expect(cards.length).toBeGreaterThan(0);
+  }, 30_000);
+
   it("search_experiences supports abbreviated fuzzy matching for supported inputs", async () => {
     const result = await client.callTool({
       name: "search_experiences",

@@ -22,6 +22,12 @@ function makeProduct(overrides: Partial<Product>): Product {
   };
 }
 
+type UnsafeCategoryProduct = Omit<Product, "slug" | "title" | "description"> & {
+  slug: string | null;
+  title: string | null;
+  description: string | null;
+};
+
 describe("filterProductsByCategory", () => {
   it("matches canonical categories using title, description, and slug keywords", () => {
     const products = [
@@ -73,5 +79,37 @@ describe("filterProductsByCategory", () => {
     expect(filterProductsByCategory(products, "night life").map(product => product.slug)).toEqual([
       "night-club-cabaret",
     ]);
+  });
+
+  it("does not throw when the API returns null string fields", () => {
+    const products: UnsafeCategoryProduct[] = [
+      {
+        ...makeProduct({
+          title: "Paddington The Musical",
+          description: "The world's most lovable bear takes centre stage in this brand-new West End musical.",
+        }),
+        slug: null,
+      },
+      {
+        ...makeProduct({
+          slug: "london-bike-tour",
+          title: "London Bike Tour",
+        }),
+        description: null,
+      },
+      {
+        ...makeProduct({
+          slug: "mystery-experience",
+          description: null,
+        }),
+        title: null,
+      },
+    ];
+
+    expect(() => filterProductsByCategory(products as Product[], "tours")).not.toThrow();
+    expect(filterProductsByCategory(products as Product[], "tours").map(product => product.slug)).toEqual([
+      "london-bike-tour",
+    ]);
+    expect(() => filterProductsByCategory(products as Product[], "musicals")).not.toThrow();
   });
 });

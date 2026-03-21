@@ -81,6 +81,8 @@ export async function runE2ESmoke(client, options = {}) {
     expectedSlug = process.env.MCP_EXPECTED_SLUG ?? "las-vegas",
     categorySearchCity = process.env.MCP_CATEGORY_SEARCH_CITY ?? searchCity,
     categorySearchValue = process.env.MCP_CATEGORY_SEARCH_VALUE ?? "comedy",
+    categoryRegressionCity = process.env.MCP_CATEGORY_REGRESSION_CITY ?? "london",
+    categoryRegressionValue = process.env.MCP_CATEGORY_REGRESSION_VALUE ?? "tours",
     filteredSearchCity = process.env.MCP_FILTERED_SEARCH_CITY ?? searchCity,
     filteredSearchMinPrice = Number(process.env.MCP_FILTERED_SEARCH_MIN_PRICE ?? 1),
     filteredSearchMaxPrice = Number(process.env.MCP_FILTERED_SEARCH_MAX_PRICE ?? 50),
@@ -156,6 +158,35 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(
     categoryCards.some(card => normalizeCategoryText(card).includes(normalizeCategoryText(categorySearchValue))),
     `search_experiences(${categorySearchCity}, category=${categorySearchValue}) did not return any visible category match. Received: ${categorySearchText}`,
+  );
+
+  const categoryRegressionResult = await client.callTool({
+    name: "search_experiences",
+    arguments: {
+      city: categoryRegressionCity,
+      category: categoryRegressionValue,
+      max_results: 5,
+      language: "en",
+    },
+  });
+  const categoryRegressionText = firstTextContent(categoryRegressionResult);
+  requireCondition(
+    categoryRegressionResult?.isError !== true,
+    `search_experiences(${categoryRegressionCity}, category=${categoryRegressionValue}) unexpectedly errored. Received: ${JSON.stringify(categoryRegressionResult)}`,
+  );
+  requireIncludes(
+    categoryRegressionText,
+    categoryRegressionCity,
+    `search_experiences(${categoryRegressionCity}, category=${categoryRegressionValue})`,
+  );
+  requireIncludes(
+    categoryRegressionText,
+    categoryRegressionValue,
+    `search_experiences(${categoryRegressionCity}, category=${categoryRegressionValue})`,
+  );
+  requireCondition(
+    parseExperienceCards(categoryRegressionText).length > 0,
+    `search_experiences(${categoryRegressionCity}, category=${categoryRegressionValue}) returned no cards. Received: ${categoryRegressionText}`,
   );
 
   const filteredSearchResult = await client.callTool({

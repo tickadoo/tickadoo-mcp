@@ -90,7 +90,11 @@ function normalizeCityToken(city: string): string {
   return normalizeCityInput(city).replace(/-/g, "");
 }
 
-function normalizeCategoryText(value: string): string {
+function normalizeCategoryText(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+
   return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
@@ -106,7 +110,7 @@ function singularizeToken(token: string): string {
   return token;
 }
 
-function stemCategoryText(value: string): string {
+function stemCategoryText(value: unknown): string {
   return normalizeCategoryText(value)
     .split(/\s+/)
     .filter(Boolean)
@@ -114,7 +118,7 @@ function stemCategoryText(value: string): string {
     .join(" ");
 }
 
-function canonicalizeSearchCategory(value: string): SearchCategory | undefined {
+function canonicalizeSearchCategory(value: unknown): SearchCategory | undefined {
   const normalized = normalizeCategoryText(value);
   const stemmed = stemCategoryText(value);
   return SEARCH_CATEGORY_ALIASES[normalized] ?? SEARCH_CATEGORY_ALIASES[stemmed];
@@ -210,7 +214,10 @@ function buildCategoryTerms(category: string): string[] {
 }
 
 export function productMatchesCategory(product: Product, category: string): boolean {
-  const haystackSource = `${product.title} ${product.description ?? ""} ${product.slug.replace(/-/g, " ")}`;
+  const safeTitle = typeof product.title === "string" ? product.title : "";
+  const safeDescription = typeof product.description === "string" ? product.description : "";
+  const safeSlug = typeof product.slug === "string" ? product.slug.replace(/-/g, " ") : "";
+  const haystackSource = `${safeTitle} ${safeDescription} ${safeSlug}`;
   const normalizedHaystack = normalizeCategoryText(haystackSource);
   const stemmedHaystack = stemCategoryText(haystackSource);
 
