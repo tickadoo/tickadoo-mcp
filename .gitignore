@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+*.tgz
+.vercel
+
+# Internal files
+AGENTS.md
+CODEX_BRIEF.md
+CODEX_STATUS.md
+CLAUDE_STATUS.md
+WORK_QUEUE.md
+DECISIONS.md
+DEPLOY_STATUS.md
+CODEX_TASK.md
+
+# Local tooling / secrets
+.mcpregistry_*
+mcp-publisher

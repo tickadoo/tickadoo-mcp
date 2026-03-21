@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.tickadoo/tickadoo-mcp",
+  "title": "tickadoo \u2014 Experiences & Events",
+  "description": "Discover and book theatre, shows, events and experiences in 700+ cities worldwide.",
+  "websiteUrl": "https://mcp.tickadoo.com",
+  "repository": {
+    "url": "https://github.com/tickadoo/tickadoo-mcp",
+    "source": "github"
+  },
+  "version": "1.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  ]
+}

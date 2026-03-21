@@ -1,0 +1,246 @@
+import {
+  API_BASE,
+  MAX_API_ATTEMPTS,
+  REQUEST_TIMEOUT_MS,
+  RETRYABLE_STATUS_CODES,
+  SEARCH_PAGE_CACHE_TTL_MS,
+  SITE,
+} from "./config.js";
+import type { City, Product, ResolvedProduct, SearchPage, StructuredDataResponse } from "./types.js";
+
+const searchPageCache = new Map<string, { expiresAt: number; pages: SearchPage[] }>();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(attempt: number): number {
+  return 150 * attempt + Math.floor(Math.random() * 200);
+}
+
+export class TickadooApiError extends Error {
+  constructor(
+    public readonly status: number,
+    body: string,
+  ) {
+    super(`tickadoo API ${status}: ${body}`);
+    this.name = "TickadooApiError";
+  }
+}
+
+function isRetryableFetchError(error: unknown): boolean {
+  return error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
+}
+
+function normalizeApiError(error: unknown): Error {
+  if (error instanceof Error && error.name === "AbortError") {
+    return new Error(`tickadoo API request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof TickadooApiError && error.status === 404;
+}
+
+async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
+  const url = new URL(path, API_BASE);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value) url.searchParams.set(key, value);
+    }
+  }
+
+  for (let attempt = 1; attempt <= MAX_API_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url.toString(), {
+        headers: { Accept: "application/json", "User-Agent": "tickadoo-mcp/1.0" },
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        return await response.json() as T;
+      }
+
+      if (attempt < MAX_API_ATTEMPTS && RETRYABLE_STATUS_CODES.has(response.status)) {
+        void response.body?.cancel().catch(() => undefined);
+        await sleep(retryDelayMs(attempt));
+        continue;
+      }
+
+      throw new TickadooApiError(response.status, await response.text());
+    } catch (error) {
+      if (attempt < MAX_API_ATTEMPTS && isRetryableFetchError(error)) {
+        await sleep(retryDelayMs(attempt));
+        continue;
+      }
+      throw normalizeApiError(error);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error("tickadoo API request failed");
+}
+
+export function normalizeSlugOrPath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    if (/^https?:\/\//i.test(trimmed)) {
+      return new URL(trimmed).pathname.replace(/^\/+|\/+$/g, "");
+    }
+  } catch {
+    // Fall through to plain path normalization.
+  }
+
+  return trimmed.split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, "");
+}
+
+export function buildBookingUrl(pathOrSlug: string): string {
+  return `${SITE}/${normalizeSlugOrPath(pathOrSlug)}`;
+}
+
+function normalizeProviderName(provider: string): string {
+  const normalized = provider.replace(/[\s_-]+/g, "").toLowerCase();
+  const providerNames: Record<string, string> = {
+    headout: "Headout",
+    tiqets: "Tiqets",
+    broadwayinbound: "BroadwayInbound",
+    ingresso: "Ingresso",
+  };
+  return providerNames[normalized] ?? provider.trim();
+}
+
+function parseSlugReference(value: string): { normalizedPath: string; slug: string; citySlug?: string } {
+  const normalizedPath = normalizeSlugOrPath(value);
+  const segments = normalizedPath.split("/").filter(Boolean);
+  if (!segments.length) {
+    throw new Error("A tickadoo experience slug or path is required.");
+  }
+
+  return {
+    normalizedPath,
+    slug: segments[segments.length - 1],
+    citySlug: segments.length > 1 ? segments[segments.length - 2] : undefined,
+  };
+}
+
+async function getSearchPages(language: string): Promise<SearchPage[]> {
+  const cached = searchPageCache.get(language);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.pages;
+  }
+
+  const pages = (await fetchJson<{ pages: SearchPage[] }>("/api/search/pages", { language })).pages;
+  searchPageCache.set(language, {
+    expiresAt: Date.now() + SEARCH_PAGE_CACHE_TTL_MS,
+    pages,
+  });
+  return pages;
+}
+
+export async function getCities(language: string): Promise<City[]> {
+  return (await fetchJson<{ cities: City[] }>("/api/maps/cities", { languageCode: language })).cities;
+}
+
+export async function getProductsForCitySlug(citySlug: string, language: string): Promise<Product[]> {
+  try {
+    return (await fetchJson<{ products: Product[] }>("/api/maps/products", { citySlug, languageCode: language })).products;
+  } catch (error) {
+    if (isNotFoundError(error)) return [];
+    throw error;
+  }
+}
+
+export async function getProductsByLocation(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  language: string,
+): Promise<Product[]> {
+  return (await fetchJson<{ products: Product[] }>("/api/maps/products-by-location", {
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    distanceInKilometers: radiusKm.toString(),
+    languageCode: language,
+  })).products;
+}
+
+export async function resolveProductBySlug(slugOrPath: string, language: string): Promise<ResolvedProduct> {
+  const { normalizedPath, slug, citySlug } = parseSlugReference(slugOrPath);
+
+  if (citySlug) {
+    const directMatch = (await getProductsForCitySlug(citySlug, language)).find(product => product.slug === slug);
+    if (directMatch) {
+      return {
+        bookingPath: normalizedPath,
+        product: directMatch,
+      };
+    }
+  }
+
+  const pages = await getSearchPages(language);
+  const exactPathMatches = pages.filter(page => normalizeSlugOrPath(page.path) === normalizedPath);
+  const slugMatches = exactPathMatches.length
+    ? exactPathMatches
+    : pages.filter(page => {
+      const normalizedPagePath = normalizeSlugOrPath(page.path);
+      const pageSegments = normalizedPagePath.split("/").filter(Boolean);
+      return pageSegments[pageSegments.length - 1] === slug;
+    });
+
+  if (!slugMatches.length) {
+    throw new Error(`Could not resolve tickadoo slug "${slug}" to an experience.`);
+  }
+
+  const citySlugs = [...new Set(
+    slugMatches
+      .map(page => {
+        const segments = normalizeSlugOrPath(page.path).split("/").filter(Boolean);
+        return segments.length > 1 ? segments[segments.length - 2] : undefined;
+      })
+      .filter((value): value is string => Boolean(value)),
+  )];
+
+  if (!citySlugs.length) {
+    throw new Error(`Could not infer a city for slug "${slug}". Try a full path like "/london/${slug}".`);
+  }
+
+  if (!exactPathMatches.length && citySlugs.length > 1) {
+    throw new Error(`Slug "${slug}" matched multiple experiences. Pass a full tickadoo path like "/city/${slug}".`);
+  }
+
+  for (const page of slugMatches) {
+    const bookingPath = normalizeSlugOrPath(page.path);
+    const segments = bookingPath.split("/").filter(Boolean);
+    const candidateCitySlug = segments.length > 1 ? segments[segments.length - 2] : undefined;
+    if (!candidateCitySlug) continue;
+
+    const product = (await getProductsForCitySlug(candidateCitySlug, language)).find(item => item.slug === slug);
+    if (product) {
+      return {
+        bookingPath,
+        product,
+      };
+    }
+  }
+
+  throw new Error(`Could not resolve tickadoo slug "${slug}" to a bookable experience.`);
+}
+
+export async function getExperienceDetails(
+  provider: string,
+  providerId: string,
+  days: number,
+): Promise<StructuredDataResponse> {
+  return fetchJson<StructuredDataResponse>("/api/products/structured-data", {
+    Provider: normalizeProviderName(provider),
+    Id: providerId,
+    Days: days.toString(),
+  });
+}

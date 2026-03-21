@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tickadoo® MCP Server — AI-Powered Experience Discovery</title>
+  <meta name="description" content="Model Context Protocol server for tickadoo® — enabling any AI assistant to discover, recommend, and link to bookable experiences in 700+ cities worldwide.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #09090b; color: #e4e4e7; min-height: 100vh; overflow-x: hidden; }
+
+    /* Animated gradient orb */
+    .orb { position: fixed; top: -200px; right: -200px; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.08) 40%, transparent 70%); pointer-events: none; z-index: 0; animation: orbFloat 20s ease-in-out infinite; }
+    .orb2 { position: fixed; bottom: -300px; left: -200px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(52,211,153,0.08) 0%, rgba(16,185,129,0.04) 40%, transparent 70%); pointer-events: none; z-index: 0; animation: orbFloat 25s ease-in-out infinite reverse; }
+    @keyframes orbFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-40px, 30px); } }
+
+    .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    nav { padding: 20px 0; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: #a78bfa; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { color: #71717a; font-size: 13px; text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: #e4e4e7; }
+
+    /* Hero */
+    .hero { padding: 80px 0 60px; }
+    .status { display: inline-flex; align-items: center; gap: 8px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 24px; padding: 7px 16px; font-size: 12px; color: #a78bfa; font-weight: 500; margin-bottom: 28px; letter-spacing: 0.3px; }
+    .status .pulse { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.6); animation: blink 2s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    h1 { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 1.05; margin-bottom: 20px; }
+    h1 em { font-style: normal; background: linear-gradient(135deg, #818cf8, #6366f1 40%, #a78bfa 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .tagline { font-size: 19px; color: #a1a1aa; line-height: 1.7; max-width: 580px; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #27272a; border-radius: 16px; overflow: hidden; margin: 48px 0; }
+    .stat { background: #111113; padding: 28px 20px; text-align: center; }
+    .stat-val { font-size: 32px; font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #e4e4e7, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-val.accent { background: linear-gradient(135deg, #818cf8, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-lbl { font-size: 11px; color: #52525b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+
+    /* Section */
+    section { margin-bottom: 56px; }
+    section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #52525b; font-weight: 700; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #1c1c1e; }
+
+    /* Tools grid */
+    .tools { display: grid; gap: 12px; }
+    .tool { background: #111113; border: 1px solid #1e1e22; border-radius: 14px; padding: 24px; transition: all 0.25s; position: relative; overflow: hidden; }
+    .tool:hover { border-color: rgba(99,102,241,0.4); transform: translateY(-1px); box-shadow: 0 8px 30px rgba(99,102,241,0.07); }
+    .tool::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent); opacity: 0; transition: opacity 0.25s; }
+    .tool:hover::before { opacity: 1; }
+    .tool-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .tool-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .tool-icon.search { background: rgba(99,102,241,0.12); }
+    .tool-icon.nearby { background: rgba(52,211,153,0.12); }
+    .tool-icon.cities { background: rgba(251,191,36,0.12); }
+    .tool-icon.details { background: rgba(244,114,182,0.12); }
+    .tool-name { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 14px; color: #c4b5fd; font-weight: 600; }
+    .tool-desc { font-size: 14px; color: #71717a; line-height: 1.6; padding-left: 42px; }
+
+    /* Code blocks */
+    .code-block { background: #0c0c0e; border: 1px solid #1e1e22; border-radius: 12px; overflow: hidden; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #111113; border-bottom: 1px solid #1e1e22; }
+    .code-header span { font-size: 12px; color: #52525b; font-family: 'SF Mono', monospace; }
+    .code-header button { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #a78bfa; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .code-header button:hover { background: rgba(99,102,241,0.2); }
+    pre { padding: 18px 20px; overflow-x: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: #a1a1aa; line-height: 1.7; }
+    pre .k { color: #c4b5fd; } /* keyword */
+    pre .s { color: #6ee7b7; } /* string */
+    pre .c { color: #3f3f46; } /* comment */
+    pre .p { color: #71717a; } /* punctuation */
+
+    /* Architecture */
+    .arch { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 16px; }
+    .arch-box { background: #111113; border: 1px solid #1e1e22; border-radius: 12px; padding: 20px; text-align: center; }
+    .arch-box .label { font-size: 11px; color: #52525b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .arch-box .value { font-size: 15px; font-weight: 600; color: #e4e4e7; }
+    .arch-arrow { color: #3f3f46; font-size: 20px; }
+
+    /* Credits */
+    .credits { background: #111113; border: 1px solid #1e1e22; border-radius: 14px; padding: 24px; font-size: 13px; color: #52525b; line-height: 1.8; }
+    .credits strong { color: #a1a1aa; font-weight: 600; }
+    footer { text-align: center; padding: 48px 24px 40px; font-size: 12px; color: #27272a; }
+    footer a { color: #3f3f46; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="orb"></div>
+  <div class="orb2"></div>
+  <div class="wrap">
+
+    <nav>
+      <div class="logo">tickadoo<span>®</span> MCP</div>
+      <div class="nav-links">
+        <a href="https://www.tickadoo.com">tickadoo.com</a>
+        <a href="https://mcp.tickadoo.com/llms.txt">llms.txt</a>
+        <a href="https://modelcontextprotocol.io">What is MCP?</a>
+        <a href="https://smithery.ai/server/tickadoo/tickadoo-mcp">Smithery</a>
+        <a href="https://modelcontextprotocol.io">MCP Docs</a>
+      </div>
+    </nav>
+
+    <div class="hero">
+      <div class="status"><span class="pulse"></span> Production — Stateless HTTP Transport</div>
+      <h1>Every AI can now<br>sell <em>experiences</em></h1>
+      <p class="tagline">
+        A standalone MCP server that lets Claude, ChatGPT, Cursor, and any AI assistant
+        discover and recommend bookable theatre, shows, events, tours &amp; attractions from
+        tickadoo® — across 700+ cities worldwide. No server dependency. Just connect.
+      </p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-val accent">700+</div><div class="stat-lbl">Cities</div></div>
+      <div class="stat"><div class="stat-val">7,700+</div><div class="stat-lbl">Experiences</div></div>
+      <div class="stat"><div class="stat-val accent">1.8M</div><div class="stat-lbl">Feed Rows</div></div>
+      <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">MCP Tools</div></div>
+    </div>
+
+    <section>
+      <h2>Architecture</h2>
+      <div class="arch">
+        <div class="arch-box"><div class="label">Client</div><div class="value">Claude / ChatGPT / Cursor</div></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box"><div class="label">MCP Server</div><div class="value">Vercel Functions</div></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box"><div class="label">Data</div><div class="value">tickadoo API</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Tools</h2>
+      <div class="tools">
+        <div class="tool">
+          <div class="tool-head"><div class="tool-icon search">🔍</div><div class="tool-name">search_experiences</div></div>
+          <div class="tool-desc">Search for shows, events &amp; attractions in any city. Fuzzy city matching with fallback, real-time pricing, ratings, and direct booking links to tickadoo.com.</div>
+        </div>
+        <div class="tool">
+          <div class="tool-head"><div class="tool-icon nearby">📍</div><div class="tool-name">find_nearby_experiences</div></div>
+          <div class="tool-desc">Location-based discovery — find bookable experiences near any lat/lng coordinates within a configurable radius. Perfect for "things to do near me" queries.</div>
+        </div>
+        <div class="tool">
+          <div class="tool-head"><div class="tool-icon cities">🌍</div><div class="tool-name">list_cities</div></div>
+          <div class="tool-desc">Browse all 700+ cities with available experiences. Helps AI assistants guide users through destination exploration and trip planning.</div>
+        </div>
+        <div class="tool">
+          <div class="tool-head"><div class="tool-icon details">🎟️</div><div class="tool-name">get_experience_details</div></div>
+          <div class="tool-desc">Deep dive into a specific experience — available dates, variant pricing, venue location with coordinates, and feature images. Accepts a tickadoo slug for seamless chaining from search results.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Connect</h2>
+      <div class="code-block">
+        <div class="code-header"><span>remote_mcp_config.json</span><button onclick="navigator.clipboard.writeText(document.getElementById('config').textContent)">Copy</button></div>
+        <pre id="config"><span class="p">{</span>
+  <span class="k">"mcpServers"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"tickadoo"</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s">"url"</span><span class="p">:</span> <span class="s">"https://mcp.tickadoo.com/mcp"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Product Feed</h2>
+      <div class="code-block">
+        <div class="code-header"><span>OpenAI Commerce Product Feed spec</span></div>
+        <pre><span class="c"># ~1.8M rows · 7,700+ products · daily updated availability</span>
+curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.gz"</span> | gunzip | head -1 | python3 -m json.tool</pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>How It Works</h2>
+      <div class="credits">
+        <p>
+          Connect your AI application to tickadoo's live inventory of theatre, shows,
+          events, tours and experiences across 700+ cities. The server speaks the open
+          <a href="https://modelcontextprotocol.io" style="color:#6366f1">Model Context Protocol</a>
+          standard — search by city or coordinates, get real-time pricing and availability,
+          and link users directly to booking pages on tickadoo.com. Pair with the
+          <strong>product feed</strong> (1.8M+ rows, OpenAI Commerce spec) for deeper
+          catalogue integration. No API keys required. Stateless, fast, and ready to go.
+          For crawler-friendly discovery, see <a href="https://mcp.tickadoo.com/llms.txt" style="color:#6366f1">llms.txt</a>.
+        </p>
+      </div>
+    </section>
+
+  </div>
+  <footer>© 2024–2026 tickadoo Inc. · <a href="https://www.tickadoo.com">tickadoo.com</a> · MCP Server v1.1.0</footer>
+</body>
+</html>

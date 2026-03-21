@@ -1,0 +1,36 @@
+{
+  "name": "tickadoo-mcp",
+  "version": "1.1.0",
+  "description": "MCP server for tickadoo\u00ae \u2014 discover and book theatre, events & experiences in 700+ cities worldwide",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "dev:http": "tsx scripts/dev-http.ts",
+    "sync:html": "node scripts/sync-html.mjs",
+    "e2e:http": "node scripts/e2e-http.mjs",
+    "e2e:stdio": "node scripts/e2e-stdio.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "tickadoo",
+    "tickets",
+    "theatre",
+    "events",
+    "experiences",
+    "booking"
+  ],
+  "author": "tickadoo Inc.",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.3"
+  }
+}

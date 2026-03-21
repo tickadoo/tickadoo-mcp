@@ -1,0 +1,22 @@
+{
+  "installCommand": "npm install --include=dev",
+  "functions": {
+    "api/mcp.ts": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/llms.txt", "destination": "/api/llms" },
+    { "source": "/llms-full.txt", "destination": "/api/llms-full" },
+    { "source": "/mcp", "destination": "/api/mcp" }
+  ],
+  "headers": [
+    {
+      "source": "/api/mcp",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS, DELETE" },
+        { "key": "Access-Control-Allow-Headers", "value": "*" }
+      ]
+    }
+  ]
+}
