@@ -182,6 +182,7 @@
       <h2>Connect</h2>
       <div class="connect-tabs" role="tablist" aria-label="MCP client setup">
         <button class="connect-tab is-active" type="button" data-target="config-claude" aria-selected="true">Claude / Cursor</button>
+        <button class="connect-tab" type="button" data-target="config-chatgpt" aria-selected="false">ChatGPT</button>
         <button class="connect-tab" type="button" data-target="config-gemini" aria-selected="false">Gemini CLI</button>
         <button class="connect-tab" type="button" data-target="config-perplexity" aria-selected="false">Perplexity</button>
       </div>
@@ -195,6 +196,16 @@
     <span class="p">}</span>
   <span class="p">}</span>
 <span class="p">}</span></pre>
+        </div>
+        <div class="config-panel" id="config-chatgpt" data-label="ChatGPT Developer Mode" data-copy-target="copy-chatgpt">
+          <pre>1. Open Settings → Apps &amp; Connectors → Advanced → Developer Mode ON
+2. Back in Apps &amp; Connectors → Create
+3. Name: tickadoo
+4. URL: https://mcp.tickadoo.com/mcp
+5. Auth: None
+6. In a new chat: + → More → Developer Mode → Add sources → tickadoo
+
+Available to ChatGPT Pro, Business, Enterprise, and Edu plans.</pre>
         </div>
         <div class="config-panel" id="config-gemini" data-label="~/.gemini/settings.json" data-copy-target="copy-gemini">
           <pre><span class="p">{</span>
@@ -222,6 +233,14 @@ Note: Available to Perplexity paid subscribers</pre>
     }
   }
 }</textarea>
+      <textarea id="copy-chatgpt" hidden>1. Open Settings → Apps & Connectors → Advanced → Developer Mode ON
+2. Back in Apps & Connectors → Create
+3. Name: tickadoo
+4. URL: https://mcp.tickadoo.com/mcp
+5. Auth: None
+6. In a new chat: + → More → Developer Mode → Add sources → tickadoo
+
+Available to ChatGPT Pro, Business, Enterprise, and Edu plans.</textarea>
       <textarea id="copy-gemini" hidden>{
   "mcpServers": {
     "tickadoo": {
