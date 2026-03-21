@@ -2,6 +2,8 @@
 
 tickadoo® MCP Server brings live experience discovery to AI assistants through the Model Context Protocol (MCP). It gives compatible clients access to bookable theatre, shows, tours, attractions, and events across 700+ cities worldwide.
 
+[![tickadoo MCP server](https://glama.ai/mcp/servers/tickadoo/tickadoo-mcp/badges/card.svg)](https://glama.ai/mcp/servers/tickadoo/tickadoo-mcp)
+
 Current release: `v1.1.0`
 
 - 4 read-only MCP tools
