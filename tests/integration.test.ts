@@ -179,6 +179,23 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(cards.map(card => card.title)).toEqual(sortedTitles);
   }, 30_000);
 
+  it("search_experiences supports min_price and max_price filtering", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", min_price: 1, max_price: 50, max_results: 5, language: "en" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const text = firstTextContent(result);
+    const cards = parseExperienceCards(text);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.price).not.toBeNull();
+      expect(card.price).toBeGreaterThanOrEqual(1);
+      expect(card.price).toBeLessThanOrEqual(50);
+    }
+  }, 30_000);
+
   it("search_experiences supports abbreviated fuzzy matching for supported inputs", async () => {
     const result = await client.callTool({
       name: "search_experiences",
@@ -206,6 +223,16 @@ describe.sequential("tickadoo MCP live integration", () => {
     const text = firstTextContent(result);
     expect(text).toContain("No exact city match found");
     expect(text).toContain("Try");
+  }, 30_000);
+
+  it("search_experiences returns a helpful error for an invalid price range", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "london", min_price: 100, max_price: 10, language: "en" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(firstTextContent(result)).toContain("Invalid price range");
   }, 30_000);
 
   it("find_nearby_experiences returns nearby results with radius context", async () => {

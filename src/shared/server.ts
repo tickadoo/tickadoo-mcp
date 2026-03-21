@@ -60,6 +60,32 @@ function sortProductsForDisplay(products: Product[]): Product[] {
   return [...products].sort(compareProductsForDisplay);
 }
 
+export function productMatchesPriceRange(product: Product, minPrice?: number, maxPrice?: number): boolean {
+  const price = product.minPrice;
+
+  if (price == null) {
+    return minPrice == null || minPrice === 0;
+  }
+
+  if (minPrice != null && price < minPrice) {
+    return false;
+  }
+
+  if (maxPrice != null && price > maxPrice) {
+    return false;
+  }
+
+  return true;
+}
+
+export function filterProductsByPrice(products: Product[], minPrice?: number, maxPrice?: number): Product[] {
+  if (minPrice == null && maxPrice == null) {
+    return products;
+  }
+
+  return products.filter(product => productMatchesPriceRange(product, minPrice, maxPrice));
+}
+
 function buildShownResultsLabel(shown: number, total: number, context: string): string {
   const prefix = total > shown ? `Showing top ${shown} of ${total}` : `Showing ${shown} of ${total}`;
   return `${prefix} experiences ${context}:`;
@@ -166,10 +192,18 @@ function formatCitySuggestions(suggestions: City[]): string {
   return suggestions.map(city => city.name).join(", ");
 }
 
-function validateSearchArgs(args: { city: string; language?: string; max_results?: number }): ValidationResult<{
+function validateSearchArgs(args: {
+  city: string;
+  language?: string;
+  max_results?: number;
+  min_price?: number;
+  max_price?: number;
+}): ValidationResult<{
   city: string;
   language: string;
   maxResults: number;
+  minPrice?: number;
+  maxPrice?: number;
 }> {
   const city = args.city.trim();
   if (!city) {
@@ -189,12 +223,41 @@ function validateSearchArgs(args: { city: string; language?: string; max_results
     };
   }
 
+  if (args.min_price != null && (!Number.isFinite(args.min_price) || args.min_price < 0)) {
+    return {
+      ok: false,
+      error: createErrorResponse(
+        `Invalid min_price. It must be a non-negative number in the local currency (got: ${formatValue(args.min_price)}).`,
+      ),
+    };
+  }
+
+  if (args.max_price != null && (!Number.isFinite(args.max_price) || args.max_price < 0)) {
+    return {
+      ok: false,
+      error: createErrorResponse(
+        `Invalid max_price. It must be a non-negative number in the local currency (got: ${formatValue(args.max_price)}).`,
+      ),
+    };
+  }
+
+  if (args.min_price != null && args.max_price != null && args.min_price > args.max_price) {
+    return {
+      ok: false,
+      error: createErrorResponse(
+        `Invalid price range. min_price cannot be greater than max_price (got: min_price=${args.min_price}, max_price=${args.max_price}).`,
+      ),
+    };
+  }
+
   return {
     ok: true,
     data: {
       city,
       language: args.language ?? "en",
       maxResults,
+      minPrice: args.min_price,
+      maxPrice: args.max_price,
     },
   };
 }
@@ -343,11 +406,13 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "search_experiences",
-    "Search for shows, theatre, events, tours and experiences in a specific city on tickadoo®. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.",
+    "Search for shows, theatre, events, tours and experiences in a specific city on tickadoo®. Supports optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.",
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default("en").describe("Language code (e.g. 'en', 'de', 'fr', 'es')"),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
+      min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
+      max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
     async args => {
@@ -356,7 +421,13 @@ export function createTickadooServer(): McpServer {
         return validated.error;
       }
 
-      const { city, language, maxResults } = validated.data;
+      const {
+        city,
+        language,
+        maxResults,
+        minPrice,
+        maxPrice,
+      } = validated.data;
 
       try {
         let citySlug = normalizeCityInput(city);
@@ -391,15 +462,24 @@ export function createTickadooServer(): McpServer {
           return createTextResponse(`No experiences found for "${cityName}". Try a major city like London, New York, Paris, Dubai, or Tokyo.`);
         }
 
-        const rankedProducts = sortProductsForDisplay(products);
+        const matchingProducts = filterProductsByPrice(products, minPrice, maxPrice);
+        if (!matchingProducts.length) {
+          return createTextResponse(
+            `No experiences found for "${cityName}" within the requested price range. Try widening min_price/max_price or removing the price filter.`,
+          );
+        }
+
+        const rankedProducts = sortProductsForDisplay(matchingProducts);
         const topProducts = rankedProducts.slice(0, maxResults);
         return createTextResponse(
-          `${buildShownResultsLabel(topProducts.length, products.length, `in ${cityName}`)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
+          `${buildShownResultsLabel(topProducts.length, matchingProducts.length, `in ${cityName}`)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
           {
             structuredContent: {
               city: cityName,
               citySlug,
-              totalExperiences: products.length,
+              totalExperiences: matchingProducts.length,
+              ...(minPrice != null ? { minPrice } : {}),
+              ...(maxPrice != null ? { maxPrice } : {}),
               experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`)),
             },
           },

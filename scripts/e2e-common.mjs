@@ -61,11 +61,23 @@ function requireTrackedBookingUrl(value, label) {
   }
 }
 
+function parseExperienceCards(text) {
+  return [...text.matchAll(/🎭 [\s\S]*?(?=\n\n🎭 |\n\nView all:|$)/g)].map(match => match[0]);
+}
+
+function extractCardPrice(cardText) {
+  const priceMatch = cardText.match(/💰 From [A-Z]{3} ([0-9]+(?:\.[0-9]{2})?)/);
+  return priceMatch ? Number(priceMatch[1]) : null;
+}
+
 export async function runE2ESmoke(client, options = {}) {
   const {
     target = "unknown",
     searchCity = process.env.MCP_SEARCH_CITY ?? "vegas",
     expectedSlug = process.env.MCP_EXPECTED_SLUG ?? "las-vegas",
+    filteredSearchCity = process.env.MCP_FILTERED_SEARCH_CITY ?? searchCity,
+    filteredSearchMinPrice = Number(process.env.MCP_FILTERED_SEARCH_MIN_PRICE ?? 1),
+    filteredSearchMaxPrice = Number(process.env.MCP_FILTERED_SEARCH_MAX_PRICE ?? 50),
     missingCity = process.env.MCP_MISSING_CITY ?? "__definitely-not-a-real-city__",
     nearbyLatitude = Number(process.env.MCP_NEARBY_LATITUDE ?? 51.502606),
     nearbyLongitude = Number(process.env.MCP_NEARBY_LONGITUDE ?? -0.118117),
@@ -118,6 +130,28 @@ export async function runE2ESmoke(client, options = {}) {
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
 
+  const filteredSearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: {
+      city: filteredSearchCity,
+      min_price: filteredSearchMinPrice,
+      max_price: filteredSearchMaxPrice,
+      max_results: 5,
+      language: "en",
+    },
+  });
+  const filteredSearchText = firstTextContent(filteredSearchResult);
+  requireIncludes(filteredSearchText, filteredSearchCity, `search_experiences(${filteredSearchCity}, price filter)`);
+  const filteredCards = parseExperienceCards(filteredSearchText);
+  requireCondition(filteredCards.length > 0, `search_experiences(${filteredSearchCity}, price filter) returned no cards. Received: ${filteredSearchText}`);
+  for (const card of filteredCards) {
+    const price = extractCardPrice(card);
+    requireCondition(
+      price != null && price >= filteredSearchMinPrice && price <= filteredSearchMaxPrice,
+      `search_experiences(${filteredSearchCity}, price filter) returned a card outside the requested range ${filteredSearchMinPrice}-${filteredSearchMaxPrice}. Card: ${card}`,
+    );
+  }
+
   const missingSearchResult = await client.callTool({
     name: "search_experiences",
     arguments: { city: missingCity, language: "en" },
@@ -139,6 +173,18 @@ export async function runE2ESmoke(client, options = {}) {
   });
   requireIncludes(firstTextContent(invalidSearchLimitResult), "Invalid max_results", "search_experiences(max_results=0)");
   requireErrorResult(invalidSearchLimitResult, "search_experiences(max_results=0)");
+
+  const invalidSearchPriceRangeResult = await client.callTool({
+    name: "search_experiences",
+    arguments: {
+      city: searchCity,
+      min_price: 100,
+      max_price: 10,
+      language: "en",
+    },
+  });
+  requireIncludes(firstTextContent(invalidSearchPriceRangeResult), "Invalid price range", "search_experiences(min_price=100,max_price=10)");
+  requireErrorResult(invalidSearchPriceRangeResult, "search_experiences(min_price=100,max_price=10)");
 
   const nearbyResult = await client.callTool({
     name: "find_nearby_experiences",
