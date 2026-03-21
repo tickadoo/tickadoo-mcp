@@ -5,6 +5,7 @@ import { createTickadooServer } from "../src/shared/server.js";
 
 type BodyCapableRequest = IncomingMessage & { body?: unknown };
 const CONTENT_SECURITY_POLICY = "default-src 'none'; connect-src https://api.tickadoo.com https://content.tickadoo.com https://www.tickadoo.com";
+const RESPONSE_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 
 function writeHealthResponse(req: IncomingMessage, res: ServerResponse): void {
   const body = JSON.stringify({
@@ -17,7 +18,7 @@ function writeHealthResponse(req: IncomingMessage, res: ServerResponse): void {
 
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", RESPONSE_CACHE_CONTROL);
   if (req.method === "HEAD") {
     res.end();
     return;
@@ -51,6 +52,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
   res.setHeader("Access-Control-Allow-Headers", "*");
   res.setHeader("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  res.setHeader("Cache-Control", RESPONSE_CACHE_CONTROL);
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();

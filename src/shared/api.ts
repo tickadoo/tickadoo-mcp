@@ -3,12 +3,22 @@ import {
   MAX_API_ATTEMPTS,
   REQUEST_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
-  SEARCH_PAGE_CACHE_TTL_MS,
   SITE,
 } from "./config.js";
+import { apiResponseCache, createCacheKey, type CacheToolName } from "./cache.js";
 import type { City, Product, ResolvedProduct, SearchPage, StructuredDataResponse } from "./types.js";
 
-const searchPageCache = new Map<string, { expiresAt: number; pages: SearchPage[] }>();
+const TOOL_CACHE_TTL_MS: Record<CacheToolName, number> = {
+  search_experiences: 5 * 60_000,
+  find_nearby_experiences: 5 * 60_000,
+  list_cities: 15 * 60_000,
+  get_experience_details: 10 * 60_000,
+};
+
+type CacheContext = {
+  toolName: CacheToolName;
+  args: Record<string, unknown>;
+};
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -41,6 +51,22 @@ function normalizeApiError(error: unknown): Error {
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof TickadooApiError && error.status === 404;
+}
+
+function withToolCache<T>(
+  context: CacheContext,
+  load: () => Promise<T>,
+  shouldCache?: (value: T) => boolean,
+): Promise<T> {
+  return apiResponseCache.getOrLoad(
+    createCacheKey(context.toolName, context.args),
+    {
+      ttlMs: TOOL_CACHE_TTL_MS[context.toolName],
+      staleWhileRevalidateMs: TOOL_CACHE_TTL_MS[context.toolName],
+      shouldCache,
+    },
+    load,
+  );
 }
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -131,26 +157,38 @@ function parseSlugReference(value: string): { normalizedPath: string; slug: stri
 }
 
 async function getSearchPages(language: string): Promise<SearchPage[]> {
-  const cached = searchPageCache.get(language);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.pages;
-  }
-
-  const pages = (await fetchJson<{ pages: SearchPage[] }>("/api/search/pages", { language })).pages;
-  searchPageCache.set(language, {
-    expiresAt: Date.now() + SEARCH_PAGE_CACHE_TTL_MS,
-    pages,
-  });
-  return pages;
+  return withToolCache(
+    {
+      toolName: "get_experience_details",
+      args: { language, resource: "search_pages" },
+    },
+    async () => (await fetchJson<{ pages: SearchPage[] }>("/api/search/pages", { language })).pages,
+  );
 }
 
 export async function getCities(language: string): Promise<City[]> {
-  return (await fetchJson<{ cities: City[] }>("/api/maps/cities", { languageCode: language })).cities;
+  return withToolCache(
+    {
+      toolName: "list_cities",
+      args: { language },
+    },
+    async () => (await fetchJson<{ cities: City[] }>("/api/maps/cities", { languageCode: language })).cities,
+  );
 }
 
-export async function getProductsForCitySlug(citySlug: string, language: string): Promise<Product[]> {
+export async function getProductsForCitySlug(
+  citySlug: string,
+  language: string,
+  cacheContext: CacheContext = {
+    toolName: "search_experiences",
+    args: { citySlug, language },
+  },
+): Promise<Product[]> {
   try {
-    return (await fetchJson<{ products: Product[] }>("/api/maps/products", { citySlug, languageCode: language })).products;
+    return await withToolCache(
+      cacheContext,
+      async () => (await fetchJson<{ products: Product[] }>("/api/maps/products", { citySlug, languageCode: language })).products,
+    );
   } catch (error) {
     if (isNotFoundError(error)) return [];
     throw error;
@@ -163,19 +201,28 @@ export async function getProductsByLocation(
   radiusKm: number,
   language: string,
 ): Promise<Product[]> {
-  return (await fetchJson<{ products: Product[] }>("/api/maps/products-by-location", {
-    latitude: latitude.toString(),
-    longitude: longitude.toString(),
-    distanceInKilometers: radiusKm.toString(),
-    languageCode: language,
-  })).products;
+  return withToolCache(
+    {
+      toolName: "find_nearby_experiences",
+      args: { latitude, longitude, radiusKm, language },
+    },
+    async () => (await fetchJson<{ products: Product[] }>("/api/maps/products-by-location", {
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      distanceInKilometers: radiusKm.toString(),
+      languageCode: language,
+    })).products,
+  );
 }
 
 export async function resolveProductBySlug(slugOrPath: string, language: string): Promise<ResolvedProduct> {
   const { normalizedPath, slug, citySlug } = parseSlugReference(slugOrPath);
 
   if (citySlug) {
-    const directMatch = (await getProductsForCitySlug(citySlug, language)).find(product => product.slug === slug);
+    const directMatch = (await getProductsForCitySlug(citySlug, language, {
+      toolName: "get_experience_details",
+      args: { citySlug, language, resource: "city_products" },
+    })).find(product => product.slug === slug);
     if (directMatch) {
       return {
         bookingPath: normalizedPath,
@@ -221,7 +268,10 @@ export async function resolveProductBySlug(slugOrPath: string, language: string)
     const candidateCitySlug = segments.length > 1 ? segments[segments.length - 2] : undefined;
     if (!candidateCitySlug) continue;
 
-    const product = (await getProductsForCitySlug(candidateCitySlug, language)).find(item => item.slug === slug);
+    const product = (await getProductsForCitySlug(candidateCitySlug, language, {
+      toolName: "get_experience_details",
+      args: { citySlug: candidateCitySlug, language, resource: "city_products" },
+    })).find(item => item.slug === slug);
     if (product) {
       return {
         bookingPath,
@@ -238,9 +288,16 @@ export async function getExperienceDetails(
   providerId: string,
   days: number,
 ): Promise<StructuredDataResponse> {
-  return fetchJson<StructuredDataResponse>("/api/products/structured-data", {
-    Provider: normalizeProviderName(provider),
-    Id: providerId,
-    Days: days.toString(),
-  });
+  const normalizedProvider = normalizeProviderName(provider);
+  return withToolCache(
+    {
+      toolName: "get_experience_details",
+      args: { provider: normalizedProvider, providerId, days },
+    },
+    () => fetchJson<StructuredDataResponse>("/api/products/structured-data", {
+      Provider: normalizedProvider,
+      Id: providerId,
+      Days: days.toString(),
+    }),
+  );
 }

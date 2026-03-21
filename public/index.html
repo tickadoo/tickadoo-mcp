@@ -48,7 +48,7 @@
     .tagline { font-size: 19px; color: #a1a1aa; line-height: 1.7; max-width: 580px; }
 
     /* Stats */
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #27272a; border-radius: 16px; overflow: hidden; margin: 48px 0; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #27272a; border-radius: 16px; overflow: hidden; margin: 48px 0; }
     .stat { background: #111113; padding: 28px 20px; text-align: center; }
     .stat-val { font-size: 32px; font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #e4e4e7, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .stat-val.accent { background: linear-gradient(135deg, #818cf8, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -123,7 +123,7 @@
         <a href="https://mcp.tickadoo.com/llms.txt">llms.txt</a>
         <a href="https://modelcontextprotocol.io">What is MCP?</a>
         <a href="https://smithery.ai/server/tickadoo/tickadoo-mcp">Smithery</a>
-        <a href="https://modelcontextprotocol.io">MCP Docs</a>
+        <a href="https://github.com/tickadoo/tickadoo-mcp">GitHub</a>
       </div>
     </nav>
 
@@ -131,7 +131,7 @@
       <div class="status"><span class="pulse"></span> Production — Stateless HTTP Transport</div>
       <h1>Every AI can now<br>sell <span class="rotate-wrap"><em class="rotate-word is-active">experiences</em><em class="rotate-word">the West End</em><em class="rotate-word">Broadway</em><em class="rotate-word">city tours</em><em class="rotate-word">attractions</em><em class="rotate-word">live shows</em><em class="rotate-word">hidden gems</em></span></h1>
       <p class="tagline">
-        A standalone MCP server that lets Claude, ChatGPT, Cursor, and any AI assistant
+        A standalone MCP server that lets Claude, ChatGPT, Gemini, Perplexity, Cursor, and any AI assistant
         discover and recommend bookable theatre, shows, events, tours &amp; attractions from
         tickadoo® — across 700+ cities worldwide. No server dependency. Just connect.
       </p>
@@ -141,13 +141,14 @@
       <div class="stat"><div class="stat-val accent">700+</div><div class="stat-lbl">Cities</div></div>
       <div class="stat"><div class="stat-val">7,700+</div><div class="stat-lbl">Experiences</div></div>
       <div class="stat"><div class="stat-val accent">1.8M</div><div class="stat-lbl">Feed Rows</div></div>
+      <div class="stat"><div class="stat-val accent">50</div><div class="stat-lbl">Languages</div></div>
       <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">MCP Tools</div></div>
     </div>
 
     <section>
       <h2>Architecture</h2>
       <div class="arch">
-        <div class="arch-box"><div class="label">Client</div><div class="value">Claude / ChatGPT / Cursor</div></div>
+        <div class="arch-box"><div class="label">Client</div><div class="value">Claude · ChatGPT · Gemini · Perplexity · Cursor</div></div>
         <div class="arch-arrow">→</div>
         <div class="arch-box"><div class="label">MCP Server</div><div class="value">Vercel Functions</div></div>
         <div class="arch-arrow">→</div>

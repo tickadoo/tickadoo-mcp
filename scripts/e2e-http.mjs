@@ -9,6 +9,7 @@ const REQUIRED_CSP_SNIPPETS = [
   "https://content.tickadoo.com",
   "https://www.tickadoo.com",
 ];
+const REQUIRED_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 
 async function verifyHealthResponse(target) {
   const healthResponse = await fetch(target, {
@@ -29,6 +30,11 @@ async function verifyHealthResponse(target) {
     }
   }
 
+  const cacheControl = healthResponse.headers.get("cache-control") ?? "";
+  if (!cacheControl.includes(REQUIRED_CACHE_CONTROL)) {
+    throw new Error(`GET ${target} missing Cache-Control "${REQUIRED_CACHE_CONTROL}". Received: ${cacheControl}`);
+  }
+
   const healthText = await healthResponse.text();
   if (!healthText.includes("\"status\":\"ok\"") || !healthText.includes("\"transport\":\"streamable-http\"")) {
     throw new Error(`GET ${target} did not return the expected health payload. Received: ${healthText}`);
@@ -37,6 +43,7 @@ async function verifyHealthResponse(target) {
   return {
     status: healthResponse.status,
     csp,
+    cacheControl,
     bodyPreview: healthText.slice(0, 220),
   };
 }
