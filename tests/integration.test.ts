@@ -63,6 +63,7 @@ type ParsedExperienceCard = {
   rating: number | null;
   bookingUrl: string | null;
   imageUrl: string | null;
+  block: string;
 };
 
 const endpoint = new URL(process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp");
@@ -97,6 +98,7 @@ function parseExperienceCards(text: string): ParsedExperienceCard[] {
         rating: ratingMatch ? Number(ratingMatch[1]) : null,
         bookingUrl: bookingUrlMatch?.[1] ?? null,
         imageUrl: imageUrlMatch?.[1] ?? null,
+        block,
       };
     });
 }
@@ -128,6 +130,10 @@ function expectTrackedBookingUrl(value: string | null | undefined) {
   for (const [key, expectedValue] of expectedUtmParams.entries()) {
     expect(parsed.searchParams.get(key)).toBe(expectedValue);
   }
+}
+
+function normalizeCategoryText(value: string): string {
+  return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 describe.sequential("tickadoo MCP live integration", () => {
@@ -196,6 +202,22 @@ describe.sequential("tickadoo MCP live integration", () => {
     }
   }, 30_000);
 
+  it("search_experiences supports category filtering", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", category: "comedy", max_results: 5, language: "en" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const text = firstTextContent(result);
+    expect(text).toContain("category");
+    expect(text.toLowerCase()).toContain("comedy");
+
+    const cards = parseExperienceCards(text);
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.some(card => normalizeCategoryText(card.block).includes("comedy"))).toBe(true);
+  }, 30_000);
+
   it("search_experiences supports abbreviated fuzzy matching for supported inputs", async () => {
     const result = await client.callTool({
       name: "search_experiences",
@@ -223,6 +245,16 @@ describe.sequential("tickadoo MCP live integration", () => {
     const text = firstTextContent(result);
     expect(text).toContain("No exact city match found");
     expect(text).toContain("Try");
+  }, 30_000);
+
+  it("search_experiences returns a helpful error for a blank category", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", category: "   ", language: "en" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(firstTextContent(result)).toContain("Invalid category");
   }, 30_000);
 
   it("search_experiences returns a helpful error for an invalid price range", async () => {

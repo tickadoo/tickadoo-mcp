@@ -22,6 +22,61 @@ const MAX_RADIUS_KM = 200;
 const AUTO_MATCH_CONFIDENCE = 0.88;
 const SUGGESTION_CONFIDENCE = 0.45;
 const CITY_SUGGESTION_LIMIT = 5;
+const AVAILABLE_SEARCH_CATEGORIES = [
+  "theatre",
+  "musicals",
+  "tours",
+  "food",
+  "family",
+  "nightlife",
+  "sightseeing",
+  "concerts",
+  "comedy",
+  "shows",
+] as const;
+
+type SearchCategory = (typeof AVAILABLE_SEARCH_CATEGORIES)[number];
+
+const SEARCH_CATEGORY_ALIASES: Record<string, SearchCategory> = {
+  theatre: "theatre",
+  theater: "theatre",
+  play: "theatre",
+  plays: "theatre",
+  musical: "musicals",
+  musicals: "musicals",
+  tour: "tours",
+  tours: "tours",
+  food: "food",
+  foodie: "food",
+  family: "family",
+  families: "family",
+  kid: "family",
+  kids: "family",
+  nightlife: "nightlife",
+  "night life": "nightlife",
+  sightseeing: "sightseeing",
+  attraction: "sightseeing",
+  attractions: "sightseeing",
+  concert: "concerts",
+  concerts: "concerts",
+  comedy: "comedy",
+  comedian: "comedy",
+  show: "shows",
+  shows: "shows",
+};
+
+const SEARCH_CATEGORY_KEYWORDS: Record<SearchCategory, string[]> = {
+  theatre: ["theatre", "theater", "play", "plays", "west end", "broadway", "stage"],
+  musicals: ["musical", "musicals", "show tunes", "west end musical", "broadway musical"],
+  tours: ["tour", "tours", "guided tour", "walking tour", "bus tour", "day trip", "excursion", "hop on hop off", "hop-on-hop-off"],
+  food: ["food", "culinary", "dining", "afternoon tea", "tea", "brunch", "dinner", "cocktail", "cocktails", "wine", "beer", "tasting", "restaurant"],
+  family: ["family", "families", "kids", "kid", "children", "child", "all ages", "interactive", "aquarium", "zoo", "dinosaur"],
+  nightlife: ["nightlife", "late night", "late-night", "bar", "bars", "club", "clubs", "cabaret", "party", "after dark"],
+  sightseeing: ["sightseeing", "landmark", "landmarks", "view", "views", "observation", "attraction", "attractions", "museum", "city pass", "hop on hop off", "hop-on-hop-off"],
+  concerts: ["concert", "concerts", "live music", "gig", "band", "orchestra", "symphony", "recital"],
+  comedy: ["comedy", "comedian", "comic", "stand up", "stand-up", "improv", "laugh"],
+  shows: ["show", "shows", "performance", "performances", "cabaret", "magic", "circus", "spectacular"],
+};
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -33,6 +88,40 @@ function normalizeCityInput(city: string): string {
 
 function normalizeCityToken(city: string): string {
   return normalizeCityInput(city).replace(/-/g, "");
+}
+
+function normalizeCategoryText(value: string): string {
+  return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function singularizeToken(token: string): string {
+  if (token.endsWith("ies") && token.length > 3) {
+    return `${token.slice(0, -3)}y`;
+  }
+
+  if (token.endsWith("s") && token.length > 3 && !token.endsWith("ss")) {
+    return token.slice(0, -1);
+  }
+
+  return token;
+}
+
+function stemCategoryText(value: string): string {
+  return normalizeCategoryText(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(singularizeToken)
+    .join(" ");
+}
+
+function canonicalizeSearchCategory(value: string): SearchCategory | undefined {
+  const normalized = normalizeCategoryText(value);
+  const stemmed = stemCategoryText(value);
+  return SEARCH_CATEGORY_ALIASES[normalized] ?? SEARCH_CATEGORY_ALIASES[stemmed];
+}
+
+function formatAvailableSearchCategories(): string {
+  return AVAILABLE_SEARCH_CATEGORIES.join(", ");
 }
 
 const READ_ONLY_TOOL_ANNOTATIONS = {
@@ -84,6 +173,64 @@ export function filterProductsByPrice(products: Product[], minPrice?: number, ma
   }
 
   return products.filter(product => productMatchesPriceRange(product, minPrice, maxPrice));
+}
+
+function buildCategoryTerms(category: string): string[] {
+  const normalized = normalizeCategoryText(category);
+  const canonical = canonicalizeSearchCategory(category);
+  const terms = new Set<string>();
+
+  const addTerm = (term: string) => {
+    const normalizedTerm = normalizeCategoryText(term);
+    if (normalizedTerm) {
+      terms.add(normalizedTerm);
+    }
+
+    const stemmedTerm = stemCategoryText(term);
+    if (stemmedTerm) {
+      terms.add(stemmedTerm);
+    }
+  };
+
+  addTerm(category);
+  if (normalized.endsWith("s")) {
+    addTerm(normalized.slice(0, -1));
+  } else if (normalized) {
+    addTerm(`${normalized}s`);
+  }
+
+  if (canonical) {
+    addTerm(canonical);
+    for (const keyword of SEARCH_CATEGORY_KEYWORDS[canonical]) {
+      addTerm(keyword);
+    }
+  }
+
+  return [...terms];
+}
+
+export function productMatchesCategory(product: Product, category: string): boolean {
+  const haystackSource = `${product.title} ${product.description ?? ""} ${product.slug.replace(/-/g, " ")}`;
+  const normalizedHaystack = normalizeCategoryText(haystackSource);
+  const stemmedHaystack = stemCategoryText(haystackSource);
+
+  return buildCategoryTerms(category).some(term => {
+    const normalizedTerm = normalizeCategoryText(term);
+    if (!normalizedTerm) {
+      return false;
+    }
+
+    const stemmedTerm = stemCategoryText(term);
+    return normalizedHaystack.includes(normalizedTerm) || stemmedHaystack.includes(stemmedTerm);
+  });
+}
+
+export function filterProductsByCategory(products: Product[], category?: string): Product[] {
+  if (!category) {
+    return products;
+  }
+
+  return products.filter(product => productMatchesCategory(product, category));
 }
 
 function buildShownResultsLabel(shown: number, total: number, context: string): string {
@@ -198,12 +345,14 @@ function validateSearchArgs(args: {
   max_results?: number;
   min_price?: number;
   max_price?: number;
+  category?: string;
 }): ValidationResult<{
   city: string;
   language: string;
   maxResults: number;
   minPrice?: number;
   maxPrice?: number;
+  category?: string;
 }> {
   const city = args.city.trim();
   if (!city) {
@@ -219,6 +368,15 @@ function validateSearchArgs(args: {
       ok: false,
       error: createErrorResponse(
         `Invalid max_results. It must be an integer between 1 and ${MAX_SEARCH_RESULT_LIMIT} (got: ${formatValue(args.max_results)}).`,
+      ),
+    };
+  }
+
+  if (args.category != null && !args.category.trim()) {
+    return {
+      ok: false,
+      error: createErrorResponse(
+        `Invalid category. If provided, category must be a non-empty string such as ${formatAvailableSearchCategories()}.`,
       ),
     };
   }
@@ -258,6 +416,7 @@ function validateSearchArgs(args: {
       maxResults,
       minPrice: args.min_price,
       maxPrice: args.max_price,
+      category: args.category?.trim(),
     },
   };
 }
@@ -406,11 +565,12 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "search_experiences",
-    "Search for shows, theatre, events, tours and experiences in a specific city on tickadoo®. Supports optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.",
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo®. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default("en").describe("Language code (e.g. 'en', 'de', 'fr', 'es')"),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
+      category: z.string().optional().describe(`Optional category filter. Suggested values: ${formatAvailableSearchCategories()}`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
     },
@@ -427,6 +587,7 @@ export function createTickadooServer(): McpServer {
         maxResults,
         minPrice,
         maxPrice,
+        category,
       } = validated.data;
 
       try {
@@ -462,22 +623,31 @@ export function createTickadooServer(): McpServer {
           return createTextResponse(`No experiences found for "${cityName}". Try a major city like London, New York, Paris, Dubai, or Tokyo.`);
         }
 
-        const matchingProducts = filterProductsByPrice(products, minPrice, maxPrice);
+        const categoryFilteredProducts = filterProductsByCategory(products, category);
+        const matchingProducts = filterProductsByPrice(categoryFilteredProducts, minPrice, maxPrice);
         if (!matchingProducts.length) {
+          const categoryHint = category ? ` matching category "${category}"` : "";
+          const priceHint = minPrice != null || maxPrice != null
+            ? " within the requested price range"
+            : "";
           return createTextResponse(
-            `No experiences found for "${cityName}" within the requested price range. Try widening min_price/max_price or removing the price filter.`,
+            `No experiences found for "${cityName}"${categoryHint}${priceHint}. Try another category, a different city, or wider filters.`,
           );
         }
 
         const rankedProducts = sortProductsForDisplay(matchingProducts);
         const topProducts = rankedProducts.slice(0, maxResults);
+        const searchContext = category
+          ? `in ${cityName} matching category "${category}"`
+          : `in ${cityName}`;
         return createTextResponse(
-          `${buildShownResultsLabel(topProducts.length, matchingProducts.length, `in ${cityName}`)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
+          `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
           {
             structuredContent: {
               city: cityName,
               citySlug,
               totalExperiences: matchingProducts.length,
+              ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
               ...(minPrice != null ? { minPrice } : {}),
               ...(maxPrice != null ? { maxPrice } : {}),
               experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`)),

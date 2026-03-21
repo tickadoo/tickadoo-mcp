@@ -70,11 +70,17 @@ function extractCardPrice(cardText) {
   return priceMatch ? Number(priceMatch[1]) : null;
 }
 
+function normalizeCategoryText(value) {
+  return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 export async function runE2ESmoke(client, options = {}) {
   const {
     target = "unknown",
     searchCity = process.env.MCP_SEARCH_CITY ?? "vegas",
     expectedSlug = process.env.MCP_EXPECTED_SLUG ?? "las-vegas",
+    categorySearchCity = process.env.MCP_CATEGORY_SEARCH_CITY ?? searchCity,
+    categorySearchValue = process.env.MCP_CATEGORY_SEARCH_VALUE ?? "comedy",
     filteredSearchCity = process.env.MCP_FILTERED_SEARCH_CITY ?? searchCity,
     filteredSearchMinPrice = Number(process.env.MCP_FILTERED_SEARCH_MIN_PRICE ?? 1),
     filteredSearchMaxPrice = Number(process.env.MCP_FILTERED_SEARCH_MAX_PRICE ?? 50),
@@ -130,6 +136,28 @@ export async function runE2ESmoke(client, options = {}) {
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
 
+  const categorySearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: {
+      city: categorySearchCity,
+      category: categorySearchValue,
+      max_results: 5,
+      language: "en",
+    },
+  });
+  const categorySearchText = firstTextContent(categorySearchResult);
+  requireIncludes(categorySearchText, categorySearchCity, `search_experiences(${categorySearchCity}, category=${categorySearchValue})`);
+  requireIncludes(categorySearchText, categorySearchValue, `search_experiences(${categorySearchCity}, category=${categorySearchValue})`);
+  const categoryCards = parseExperienceCards(categorySearchText);
+  requireCondition(
+    categoryCards.length > 0,
+    `search_experiences(${categorySearchCity}, category=${categorySearchValue}) returned no cards. Received: ${categorySearchText}`,
+  );
+  requireCondition(
+    categoryCards.some(card => normalizeCategoryText(card).includes(normalizeCategoryText(categorySearchValue))),
+    `search_experiences(${categorySearchCity}, category=${categorySearchValue}) did not return any visible category match. Received: ${categorySearchText}`,
+  );
+
   const filteredSearchResult = await client.callTool({
     name: "search_experiences",
     arguments: {
@@ -173,6 +201,13 @@ export async function runE2ESmoke(client, options = {}) {
   });
   requireIncludes(firstTextContent(invalidSearchLimitResult), "Invalid max_results", "search_experiences(max_results=0)");
   requireErrorResult(invalidSearchLimitResult, "search_experiences(max_results=0)");
+
+  const invalidSearchCategoryResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, category: "   ", language: "en" },
+  });
+  requireIncludes(firstTextContent(invalidSearchCategoryResult), "Invalid category", "search_experiences(category=blank)");
+  requireErrorResult(invalidSearchCategoryResult, "search_experiences(category=blank)");
 
   const invalidSearchPriceRangeResult = await client.callTool({
     name: "search_experiences",
