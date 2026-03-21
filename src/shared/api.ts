@@ -4,6 +4,7 @@ import {
   REQUEST_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
   SITE,
+  TICKADOO_UTM_PARAMS,
 } from "./config.js";
 import { apiResponseCache, createCacheKey, type CacheToolName } from "./cache.js";
 import type { City, Product, ResolvedProduct, SearchPage, StructuredDataResponse } from "./types.js";
@@ -127,8 +128,37 @@ export function normalizeSlugOrPath(value: string): string {
   return trimmed.split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, "");
 }
 
+function createCanonicalBookingUrl(pathOrSlug: string): URL {
+  const siteUrl = new URL(SITE);
+  const trimmed = pathOrSlug.trim();
+
+  if (!trimmed) {
+    return siteUrl;
+  }
+
+  try {
+    const inputUrl = /^https?:\/\//i.test(trimmed)
+      ? new URL(trimmed)
+      : new URL(trimmed.startsWith("/") ? trimmed : `/${trimmed}`, siteUrl);
+    siteUrl.pathname = inputUrl.pathname;
+    siteUrl.search = inputUrl.search;
+    siteUrl.hash = inputUrl.hash;
+    return siteUrl;
+  } catch {
+    siteUrl.pathname = `/${normalizeSlugOrPath(trimmed)}`;
+    return siteUrl;
+  }
+}
+
 export function buildBookingUrl(pathOrSlug: string): string {
-  return `${SITE}/${normalizeSlugOrPath(pathOrSlug)}`;
+  const bookingUrl = createCanonicalBookingUrl(pathOrSlug);
+  if (TICKADOO_UTM_PARAMS) {
+    const trackingParams = new URLSearchParams(TICKADOO_UTM_PARAMS);
+    for (const [key, value] of trackingParams.entries()) {
+      bookingUrl.searchParams.set(key, value);
+    }
+  }
+  return bookingUrl.toString();
 }
 
 function normalizeProviderName(provider: string): string {

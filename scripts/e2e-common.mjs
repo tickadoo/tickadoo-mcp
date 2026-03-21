@@ -5,6 +5,9 @@ const REQUIRED_TOOLS = [
   "get_experience_details",
 ];
 const EXPECTED_SERVER_VERSION = "1.1.0";
+const EXPECTED_UTM_PARAMS = new URLSearchParams(
+  process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+);
 
 const REQUIRED_RESOURCE = "tickadoo://product-feed";
 
@@ -45,6 +48,17 @@ function requireToolAnnotations(tool, label) {
   requireCondition(tool.annotations?.readOnlyHint === true, `${label} is missing readOnlyHint=true. Received: ${JSON.stringify(tool)}`);
   requireCondition(tool.annotations?.destructiveHint === false, `${label} is missing destructiveHint=false. Received: ${JSON.stringify(tool)}`);
   requireCondition(tool.annotations?.openWorldHint === true, `${label} is missing openWorldHint=true. Received: ${JSON.stringify(tool)}`);
+}
+
+function requireTrackedBookingUrl(value, label) {
+  requireCondition(typeof value === "string" && value.length > 0, `${label} did not include a booking URL. Received: ${value}`);
+  const parsed = new URL(value);
+  for (const [key, expectedValue] of EXPECTED_UTM_PARAMS.entries()) {
+    requireCondition(
+      parsed.searchParams.get(key) === expectedValue,
+      `${label} is missing ${key}=${expectedValue}. Received: ${value}`,
+    );
+  }
 }
 
 export async function runE2ESmoke(client, options = {}) {
@@ -101,6 +115,8 @@ export async function runE2ESmoke(client, options = {}) {
   requireMissingKey(firstExperience, "provider", `search_experiences(${searchCity}) structuredContent`);
   requireMissingKey(firstExperience, "providerId", `search_experiences(${searchCity}) structuredContent`);
   requireCondition(Boolean(firstExperience?.imageUrl), `search_experiences(${searchCity}) structuredContent did not include an imageUrl.`);
+  requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
+  requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
 
   const missingSearchResult = await client.callTool({
     name: "search_experiences",
@@ -145,6 +161,10 @@ export async function runE2ESmoke(client, options = {}) {
     Boolean(nearbyResult.structuredContent?.experiences?.[0]?.imageUrl),
     `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include an imageUrl.`,
   );
+  requireTrackedBookingUrl(
+    nearbyResult.structuredContent?.experiences?.[0]?.bookingUrl,
+    `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent`,
+  );
 
   const invalidNearbyLatitudeResult = await client.callTool({
     name: "find_nearby_experiences",
@@ -176,6 +196,7 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const citiesText = firstTextContent(citiesResult);
   requireIncludes(citiesText, cityQuery, `list_cities(query=${cityQuery})`);
+  requireIncludes(citiesText, "utm_source=mcp", `list_cities(query=${cityQuery})`);
 
   const invalidCitiesQueryResult = await client.callTool({
     name: "list_cities",
@@ -202,6 +223,7 @@ export async function runE2ESmoke(client, options = {}) {
     directoryLines.length === directoryLimit,
     `list_cities(limit=${directoryLimit}) returned ${directoryLines.length} city lines instead of ${directoryLimit}. Received: ${directoryText}`,
   );
+  requireIncludes(directoryText, "utm_source=mcp", `list_cities(limit=${directoryLimit})`);
 
   const detailsResult = await client.callTool({
     name: "get_experience_details",
@@ -219,6 +241,8 @@ export async function runE2ESmoke(client, options = {}) {
   requireExcludes(detailsText, detailsProviderId, `get_experience_details(slug=${detailsSlug})`);
   requireMissingKey(detailsResult.structuredContent, "provider", `get_experience_details(slug=${detailsSlug}) structuredContent`);
   requireMissingKey(detailsResult.structuredContent, "providerId", `get_experience_details(slug=${detailsSlug}) structuredContent`);
+  requireTrackedBookingUrl(detailsResult.structuredContent?.bookingUrl, `get_experience_details(slug=${detailsSlug}) structuredContent`);
+  requireIncludes(detailsText, "utm_source=mcp", `get_experience_details(slug=${detailsSlug})`);
 
   const blankDetailsSlugResult = await client.callTool({
     name: "get_experience_details",

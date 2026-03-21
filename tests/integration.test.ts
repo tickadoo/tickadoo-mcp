@@ -68,6 +68,9 @@ type ParsedExperienceCard = {
 const endpoint = new URL(process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp");
 const client = new Client({ name: "tickadoo-vitest-integration", version: "1.0.0" });
 const transport = new StreamableHTTPClientTransport(endpoint);
+const expectedUtmParams = new URLSearchParams(
+  process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+);
 
 function firstTextContent(result: ToolCallResult): string {
   return ((result.content ?? []) as TextContentItem[]).find(item => item.type === "text")?.text ?? "";
@@ -119,6 +122,14 @@ function extractCount(text: string, pattern: RegExp, label: string): number {
   return Number(match?.[1]);
 }
 
+function expectTrackedBookingUrl(value: string | null | undefined) {
+  expect(value).toBeTruthy();
+  const parsed = new URL(value!);
+  for (const [key, expectedValue] of expectedUtmParams.entries()) {
+    expect(parsed.searchParams.get(key)).toBe(expectedValue);
+  }
+}
+
 describe.sequential("tickadoo MCP live integration", () => {
   beforeAll(async () => {
     await client.connect(transport);
@@ -149,9 +160,11 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(firstCard.rating).not.toBeNull();
     expect(firstCard.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
     expect(firstCard.imageUrl).toMatch(/^https?:\/\//);
+    expectTrackedBookingUrl(firstCard.bookingUrl);
 
     const firstExperience = searchStructured.experiences?.[0];
     expect(firstExperience).toBeTruthy();
+    expectTrackedBookingUrl(firstExperience?.bookingUrl);
     expect(Object.keys(firstExperience ?? {}).sort()).toMatchInlineSnapshot(`
       [
         "bookingUrl",
@@ -178,6 +191,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(text).toContain("Las Vegas");
     expect(text).toContain("/las-vegas/");
     expect(text).toMatch(/Showing(?: top)? 3 of /);
+    expect(text).toContain("utm_source=mcp");
     expect(searchStructured.citySlug).toBe("las-vegas");
     expect(searchStructured.experiences).toHaveLength(3);
   }, 30_000);
@@ -215,10 +229,12 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(cards[0]?.title).toBeTruthy();
     expect(cards[0]?.imageUrl).toMatch(/^https?:\/\//);
     expect(cards[0]?.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
+    expectTrackedBookingUrl(cards[0]?.bookingUrl);
 
     expect(nearbyStructured.radiusKm).toBe(5);
     expect(nearbyStructured.latitude).toBe(51.502606);
     expect(nearbyStructured.longitude).toBe(-0.118117);
+    expectTrackedBookingUrl(nearbyStructured.experiences?.[0]?.bookingUrl);
     expect(Object.keys(nearbyStructured).sort()).toMatchInlineSnapshot(`
       [
         "experiences",
@@ -265,6 +281,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     const filteredText = firstTextContent(filteredResult);
     expect(filteredText).toContain("Found");
     expect(filteredText).toContain("PARIS");
+    expect(filteredText).toContain("utm_source=mcp");
     expect(extractCount(filteredText, /Found (\d+) matching cities/i, "list_cities filtered count")).toBeGreaterThanOrEqual(1);
   }, 30_000);
 
@@ -283,8 +300,10 @@ describe.sequential("tickadoo MCP live integration", () => {
     const detailsStructured = getStructuredContent<DetailsStructuredContent>(result);
 
     expect(detailsStructured.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
+    expectTrackedBookingUrl(detailsStructured.bookingUrl);
     expect(detailsStructured.slug).toBe("london-dungeon-tickets");
     expect(detailsStructured.days).toBe(7);
+    expect(text).toContain("utm_source=mcp");
 
     expect(Object.keys(detailsStructured).sort()).toMatchInlineSnapshot(`
       [
