@@ -107,6 +107,54 @@ function buildCategoryLines(): string[] {
   ];
 }
 
+function buildFreshnessLines(detailed = false): string[] {
+  if (!detailed) {
+    return [
+      "## Data Freshness",
+      "- Pricing: updated daily from tickadoo product feed",
+      "- Availability: indicative, not real-time — always link to booking page for final confirmation",
+      "- Ratings: aggregated, may lag behind live reviews",
+      "- City coverage: updated with each server release",
+      "- Results are cached for up to 5 minutes on the server",
+    ];
+  }
+
+  return [
+    "## Data Freshness",
+    "- Pricing: updated daily from the tickadoo product feed used by the MCP server",
+    "- Availability: indicative, not real-time — always send the user to the booking page for final confirmation",
+    "- Ratings: aggregated snapshots that may lag behind live review counts or score changes",
+    "- City coverage: updated with each server release, so newly launched cities may not appear until the next rollout",
+    "- Results are cached for up to 5 minutes on the server, so repeated queries may briefly return the same snapshot",
+  ];
+}
+
+function buildLimitationsLines(detailed = false): string[] {
+  if (!detailed) {
+    return [
+      "## Limitations",
+      "- No booking completion — the server provides discovery and links, not checkout",
+      "- No real-time inventory — availability shown is indicative, users should check the booking page",
+      "- Date filtering is not yet available — cannot filter by specific travel dates",
+      "- Not all experiences have duration, accessibility, or audience suitability data",
+      "- Prices shown are 'from' prices — final price may vary by date, party size, or variant",
+      "- Indoor/outdoor classification is not yet available for all experiences",
+      "- Reviews and ratings may not be available for newer listings",
+    ];
+  }
+
+  return [
+    "## Limitations",
+    "- No booking completion — the server provides discovery and outbound links, not checkout or payment",
+    "- No real-time inventory — availability shown is indicative, and users should confirm the final sellable state on the booking page",
+    "- Date filtering is not yet available — the MCP server cannot currently filter search results by a specific travel date",
+    "- Not all experiences have duration, accessibility, or audience suitability data in the current public API contract",
+    "- Prices shown are 'from' prices — the final price may vary by date, party size, selected option, or supplier variant",
+    "- Indoor/outdoor classification is not yet available for all experiences, so assistants should avoid over-claiming that distinction",
+    "- Reviews and ratings may not be available for newer listings or recently launched experiences",
+  ];
+}
+
 function buildToolSummaryLines(): string[] {
   return TOOL_DOCS.flatMap(tool => [`- ${tool.name}: ${tool.summary}`]);
 }
@@ -142,6 +190,10 @@ export function buildLlmsTxt(): string {
     ...buildLanguageLines(),
     "",
     ...buildCategoryLines(),
+    "",
+    ...buildFreshnessLines(),
+    "",
+    ...buildLimitationsLines(),
     "",
     "## Tools",
     ...buildToolSummaryLines(),
@@ -192,6 +244,10 @@ export function buildLlmsFullTxt(): string {
     ...buildLanguageLines(),
     "",
     ...buildCategoryLines(),
+    "",
+    ...buildFreshnessLines(true),
+    "",
+    ...buildLimitationsLines(true),
     "",
     "## Capabilities",
     "- Live experience discovery across 700+ cities worldwide",
