@@ -20,6 +20,8 @@ type SearchStructuredContent = {
     slug: string;
     title: string;
     description?: string;
+    priceAmount?: number;
+    priceCurrency?: string;
     bookingUrl: string;
     imageUrl?: string;
   }>;
@@ -35,6 +37,8 @@ type NearbyStructuredContent = {
     slug: string;
     title: string;
     description?: string;
+    priceAmount?: number;
+    priceCurrency?: string;
     bookingUrl: string;
     imageUrl?: string;
   }>;
@@ -186,12 +190,16 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(firstExperience).toBeTruthy();
     expect(firstExperience?.description).toBeTruthy();
     expect(firstExperience?.description?.length).toBeLessThanOrEqual(150);
+    expect(firstExperience?.priceAmount).toBeGreaterThan(0);
+    expect(firstExperience?.priceCurrency).toMatch(/^[A-Z]{3}$/);
     expectTrackedBookingUrl(firstExperience?.bookingUrl);
     expect(Object.keys(firstExperience ?? {}).sort()).toMatchInlineSnapshot(`
       [
         "bookingUrl",
         "description",
         "imageUrl",
+        "priceAmount",
+        "priceCurrency",
         "slug",
         "tickadooProductId",
         "title",
@@ -341,6 +349,8 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(nearbyStructured.longitude).toBe(-0.118117);
     expect(nearbyStructured.experiences?.[0]?.description).toBeTruthy();
     expect(nearbyStructured.experiences?.[0]?.description?.length).toBeLessThanOrEqual(150);
+    expect(nearbyStructured.experiences?.[0]?.priceAmount).toBeGreaterThan(0);
+    expect(nearbyStructured.experiences?.[0]?.priceCurrency).toMatch(/^[A-Z]{3}$/);
     expectTrackedBookingUrl(nearbyStructured.experiences?.[0]?.bookingUrl);
     expect(Object.keys(nearbyStructured).sort()).toMatchInlineSnapshot(`
       [

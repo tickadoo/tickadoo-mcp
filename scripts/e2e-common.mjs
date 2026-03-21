@@ -148,6 +148,14 @@ export async function runE2ESmoke(client, options = {}) {
     firstExperience.description.length <= 150,
     `search_experiences(${searchCity}) structuredContent description exceeded 150 chars. Received: ${firstExperience.description}`,
   );
+  requireCondition(
+    typeof firstExperience?.priceAmount === "number" && firstExperience.priceAmount > 0,
+    `search_experiences(${searchCity}) structuredContent did not include a numeric priceAmount.`,
+  );
+  requireCondition(
+    typeof firstExperience?.priceCurrency === "string" && /^[A-Z]{3}$/.test(firstExperience.priceCurrency),
+    `search_experiences(${searchCity}) structuredContent did not include a valid ISO priceCurrency. Received: ${firstExperience?.priceCurrency}`,
+  );
   requireCondition(Boolean(firstExperience?.imageUrl), `search_experiences(${searchCity}) structuredContent did not include an imageUrl.`);
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
@@ -316,6 +324,16 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(
     nearbyResult.structuredContent.experiences[0].description.length <= 150,
     `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent description exceeded 150 chars. Received: ${nearbyResult.structuredContent.experiences[0].description}`,
+  );
+  requireCondition(
+    typeof nearbyResult.structuredContent?.experiences?.[0]?.priceAmount === "number"
+      && nearbyResult.structuredContent.experiences[0].priceAmount > 0,
+    `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include a numeric priceAmount.`,
+  );
+  requireCondition(
+    typeof nearbyResult.structuredContent?.experiences?.[0]?.priceCurrency === "string"
+      && /^[A-Z]{3}$/.test(nearbyResult.structuredContent.experiences[0].priceCurrency),
+    `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include a valid ISO priceCurrency. Received: ${nearbyResult.structuredContent?.experiences?.[0]?.priceCurrency}`,
   );
   requireTrackedBookingUrl(
     nearbyResult.structuredContent?.experiences?.[0]?.bookingUrl,

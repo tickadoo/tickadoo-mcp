@@ -52,6 +52,27 @@ export type GeocodedCity = {
   longitude: number;
 };
 
+const CURRENCY_CODE_BY_SYMBOL: Array<[string, string]> = [
+  ["HK$", "HKD"],
+  ["SG$", "SGD"],
+  ["A$", "AUD"],
+  ["C$", "CAD"],
+  ["NZ$", "NZD"],
+  ["US$", "USD"],
+  ["R$", "BRL"],
+  ["£", "GBP"],
+  ["€", "EUR"],
+  ["$", "USD"],
+  ["¥", "JPY"],
+  ["￥", "JPY"],
+  ["₹", "INR"],
+  ["₩", "KRW"],
+  ["₺", "TRY"],
+  ["₫", "VND"],
+  ["₱", "PHP"],
+  ["฿", "THB"],
+];
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -211,6 +232,38 @@ function normalizeProviderName(provider: string): string {
   return providerNames[normalized] ?? provider.trim();
 }
 
+export function normalizeCurrencyCode(value: string | null | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const directCodeMatch = trimmed.toUpperCase().match(/\b[A-Z]{3}\b/);
+  if (directCodeMatch) {
+    return directCodeMatch[0];
+  }
+
+  const normalized = trimmed.replace(/\s+/g, "");
+  for (const [symbol, code] of CURRENCY_CODE_BY_SYMBOL) {
+    if (normalized.includes(symbol)) {
+      return code;
+    }
+  }
+
+  return /^[A-Za-z]{3}$/.test(trimmed) ? trimmed.toUpperCase() : undefined;
+}
+
+function normalizeProductCurrency(product: Product): Product {
+  const currency = normalizeCurrencyCode(product.currency) ?? product.currency;
+  return currency === product.currency
+    ? product
+    : { ...product, currency };
+}
+
 function parseSlugReference(value: string): { normalizedPath: string; slug: string; citySlug?: string } {
   const normalizedPath = normalizeSlugOrPath(value);
   const segments = normalizedPath.split("/").filter(Boolean);
@@ -256,7 +309,9 @@ export async function getProductsForCitySlug(
   try {
     return await withToolCache(
       cacheContext,
-      async () => (await fetchJson<{ products: Product[] }>("/api/maps/products", { citySlug, languageCode: language })).products,
+      async () => (await fetchJson<{ products: Product[] }>("/api/maps/products", { citySlug, languageCode: language }))
+        .products
+        .map(normalizeProductCurrency),
     );
   } catch (error) {
     if (isNotFoundError(error)) return [];
@@ -280,7 +335,9 @@ export async function getProductsByLocation(
       longitude: longitude.toString(),
       distanceInKilometers: radiusKm.toString(),
       languageCode: language,
-    })).products,
+    }))
+      .products
+      .map(normalizeProductCurrency),
   );
 }
 
@@ -468,10 +525,17 @@ export async function getExperienceDetails(
       toolName: "get_experience_details",
       args: { provider: normalizedProvider, providerId, days },
     },
-    () => fetchJson<StructuredDataResponse>("/api/products/structured-data", {
-      Provider: normalizedProvider,
-      Id: providerId,
-      Days: days.toString(),
-    }),
+    async () => {
+      const details = await fetchJson<StructuredDataResponse>("/api/products/structured-data", {
+        Provider: normalizedProvider,
+        Id: providerId,
+        Days: days.toString(),
+      });
+
+      const currencyCode = normalizeCurrencyCode(details.currencyCode) ?? details.currencyCode;
+      return currencyCode === details.currencyCode
+        ? details
+        : { ...details, currencyCode };
+    },
   );
 }

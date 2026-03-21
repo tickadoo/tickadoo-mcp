@@ -114,12 +114,16 @@ export function summarizeProductDescription(description: string | null | undefin
 
 export function productStructuredData(product: Product, bookingPath = product.slug) {
   const description = summarizeProductDescription(product.description);
+  const priceAmount = product.minPrice ?? undefined;
+  const priceCurrency = priceAmount != null ? product.currency : undefined;
 
   return {
     tickadooProductId: product.id,
     slug: product.slug,
     title: product.title,
     description,
+    priceAmount,
+    priceCurrency,
     bookingUrl: buildBookingUrl(bookingPath),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };

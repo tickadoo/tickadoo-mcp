@@ -10,6 +10,7 @@ import {
   productStructuredData,
   summarizeProductDescription,
 } from "../src/shared/format.js";
+import { normalizeCurrencyCode } from "../src/shared/api.js";
 import type { Product } from "../src/shared/types.js";
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -55,6 +56,13 @@ describe("summarizeProductDescription", () => {
 });
 
 describe("product formatting", () => {
+  it("normalizes ISO currency codes and infers them from symbols", () => {
+    expect(normalizeCurrencyCode("gbp")).toBe("GBP");
+    expect(normalizeCurrencyCode("£")).toBe("GBP");
+    expect(normalizeCurrencyCode("€")).toBe("EUR");
+    expect(normalizeCurrencyCode("$")).toBe("USD");
+  });
+
   it("appends next-step hints as a final line when provided", () => {
     expect(appendNextStepHint("Body", "💡 Tip: Try another tool.")).toBe("Body\n\n💡 Tip: Try another tool.");
     expect(appendNextStepHint("Body")).toBe("Body");
@@ -98,6 +106,8 @@ describe("product formatting", () => {
       slug: "product-slug",
       title: "Product",
       description,
+      priceAmount: 25,
+      priceCurrency: "GBP",
     });
   });
 
