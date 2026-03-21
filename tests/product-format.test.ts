@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendNextStepHint,
+  cityDirectoryJsonPayload,
+  experienceDetailsJsonPayload,
   formatDidYouMeanRecovery,
   formatEmptyCategoryRecovery,
+  formatJsonText,
   formatNearbyEmptyRecovery,
   formatNoCoverageRecovery,
   formatProduct,
+  nearbyJsonPayload,
+  productJsonData,
   productStructuredData,
+  searchJsonPayload,
   summarizeProductDescription,
 } from "../src/shared/format.js";
 import { normalizeCurrencyCode } from "../src/shared/api.js";
@@ -109,6 +115,91 @@ describe("product formatting", () => {
       priceAmount: 25,
       priceCurrency: "GBP",
     });
+  });
+
+  it("builds structured json payloads for search and nearby results", () => {
+    const product = makeProduct({ slug: "ghost-tour" });
+
+    expect(productJsonData(product)).toMatchObject({
+      title: "Product",
+      slug: "ghost-tour",
+      booking_url: "https://www.tickadoo.com/ghost-tour?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+      price: {
+        amount: 25,
+        currency: "GBP",
+      },
+      location: {
+        address: "123 Example Street, London",
+      },
+    });
+
+    expect(searchJsonPayload("london", "London", 10, [product])).toMatchObject({
+      city: "london",
+      city_name: "London",
+      total: 10,
+      showing: 1,
+    });
+
+    expect(nearbyJsonPayload(51.5, -0.1, 5, 10, [product])).toMatchObject({
+      latitude: 51.5,
+      longitude: -0.1,
+      radius_km: 5,
+      total: 10,
+      showing: 1,
+    });
+  });
+
+  it("builds structured json payloads for city lists and details", () => {
+    expect(cityDirectoryJsonPayload("paris", 3, [{ name: "PARIS", slug: "paris" }])).toMatchObject({
+      query: "paris",
+      total: 3,
+      showing: 1,
+      results: [
+        {
+          name: "PARIS",
+          slug: "paris",
+          booking_url: "https://www.tickadoo.com/paris?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+        },
+      ],
+    });
+
+    expect(experienceDetailsJsonPayload(7, {
+      desktopFeatureImageUrl: "https://cdn.tickadoo.com/example/desktop.jpg",
+      mobileFeatureImageUrl: "https://cdn.tickadoo.com/example/mobile.jpg",
+      currencyCode: "GBP",
+      address: "Riverside Building",
+      locationWithAddress: {
+        latitude: 51.5,
+        longitude: -0.1,
+        address: "Riverside Building",
+      },
+      dates: [
+        {
+          date: "2026-03-21",
+          endDate: "2026-03-21",
+          minPrice: 25,
+          variantName: "Standard",
+        },
+      ],
+    }, {
+      title: "London Dungeon",
+      slug: "london-dungeon-tickets",
+      bookingPath: "london/london-dungeon-tickets",
+    })).toMatchObject({
+      title: "London Dungeon",
+      slug: "london-dungeon-tickets",
+      booking_url: "https://www.tickadoo.com/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+      days: 7,
+      currency: "GBP",
+      availability: {
+        total_price_points: 1,
+        total_dates: 1,
+      },
+    });
+  });
+
+  it("renders json payloads as pretty-printed text", () => {
+    expect(formatJsonText({ hello: "world" })).toBe('{\n  "hello": "world"\n}');
   });
 
   it("uses the summarized one-line description in visible result cards", () => {

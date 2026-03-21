@@ -20,6 +20,7 @@ const TOOL_DOCS: ToolDoc[] = [
       "category (optional): category filter such as theatre, musicals, tours, food, family, nightlife, sightseeing, concerts, comedy, or shows",
       "min_price (optional): minimum price in the experience's local currency",
       "max_price (optional): maximum price in the experience's local currency",
+      "format (optional): response format, text (default) or json",
     ],
   },
   {
@@ -30,6 +31,7 @@ const TOOL_DOCS: ToolDoc[] = [
       "longitude (required): decimal longitude",
       "radius_km (optional): search radius in km, default 25",
       "language (optional): language code, default en",
+      "format (optional): response format, text (default) or json",
     ],
   },
   {
@@ -39,6 +41,7 @@ const TOOL_DOCS: ToolDoc[] = [
       "language (optional): language code, default en",
       "query (optional): city name or slug filter",
       "limit (optional): max cities to return, default 50, max 200",
+      "format (optional): response format, text (default) or json",
     ],
   },
   {
@@ -48,6 +51,7 @@ const TOOL_DOCS: ToolDoc[] = [
       "slug (preferred): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
       "days (optional): availability horizon in days, default 30, max 180",
       "language (optional): reserved for future language-aware support, default en",
+      "format (optional): response format, text (default) or json",
     ],
   },
 ];

@@ -19,6 +19,14 @@ function firstTextContent(result) {
   return result?.content?.find(item => item.type === "text")?.text ?? "";
 }
 
+function parseJsonText(text, label) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${label} did not return valid JSON. Received: ${text}\n${error}`);
+  }
+}
+
 function requireIncludes(haystack, needle, label) {
   if (!haystack.toLowerCase().includes(needle.toLowerCase())) {
     throw new Error(`${label} did not include "${needle}". Received: ${haystack}`);
@@ -160,6 +168,17 @@ export async function runE2ESmoke(client, options = {}) {
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
   requireIncludes(searchText, SEARCH_NEXT_STEP_HINT, `search_experiences(${searchCity})`);
+
+  const searchJsonResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, language: "en", format: "json", max_results: 2 },
+  });
+  const searchJson = parseJsonText(firstTextContent(searchJsonResult), `search_experiences(${searchCity}, format=json)`);
+  requireCondition(searchJson.city === expectedSlug, `search_experiences(${searchCity}, format=json) returned unexpected city: ${JSON.stringify(searchJson)}`);
+  requireCondition(searchJson.showing === 2, `search_experiences(${searchCity}, format=json) did not honor max_results=2. Received: ${JSON.stringify(searchJson)}`);
+  requireCondition(Array.isArray(searchJson.results) && searchJson.results.length === 2, `search_experiences(${searchCity}, format=json) did not return 2 results.`);
+  requireCondition(typeof searchJson.results[0]?.title === "string", `search_experiences(${searchCity}, format=json) missing result title.`);
+  requireTrackedBookingUrl(searchJson.results[0]?.booking_url, `search_experiences(${searchCity}, format=json)`);
 
   const categorySearchResult = await client.callTool({
     name: "search_experiences",
@@ -341,6 +360,21 @@ export async function runE2ESmoke(client, options = {}) {
   );
   requireIncludes(nearbyText, NEARBY_NEXT_STEP_HINT, `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude})`);
 
+  const nearbyJsonResult = await client.callTool({
+    name: "find_nearby_experiences",
+    arguments: {
+      latitude: nearbyLatitude,
+      longitude: nearbyLongitude,
+      radius_km: nearbyRadiusKm,
+      language: "en",
+      format: "json",
+    },
+  });
+  const nearbyJson = parseJsonText(firstTextContent(nearbyJsonResult), `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}, format=json)`);
+  requireCondition(nearbyJson.radius_km === nearbyRadiusKm, `find_nearby_experiences(..., format=json) returned unexpected radius: ${JSON.stringify(nearbyJson)}`);
+  requireCondition(Array.isArray(nearbyJson.results) && nearbyJson.results.length > 0, `find_nearby_experiences(..., format=json) returned no results.`);
+  requireTrackedBookingUrl(nearbyJson.results[0]?.booking_url, `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}, format=json)`);
+
   const invalidNearbyLatitudeResult = await client.callTool({
     name: "find_nearby_experiences",
     arguments: {
@@ -387,6 +421,15 @@ export async function runE2ESmoke(client, options = {}) {
   requireIncludes(citiesText, cityQuery, `list_cities(query=${cityQuery})`);
   requireIncludes(citiesText, "utm_source=mcp", `list_cities(query=${cityQuery})`);
   requireIncludes(citiesText, FILTERED_CITIES_NEXT_STEP_HINT, `list_cities(query=${cityQuery})`);
+
+  const citiesJsonResult = await client.callTool({
+    name: "list_cities",
+    arguments: { query: cityQuery, limit: 1, language: "en", format: "json" },
+  });
+  const citiesJson = parseJsonText(firstTextContent(citiesJsonResult), `list_cities(query=${cityQuery}, format=json)`);
+  requireCondition(citiesJson.query === cityQuery, `list_cities(query=${cityQuery}, format=json) returned unexpected query: ${JSON.stringify(citiesJson)}`);
+  requireCondition(Array.isArray(citiesJson.results) && citiesJson.results.length === 1, `list_cities(query=${cityQuery}, format=json) did not return exactly 1 result.`);
+  requireTrackedBookingUrl(citiesJson.results[0]?.booking_url, `list_cities(query=${cityQuery}, format=json)`);
 
   const invalidCitiesQueryResult = await client.callTool({
     name: "list_cities",
@@ -435,6 +478,20 @@ export async function runE2ESmoke(client, options = {}) {
   requireTrackedBookingUrl(detailsResult.structuredContent?.bookingUrl, `get_experience_details(slug=${detailsSlug}) structuredContent`);
   requireIncludes(detailsText, "utm_source=mcp", `get_experience_details(slug=${detailsSlug})`);
   requireIncludes(detailsText, DETAILS_NEXT_STEP_HINT, `get_experience_details(slug=${detailsSlug})`);
+
+  const detailsJsonResult = await client.callTool({
+    name: "get_experience_details",
+    arguments: {
+      slug: detailsSlug,
+      days: detailsDays,
+      language: "en",
+      format: "json",
+    },
+  });
+  const detailsJson = parseJsonText(firstTextContent(detailsJsonResult), `get_experience_details(slug=${detailsSlug}, format=json)`);
+  requireCondition(detailsJson.slug === detailsSlug, `get_experience_details(slug=${detailsSlug}, format=json) returned unexpected slug: ${JSON.stringify(detailsJson)}`);
+  requireTrackedBookingUrl(detailsJson.booking_url, `get_experience_details(slug=${detailsSlug}, format=json)`);
+  requireCondition(Array.isArray(detailsJson.availability?.results), `get_experience_details(slug=${detailsSlug}, format=json) missing availability results.`);
 
   const blankDetailsSlugResult = await client.callTool({
     name: "get_experience_details",

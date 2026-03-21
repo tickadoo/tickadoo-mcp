@@ -90,6 +90,14 @@ function firstTextContent(result: ToolCallResult): string {
   return ((result.content ?? []) as TextContentItem[]).find(item => item.type === "text")?.text ?? "";
 }
 
+function parseJsonText<T>(text: string, label: string): T {
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(`${label} did not return valid JSON. Received: ${text}\n${error}`);
+  }
+}
+
 function getStructuredContent<T extends Record<string, unknown>>(result: ToolCallResult): T {
   return (result.structuredContent ?? {}) as T;
 }
@@ -225,6 +233,33 @@ describe.sequential("tickadoo MCP live integration", () => {
       expect(card.price).toBeGreaterThanOrEqual(1);
       expect(card.price).toBeLessThanOrEqual(50);
     }
+  }, 30_000);
+
+  it("search_experiences supports json output", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", language: "en", max_results: 2, format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      city?: string;
+      total?: number;
+      showing?: number;
+      results?: Array<{
+        title?: string;
+        slug?: string;
+        booking_url?: string;
+        price?: { amount?: number; currency?: string } | null;
+      }>;
+    }>(firstTextContent(result), "search_experiences(format=json)");
+
+    expect(json.city).toBe("las-vegas");
+    expect(json.showing).toBe(2);
+    expect(json.total).toBeGreaterThanOrEqual(2);
+    expect(json.results).toHaveLength(2);
+    expect(json.results?.[0]?.title).toBeTruthy();
+    expectTrackedBookingUrl(json.results?.[0]?.booking_url);
   }, 30_000);
 
   it("search_experiences supports category filtering", async () => {
@@ -380,6 +415,36 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(text).toContain("Try increasing the radius to 2km");
   }, 30_000);
 
+  it("find_nearby_experiences supports json output", async () => {
+    const result = await client.callTool({
+      name: "find_nearby_experiences",
+      arguments: {
+        latitude: 51.502606,
+        longitude: -0.118117,
+        radius_km: 5,
+        language: "en",
+        format: "json",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      latitude?: number;
+      longitude?: number;
+      radius_km?: number;
+      total?: number;
+      showing?: number;
+      results?: Array<{ booking_url?: string }>;
+    }>(firstTextContent(result), "find_nearby_experiences(format=json)");
+
+    expect(json.latitude).toBe(51.502606);
+    expect(json.longitude).toBe(-0.118117);
+    expect(json.radius_km).toBe(5);
+    expect(json.total).toBeGreaterThan(0);
+    expect(json.showing).toBeGreaterThan(0);
+    expectTrackedBookingUrl(json.results?.[0]?.booking_url);
+  }, 30_000);
+
   it("list_cities reports the global city count and supports substring filtering", async () => {
     const directoryResult = await client.callTool({
       name: "list_cities",
@@ -404,6 +469,28 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(filteredText).toContain("utm_source=mcp");
     expect(filteredText).toContain(FILTERED_CITIES_NEXT_STEP_HINT);
     expect(extractCount(filteredText, /Found (\d+) matching cities/i, "list_cities filtered count")).toBeGreaterThanOrEqual(1);
+  }, 30_000);
+
+  it("list_cities supports json output", async () => {
+    const result = await client.callTool({
+      name: "list_cities",
+      arguments: { query: "paris", limit: 1, language: "en", format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      query?: string | null;
+      total?: number;
+      showing?: number;
+      results?: Array<{ name?: string; slug?: string; booking_url?: string }>;
+    }>(firstTextContent(result), "list_cities(format=json)");
+
+    expect(json.query).toBe("paris");
+    expect(json.total).toBeGreaterThanOrEqual(1);
+    expect(json.showing).toBe(1);
+    expect(json.results).toHaveLength(1);
+    expect(json.results?.[0]?.slug?.toLowerCase()).toContain("paris");
+    expectTrackedBookingUrl(json.results?.[0]?.booking_url);
   }, 30_000);
 
   it("get_experience_details returns full public details and a tickadoo booking URL", async () => {
@@ -466,5 +553,38 @@ describe.sequential("tickadoo MCP live integration", () => {
     const text = firstTextContent(result);
     expect(text).toContain("Could not resolve tickadoo slug");
     expect(text).toContain("searching by city first");
+  }, 30_000);
+
+  it("get_experience_details supports json output", async () => {
+    const result = await client.callTool({
+      name: "get_experience_details",
+      arguments: { slug: "london-dungeon-tickets", days: 7, language: "en", format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      title?: string | null;
+      slug?: string | null;
+      booking_url?: string | null;
+      days?: number;
+      availability?: {
+        total_price_points?: number;
+        total_dates?: number;
+        results?: Array<{
+          date?: string;
+          end_date?: string;
+          variant_name?: string;
+          price?: { amount?: number; currency?: string };
+        }>;
+      };
+    }>(firstTextContent(result), "get_experience_details(format=json)");
+
+    expect(json.title).toContain("London Dungeon");
+    expect(json.slug).toBe("london-dungeon-tickets");
+    expect(json.days).toBe(7);
+    expectTrackedBookingUrl(json.booking_url);
+    expect(json.availability?.total_price_points).toBeGreaterThan(0);
+    expect(json.availability?.total_dates).toBeGreaterThan(0);
+    expect(json.availability?.results?.[0]?.price?.currency).toBeTruthy();
   }, 30_000);
 });

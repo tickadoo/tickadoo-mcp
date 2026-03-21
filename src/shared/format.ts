@@ -3,6 +3,8 @@ import { buildBookingUrl } from "./api.js";
 import type { Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
 const MAX_RESULT_DESCRIPTION_LENGTH = 150;
+export const RESPONSE_FORMATS = ["text", "json"] as const;
+export type ResponseFormat = (typeof RESPONSE_FORMATS)[number];
 
 export const SEARCH_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for availability & pricing. Use find_nearby_experiences(lat, lng) for location-based discovery.";
 export const NEARBY_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for full details. Results sorted by distance from your coordinates.";
@@ -23,6 +25,23 @@ type NearbyCitySuggestion = {
   distanceKm: number;
   experienceCount: number;
 };
+
+function normalizeDistanceKm(distanceKm: number): number {
+  return Math.round(distanceKm * 10) / 10;
+}
+
+function mapNearbyCitySuggestion(city: NearbyCitySuggestion) {
+  return {
+    name: city.name,
+    slug: city.slug,
+    distance_km: normalizeDistanceKm(city.distanceKm),
+    experience_count: city.experienceCount,
+  };
+}
+
+export function formatJsonText(payload: Record<string, unknown>): string {
+  return JSON.stringify(payload, null, 2);
+}
 
 function formatNearbyCitySuggestionList(cities: NearbyCitySuggestion[]): string[] {
   return cities.map(city => `  • ${city.name} (${Math.round(city.distanceKm)}km) — ${city.experienceCount} experiences`);
@@ -46,6 +65,28 @@ export function formatDidYouMeanRecovery(
   return lines.join("\n");
 }
 
+export function didYouMeanRecoveryJson(
+  city: string,
+  suggestion: { name: string; slug: string },
+  nearbyCities: NearbyCitySuggestion[] = [],
+) {
+  return {
+    city,
+    total: 0,
+    showing: 0,
+    results: [],
+    message: `No experiences found in "${city}".`,
+    suggestion: {
+      city: suggestion.name,
+      slug: suggestion.slug,
+      search_hint: `search_experiences(city: '${suggestion.name}')`,
+    },
+    ...(nearbyCities.length
+      ? { nearby_cities: nearbyCities.map(mapNearbyCitySuggestion) }
+      : {}),
+  };
+}
+
 export function formatNoCoverageRecovery(city: string, nearbyCities: NearbyCitySuggestion[] = []): string {
   const lines = [`tickadoo doesn't have experiences in "${city}" yet.`];
 
@@ -56,6 +97,19 @@ export function formatNoCoverageRecovery(city: string, nearbyCities: NearbyCityS
   }
 
   return lines.join("\n");
+}
+
+export function noCoverageRecoveryJson(city: string, nearbyCities: NearbyCitySuggestion[] = []) {
+  return {
+    city,
+    total: 0,
+    showing: 0,
+    results: [],
+    message: `tickadoo doesn't have experiences in "${city}" yet.`,
+    ...(nearbyCities.length
+      ? { nearby_cities: nearbyCities.map(mapNearbyCitySuggestion) }
+      : {}),
+  };
 }
 
 export function formatNearbyEmptyRecovery(
@@ -76,6 +130,33 @@ export function formatNearbyEmptyRecovery(
   return lines.join("\n");
 }
 
+export function nearbyEmptyRecoveryJson(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  suggestedRadiusKm: number,
+  nearestCity?: { name: string },
+) {
+  return {
+    latitude,
+    longitude,
+    radius_km: radiusKm,
+    total: 0,
+    showing: 0,
+    results: [],
+    message: `No experiences found within ${radiusKm}km.`,
+    suggested_radius_km: suggestedRadiusKm,
+    ...(nearestCity
+      ? {
+          nearest_city: {
+            name: nearestCity.name,
+            search_hint: `search_experiences(city: '${nearestCity.name}')`,
+          },
+        }
+      : {}),
+  };
+}
+
 export function formatEmptyCategoryRecovery(
   category: string,
   city: string,
@@ -90,6 +171,28 @@ export function formatEmptyCategoryRecovery(
   }
 
   return lines.join("\n");
+}
+
+export function emptyCategoryRecoveryJson(
+  citySlug: string,
+  cityName: string,
+  category: string,
+  availableCategories: string[],
+) {
+  return {
+    city: citySlug,
+    city_name: cityName,
+    category,
+    total: 0,
+    showing: 0,
+    results: [],
+    message: `No ${category} experiences in ${cityName}.`,
+    available_categories: availableCategories,
+  };
+}
+
+export function genericJsonError(message: string) {
+  return { error: message };
 }
 
 export function summarizeProductDescription(description: string | null | undefined): string | undefined {
@@ -126,6 +229,91 @@ export function productStructuredData(product: Product, bookingPath = product.sl
     priceCurrency,
     bookingUrl: buildBookingUrl(bookingPath),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
+  };
+}
+
+export function productJsonData(product: Product, bookingPath = product.slug) {
+  const description = summarizeProductDescription(product.description);
+  const imageUrl = product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? null;
+
+  return {
+    title: product.title,
+    slug: product.slug,
+    description: description ?? null,
+    price: product.minPrice != null
+      ? {
+          amount: product.minPrice,
+          currency: product.currency,
+        }
+      : null,
+    rating: product.averageRating ?? null,
+    image_url: imageUrl,
+    booking_url: buildBookingUrl(bookingPath),
+    location: {
+      address: product.address ?? null,
+    },
+  };
+}
+
+export function searchJsonPayload(
+  citySlug: string,
+  cityName: string,
+  total: number,
+  products: Product[],
+  options?: {
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  },
+) {
+  const filters = {
+    ...(options?.category ? { category: options.category } : {}),
+    ...(options?.minPrice != null ? { min_price: options.minPrice } : {}),
+    ...(options?.maxPrice != null ? { max_price: options.maxPrice } : {}),
+  };
+
+  return {
+    city: citySlug,
+    city_name: cityName,
+    total,
+    showing: products.length,
+    ...(Object.keys(filters).length ? { filters } : {}),
+    results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`)),
+    view_all_url: buildBookingUrl(citySlug),
+  };
+}
+
+export function nearbyJsonPayload(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  total: number,
+  products: Product[],
+) {
+  return {
+    latitude,
+    longitude,
+    radius_km: radiusKm,
+    total,
+    showing: products.length,
+    results: products.map(product => productJsonData(product)),
+  };
+}
+
+export function cityDirectoryJsonPayload(
+  query: string | undefined,
+  total: number,
+  cities: Array<{ name: string; slug: string }>,
+) {
+  return {
+    query: query ?? null,
+    total,
+    showing: cities.length,
+    results: cities.map(city => ({
+      name: city.name,
+      slug: city.slug,
+      booking_url: buildBookingUrl(city.slug),
+    })),
   };
 }
 
@@ -199,4 +387,46 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   }
 
   return lines.join("\n");
+}
+
+export function experienceDetailsJsonPayload(
+  days: number,
+  details: StructuredDataResponse,
+  options?: {
+    title?: string;
+    slug?: string;
+    bookingPath?: string;
+  },
+) {
+  const uniqueDates = new Set(details.dates.map(item => item.date)).size;
+
+  return {
+    title: options?.title ?? null,
+    slug: options?.slug ?? null,
+    booking_url: options?.bookingPath ? buildBookingUrl(options.bookingPath) : null,
+    days,
+    currency: details.currencyCode,
+    location: {
+      address: details.address ?? details.locationWithAddress.address ?? null,
+      latitude: details.locationWithAddress.latitude ?? null,
+      longitude: details.locationWithAddress.longitude ?? null,
+    },
+    images: {
+      desktop_url: details.desktopFeatureImageUrl,
+      mobile_url: details.mobileFeatureImageUrl,
+    },
+    availability: {
+      total_price_points: details.dates.length,
+      total_dates: uniqueDates,
+      results: details.dates.map(item => ({
+        date: item.date,
+        end_date: item.endDate,
+        variant_name: item.variantName,
+        price: {
+          amount: item.minPrice,
+          currency: details.currencyCode,
+        },
+      })),
+    },
+  };
 }

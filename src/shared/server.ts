@@ -20,17 +20,29 @@ import {
 } from "./config.js";
 import {
   appendNextStepHint,
+  cityDirectoryJsonPayload,
   DETAILS_NEXT_STEP_HINT,
+  didYouMeanRecoveryJson,
+  emptyCategoryRecoveryJson,
+  experienceDetailsJsonPayload,
   FILTERED_CITIES_NEXT_STEP_HINT,
   formatDidYouMeanRecovery,
   formatEmptyCategoryRecovery,
   formatExperienceDetails,
   formatNearbyEmptyRecovery,
   formatNoCoverageRecovery,
+  formatJsonText,
   formatProduct,
+  genericJsonError,
   NEARBY_NEXT_STEP_HINT,
+  nearbyEmptyRecoveryJson,
+  nearbyJsonPayload,
+  noCoverageRecoveryJson,
   productStructuredData,
+  RESPONSE_FORMATS,
+  type ResponseFormat,
   SEARCH_NEXT_STEP_HINT,
+  searchJsonPayload,
 } from "./format.js";
 import type { City, Product, ResolvedProduct } from "./types.js";
 
@@ -298,6 +310,32 @@ function createErrorResponse(message: string) {
   return createTextResponse(`Error: ${message}`, { isError: true });
 }
 
+function createFormattedResponse(
+  format: ResponseFormat,
+  text: string,
+  jsonPayload: Record<string, unknown>,
+  options?: { isError?: boolean; structuredContent?: unknown },
+) {
+  return createTextResponse(
+    format === "json" ? formatJsonText(jsonPayload) : text,
+    {
+      isError: options?.isError,
+      structuredContent: format === "json"
+        ? jsonPayload
+        : options?.structuredContent,
+    },
+  );
+}
+
+function createFormattedErrorResponse(format: ResponseFormat, message: string) {
+  return createFormattedResponse(
+    format,
+    `Error: ${message}`,
+    genericJsonError(message),
+    { isError: true },
+  );
+}
+
 type ToolResponse = ReturnType<typeof createTextResponse>;
 type ValidationResult<T> = { ok: true; data: T } | { ok: false; error: ToolResponse };
 type LoggedToolExecution = {
@@ -409,6 +447,10 @@ function formatValue(value: unknown): string {
   return Number.isNaN(value) ? "NaN" : String(value);
 }
 
+function normalizeResponseFormat(value: unknown): ResponseFormat | undefined {
+  return value === "text" || value === "json" ? value : undefined;
+}
+
 function levenshteinDistance(left: string, right: string): number {
   if (left === right) return 0;
   if (!left.length) return right.length;
@@ -488,6 +530,7 @@ async function getNearbyCitySuggestions(
 }
 
 async function buildSearchMissResponse(
+  format: ResponseFormat,
   city: string,
   language: string,
   suggestions: Array<{ city: City & { slug: string }; score: number }>,
@@ -503,16 +546,26 @@ async function buildSearchMissResponse(
       )
       : [];
 
-    return createTextResponse(formatDidYouMeanRecovery(
-      city,
-      { name: bestSuggestion.city.name, slug: bestSuggestion.city.slug },
-      nearbyCities.map(entry => ({
-        name: entry.city.name,
-        slug: entry.city.slug,
-        distanceKm: entry.distanceKm,
-        experienceCount: entry.experienceCount,
-      })),
-    ));
+    const mappedNearbyCities = nearbyCities.map(entry => ({
+      name: entry.city.name,
+      slug: entry.city.slug,
+      distanceKm: entry.distanceKm,
+      experienceCount: entry.experienceCount,
+    }));
+
+    return createFormattedResponse(
+      format,
+      formatDidYouMeanRecovery(
+        city,
+        { name: bestSuggestion.city.name, slug: bestSuggestion.city.slug },
+        mappedNearbyCities,
+      ),
+      didYouMeanRecoveryJson(
+        city,
+        { name: bestSuggestion.city.name, slug: bestSuggestion.city.slug },
+        mappedNearbyCities,
+      ),
+    );
   }
 
   const geocodedCity = await geocodeCityQuery(city);
@@ -523,18 +576,25 @@ async function buildSearchMissResponse(
       language,
     );
 
-    return createTextResponse(formatNoCoverageRecovery(
-      geocodedCity.name,
-      nearbyCities.map(entry => ({
-        name: entry.city.name,
-        slug: entry.city.slug,
-        distanceKm: entry.distanceKm,
-        experienceCount: entry.experienceCount,
-      })),
-    ));
+    const mappedNearbyCities = nearbyCities.map(entry => ({
+      name: entry.city.name,
+      slug: entry.city.slug,
+      distanceKm: entry.distanceKm,
+      experienceCount: entry.experienceCount,
+    }));
+
+    return createFormattedResponse(
+      format,
+      formatNoCoverageRecovery(geocodedCity.name, mappedNearbyCities),
+      noCoverageRecoveryJson(geocodedCity.name, mappedNearbyCities),
+    );
   }
 
-  return createTextResponse(formatNoCoverageRecovery(city));
+  return createFormattedResponse(
+    format,
+    formatNoCoverageRecovery(city),
+    noCoverageRecoveryJson(city),
+  );
 }
 
 function validateSearchArgs(args: {
@@ -544,6 +604,7 @@ function validateSearchArgs(args: {
   min_price?: number;
   max_price?: number;
   category?: string;
+  format?: string;
 }): ValidationResult<{
   city: string;
   language: string;
@@ -551,12 +612,21 @@ function validateSearchArgs(args: {
   minPrice?: number;
   maxPrice?: number;
   category?: string;
+  format: ResponseFormat;
 }> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
   const city = args.city.trim();
   if (!city) {
     return {
       ok: false,
-      error: createErrorResponse("City is required. Provide a city name or slug like \"london\" or \"new-york\"."),
+      error: createFormattedErrorResponse(format, "City is required. Provide a city name or slug like \"london\" or \"new-york\"."),
     };
   }
 
@@ -564,7 +634,8 @@ function validateSearchArgs(args: {
   if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > MAX_SEARCH_RESULT_LIMIT) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid max_results. It must be an integer between 1 and ${MAX_SEARCH_RESULT_LIMIT} (got: ${formatValue(args.max_results)}).`,
       ),
     };
@@ -573,7 +644,8 @@ function validateSearchArgs(args: {
   if (args.category != null && !args.category.trim()) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid category. If provided, category must be a non-empty string such as ${formatAvailableSearchCategories()}.`,
       ),
     };
@@ -582,7 +654,8 @@ function validateSearchArgs(args: {
   if (args.min_price != null && (!Number.isFinite(args.min_price) || args.min_price < 0)) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid min_price. It must be a non-negative number in the local currency (got: ${formatValue(args.min_price)}).`,
       ),
     };
@@ -591,7 +664,8 @@ function validateSearchArgs(args: {
   if (args.max_price != null && (!Number.isFinite(args.max_price) || args.max_price < 0)) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid max_price. It must be a non-negative number in the local currency (got: ${formatValue(args.max_price)}).`,
       ),
     };
@@ -600,7 +674,8 @@ function validateSearchArgs(args: {
   if (args.min_price != null && args.max_price != null && args.min_price > args.max_price) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid price range. min_price cannot be greater than max_price (got: min_price=${args.min_price}, max_price=${args.max_price}).`,
       ),
     };
@@ -615,6 +690,7 @@ function validateSearchArgs(args: {
       minPrice: args.min_price,
       maxPrice: args.max_price,
       category: args.category?.trim(),
+      format,
     },
   };
 }
@@ -624,16 +700,27 @@ function validateNearbyArgs(args: {
   longitude: number;
   radius_km?: number;
   language?: string;
+  format?: string;
 }): ValidationResult<{
   latitude: number;
   longitude: number;
   radiusKm: number;
   language: string;
+  format: ResponseFormat;
 }> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
   if (!Number.isFinite(args.latitude) || args.latitude < -90 || args.latitude > 90) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid coordinates. Latitude must be between -90 and 90 (got: ${formatValue(args.latitude)}). Please check the coordinates and try again.`,
       ),
     };
@@ -642,7 +729,8 @@ function validateNearbyArgs(args: {
   if (!Number.isFinite(args.longitude) || args.longitude < -180 || args.longitude > 180) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid coordinates. Longitude must be between -180 and 180 (got: ${formatValue(args.longitude)}). Please check the coordinates and try again.`,
       ),
     };
@@ -652,7 +740,8 @@ function validateNearbyArgs(args: {
   if (!Number.isFinite(radiusKm) || radiusKm < MIN_RADIUS_KM || radiusKm > MAX_RADIUS_KM) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid radius_km. It must be between ${MIN_RADIUS_KM} and ${MAX_RADIUS_KM} kilometers (got: ${formatValue(args.radius_km)}). Please adjust the search radius and try again.`,
       ),
     };
@@ -665,19 +754,29 @@ function validateNearbyArgs(args: {
       longitude: args.longitude,
       radiusKm,
       language: args.language ?? "en",
+      format,
     },
   };
 }
 
-function validateListCitiesArgs(args: { language?: string; query?: string; limit?: number }): ValidationResult<{
+function validateListCitiesArgs(args: { language?: string; query?: string; limit?: number; format?: string }): ValidationResult<{
   language: string;
   query?: string;
   limit: number;
+  format: ResponseFormat;
 }> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
   if (args.query != null && !args.query.trim()) {
     return {
       ok: false,
-      error: createErrorResponse("Invalid query. If provided, query must be a non-empty string such as \"paris\" or \"new\"."),
+      error: createFormattedErrorResponse(format, "Invalid query. If provided, query must be a non-empty string such as \"paris\" or \"new\"."),
     };
   }
 
@@ -685,7 +784,8 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_CITY_DIRECTORY_LIMIT) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         `Invalid limit. It must be an integer between 1 and ${MAX_CITY_DIRECTORY_LIMIT} (got: ${formatValue(args.limit)}).`,
       ),
     };
@@ -697,6 +797,7 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
       language: args.language ?? "en",
       query: args.query?.trim(),
       limit,
+      format,
     },
   };
 }
@@ -707,17 +808,28 @@ function validateExperienceDetailsArgs(args: {
   provider_id?: string;
   days?: number;
   language?: string;
+  format?: string;
 }): ValidationResult<{
   slug?: string;
   provider?: string;
   providerId?: string;
   days: number;
   language: string;
+  format: ResponseFormat;
 }> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
   if (args.slug != null && !args.slug.trim()) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         "Invalid slug. Provide a non-empty tickadoo slug or path, like \"london-dungeon-tickets\" or \"/london/london-dungeon-tickets\".",
       ),
     };
@@ -728,7 +840,8 @@ function validateExperienceDetailsArgs(args: {
   if (!args.slug?.trim() && (!provider || !providerId)) {
     return {
       ok: false,
-      error: createErrorResponse(
+      error: createFormattedErrorResponse(
+        format,
         "Provide a tickadoo slug or path, or both provider and provider_id. If you do not have a slug yet, search by city first.",
       ),
     };
@@ -742,6 +855,7 @@ function validateExperienceDetailsArgs(args: {
       providerId,
       days: args.days ?? 30,
       language: args.language ?? "en",
+      format,
     },
   };
 }
@@ -764,6 +878,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       category: z.string().optional().describe(`Optional category filter. Suggested values: ${formatAvailableSearchCategories()}`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
     withToolLogging("search_experiences", logWriter, async args => {
@@ -774,6 +889,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           resultCount: 0,
           summary: {
             city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(unknown)",
+            format: typeof args.format === "string" ? args.format : undefined,
           },
         };
       }
@@ -785,6 +901,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         minPrice,
         maxPrice,
         category,
+        format,
       } = validated.data;
 
       try {
@@ -805,9 +922,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             matchedKnownCity = true;
           } else {
             return {
-              response: await buildSearchMissResponse(city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
               resultCount: 0,
-              summary: { city },
+              summary: { city, format },
             };
           }
         }
@@ -815,29 +932,43 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         if (!products.length) {
           if (!matchedKnownCity) {
             return {
-              response: await buildSearchMissResponse(city, language, []),
+              response: await buildSearchMissResponse(format, city, language, []),
               resultCount: 0,
-              summary: { city },
+              summary: { city, format },
             };
           }
 
           return {
-            response: createTextResponse(formatNoCoverageRecovery(cityName)),
+            response: createFormattedResponse(
+              format,
+              formatNoCoverageRecovery(cityName),
+              noCoverageRecoveryJson(cityName),
+            ),
             resultCount: 0,
-            summary: { city },
+            summary: { city, format },
           };
         }
 
         const categoryFilteredProducts = filterProductsByCategory(products, category);
         if (category && !categoryFilteredProducts.length) {
+          const availableCategories = getAvailableCategoriesForProducts(products);
           return {
-            response: createTextResponse(formatEmptyCategoryRecovery(
-              category,
-              cityName,
-              getAvailableCategoriesForProducts(products),
-            )),
+            response: createFormattedResponse(
+              format,
+              formatEmptyCategoryRecovery(
+                category,
+                cityName,
+                availableCategories,
+              ),
+              emptyCategoryRecoveryJson(
+                citySlug,
+                cityName,
+                category,
+                availableCategories,
+              ),
+            ),
             resultCount: 0,
-            summary: { city },
+            summary: { city, format },
           };
         }
 
@@ -846,12 +977,25 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           const priceHint = minPrice != null || maxPrice != null
             ? " within the requested price range"
             : "";
+          const message = `No experiences found for "${cityName}"${priceHint}. Try wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`;
           return {
-            response: createTextResponse(
-              `No experiences found for "${cityName}"${priceHint}. Try wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`,
+            response: createFormattedResponse(
+              format,
+              message,
+              {
+                city: citySlug,
+                city_name: cityName,
+                total: 0,
+                showing: 0,
+                results: [],
+                message,
+                ...(category ? { category } : {}),
+                ...(minPrice != null ? { min_price: minPrice } : {}),
+                ...(maxPrice != null ? { max_price: maxPrice } : {}),
+              },
             ),
             resultCount: 0,
-            summary: { city },
+            summary: { city, format },
           };
         }
 
@@ -860,12 +1004,25 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const searchContext = category
           ? `in ${cityName} matching category "${category}"`
           : `in ${cityName}`;
+        const jsonPayload = searchJsonPayload(
+          citySlug,
+          cityName,
+          matchingProducts.length,
+          topProducts,
+          {
+            ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
+            ...(minPrice != null ? { minPrice } : {}),
+            ...(maxPrice != null ? { maxPrice } : {}),
+          },
+        );
         return {
-          response: createTextResponse(
+          response: createFormattedResponse(
+            format,
             appendNextStepHint(
               `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
               SEARCH_NEXT_STEP_HINT,
             ),
+            jsonPayload,
             {
               structuredContent: {
                 city: cityName,
@@ -879,13 +1036,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: topProducts.length,
-          summary: { city },
+          summary: { city, format },
         };
       } catch (error) {
         return {
-          response: createErrorResponse(getErrorMessage(error)),
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { city },
+          summary: { city, format },
         };
       }
     }),
@@ -899,6 +1056,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       longitude: z.number().describe("Longitude"),
       radius_km: z.number().optional().default(DEFAULT_RADIUS_KM).describe(`Search radius in km (default ${DEFAULT_RADIUS_KM})`),
       language: z.string().optional().default("en").describe("Language code"),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
     withToolLogging("find_nearby_experiences", logWriter, async args => {
@@ -910,11 +1068,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           summary: {
             lat: typeof args.latitude === "number" ? args.latitude : undefined,
             lng: typeof args.longitude === "number" ? args.longitude : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
           },
         };
       }
 
-      const { latitude, longitude, radiusKm, language } = validated.data;
+      const { latitude, longitude, radiusKm, language, format } = validated.data;
 
       try {
         const products = await getProductsByLocation(latitude, longitude, radiusKm, language);
@@ -922,24 +1081,36 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
           const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
           return {
-            response: createTextResponse(formatNearbyEmptyRecovery(
-              radiusKm,
-              suggestedRadiusKm,
-              nearestCity ? { name: nearestCity.city.name } : undefined,
-            )),
+            response: createFormattedResponse(
+              format,
+              formatNearbyEmptyRecovery(
+                radiusKm,
+                suggestedRadiusKm,
+                nearestCity ? { name: nearestCity.city.name } : undefined,
+              ),
+              nearbyEmptyRecoveryJson(
+                latitude,
+                longitude,
+                radiusKm,
+                suggestedRadiusKm,
+                nearestCity ? { name: nearestCity.city.name } : undefined,
+              ),
+            ),
             resultCount: 0,
-            summary: { lat: latitude, lng: longitude, radius_km: radiusKm },
+            summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
           };
         }
 
         const rankedProducts = sortProductsForDisplay(products);
         const topProducts = rankedProducts.slice(0, DEFAULT_SEARCH_RESULT_LIMIT);
         return {
-          response: createTextResponse(
+          response: createFormattedResponse(
+            format,
             appendNextStepHint(
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product)).join("\n\n")}`,
               NEARBY_NEXT_STEP_HINT,
             ),
+            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts),
             {
               structuredContent: {
                 latitude,
@@ -951,13 +1122,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: topProducts.length,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm },
+          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
         };
       } catch (error) {
         return {
-          response: createErrorResponse(getErrorMessage(error)),
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm },
+          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
         };
       }
     }),
@@ -970,6 +1141,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       language: z.string().optional().default("en").describe("Language code"),
       query: z.string().optional().describe("Optional city name or slug filter (e.g. 'new', 'paris', 'tokyo')"),
       limit: z.number().optional().default(DEFAULT_CITY_DIRECTORY_LIMIT).describe(`Maximum number of cities to return (default ${DEFAULT_CITY_DIRECTORY_LIMIT})`),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
     withToolLogging("list_cities", logWriter, async args => {
@@ -980,11 +1152,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           resultCount: 0,
           summary: {
             query: typeof args.query === "string" ? args.query.trim() || "(empty)" : "all",
+            format: typeof args.format === "string" ? args.format : undefined,
           },
         };
       }
 
-      const { language, query, limit } = validated.data;
+      const { language, query, limit, format } = validated.data;
 
       try {
         const filter = query?.toLowerCase();
@@ -995,9 +1168,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
         if (!withSlug.length) {
           return {
-            response: createErrorResponse(`No cities found matching "${query}". Try a broader filter like "new", "paris", or "tokyo".`),
+            response: createFormattedErrorResponse(format, `No cities found matching "${query}". Try a broader filter like "new", "paris", or "tokyo".`),
             resultCount: 0,
-            summary: { query: query ?? "all" },
+            summary: { query: query ?? "all", format },
           };
         }
 
@@ -1008,20 +1181,22 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           : `Showing ${cities.length} of ${withSlug.length} cities, sorted alphabetically. Use the optional query parameter to filter further:`;
 
         return {
-          response: createTextResponse(
+          response: createFormattedResponse(
+            format,
             appendNextStepHint(
               `tickadoo® city directory\n\n${header}\n\n${list}`,
               filter ? FILTERED_CITIES_NEXT_STEP_HINT : undefined,
             ),
+            cityDirectoryJsonPayload(query, withSlug.length, cities),
           ),
           resultCount: cities.length,
-          summary: { query: query ?? "all" },
+          summary: { query: query ?? "all", format },
         };
       } catch (error) {
         return {
-          response: createErrorResponse(getErrorMessage(error)),
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { query: query ?? "all" },
+          summary: { query: query ?? "all", format },
         };
       }
     }),
@@ -1036,6 +1211,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       provider_id: z.string().optional().describe("Legacy fallback only: hidden provider-specific product ID"),
       days: z.number().int().min(1).max(180).optional().default(30).describe("Number of days of availability to fetch (default 30, max 180)"),
       language: z.string().optional().default("en").describe("Reserved for future language-aware API support"),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
     withToolLogging("get_experience_details", logWriter, async args => {
@@ -1046,6 +1222,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           resultCount: 0,
           summary: {
             slug: typeof args.slug === "string" ? args.slug.trim() || "(empty)" : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
           },
         };
       }
@@ -1056,6 +1233,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         providerId,
         days,
         language,
+        format,
       } = validated.data;
 
       try {
@@ -1070,13 +1248,20 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         }
 
         const details = await getExperienceDetails(providerName!, detailsProviderId!, days);
+        const bookingPath = resolved?.bookingPath;
         return {
-          response: createTextResponse(
+          response: createFormattedResponse(
+            format,
             appendNextStepHint([
               resolved ? `🎭 ${resolved.product.title}` : "",
               formatExperienceDetails(days, details),
               resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath)}` : "",
             ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
+            experienceDetailsJsonPayload(days, details, {
+              title: resolved?.product.title,
+              slug: resolved?.product.slug,
+              bookingPath,
+            }),
             {
               structuredContent: {
                 source: "tickadoo",
@@ -1089,13 +1274,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: 1,
-          summary: { slug: slug ?? `${providerName}:${detailsProviderId}` },
+          summary: { slug: slug ?? `${providerName}:${detailsProviderId}`, format },
         };
       } catch (error) {
         return {
-          response: createErrorResponse(getErrorMessage(error)),
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { slug: slug ?? `${provider ?? ""}:${providerId ?? ""}` },
+          summary: { slug: slug ?? `${provider ?? ""}:${providerId ?? ""}`, format },
         };
       }
     }),
