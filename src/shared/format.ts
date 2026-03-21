@@ -2,19 +2,45 @@ import { DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
 import { buildBookingUrl } from "./api.js";
 import type { Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
+const MAX_RESULT_DESCRIPTION_LENGTH = 150;
+
+export function summarizeProductDescription(description: string | null | undefined): string | undefined {
+  if (typeof description !== "string") {
+    return undefined;
+  }
+
+  const normalized = description.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.length <= MAX_RESULT_DESCRIPTION_LENGTH) {
+    return normalized;
+  }
+
+  const truncated = normalized.slice(0, MAX_RESULT_DESCRIPTION_LENGTH - 3).trimEnd();
+  const lastWordBoundary = truncated.lastIndexOf(" ");
+  const safeBoundary = lastWordBoundary >= 100 ? lastWordBoundary : truncated.length;
+  return `${truncated.slice(0, safeBoundary).trimEnd()}...`;
+}
+
 export function productStructuredData(product: Product, bookingPath = product.slug) {
+  const description = summarizeProductDescription(product.description);
+
   return {
     tickadooProductId: product.id,
     slug: product.slug,
     title: product.title,
+    description,
     bookingUrl: buildBookingUrl(bookingPath),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };
 }
 
 export function formatProduct(product: Product, bookingPath = product.slug): string {
+  const description = summarizeProductDescription(product.description);
   const lines = [`🎭 ${product.title}`];
-  if (product.description) lines.push(`   ${product.description}`);
+  if (description) lines.push(`   ${description}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
   if (product.averageRating != null && product.averageRating > 0) lines.push(`   ⭐ ${product.averageRating.toFixed(1)}/5`);
   if (product.address) lines.push(`   📍 ${product.address}`);

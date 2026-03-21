@@ -13,6 +13,7 @@ type SearchStructuredContent = {
     tickadooProductId: string;
     slug: string;
     title: string;
+    description?: string;
     bookingUrl: string;
     imageUrl?: string;
   }>;
@@ -27,6 +28,7 @@ type NearbyStructuredContent = {
     tickadooProductId: string;
     slug: string;
     title: string;
+    description?: string;
     bookingUrl: string;
     imageUrl?: string;
   }>;
@@ -59,6 +61,7 @@ type DetailsStructuredContent = {
 
 type ParsedExperienceCard = {
   title: string;
+  description: string | null;
   price: number | null;
   rating: number | null;
   bookingUrl: string | null;
@@ -87,6 +90,7 @@ function parseExperienceCards(text: string): ParsedExperienceCard[] {
       const block = match[0];
       const lines = block.split("\n");
       const title = lines[0]?.replace(/^🎭\s+/, "") ?? "";
+      const descriptionLine = lines.find(line => /^\s{3}(?![💰⭐📍🖼️🔗])\S/.test(line));
       const priceMatch = block.match(/💰 From [A-Z]{3} ([0-9]+(?:\.[0-9]{2})?)/);
       const ratingMatch = block.match(/⭐ ([0-9]+(?:\.[0-9])?)\/5/);
       const bookingUrlMatch = block.match(/🔗 (https?:\/\/\S+)/);
@@ -94,6 +98,7 @@ function parseExperienceCards(text: string): ParsedExperienceCard[] {
 
       return {
         title,
+        description: descriptionLine?.trim() ?? null,
         price: priceMatch ? Number(priceMatch[1]) : null,
         rating: ratingMatch ? Number(ratingMatch[1]) : null,
         bookingUrl: bookingUrlMatch?.[1] ?? null,
@@ -162,6 +167,8 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     const [firstCard] = cards;
     expect(firstCard.title).toBeTruthy();
+    expect(firstCard.description).toBeTruthy();
+    expect(firstCard.description!.length).toBeLessThanOrEqual(150);
     expect(firstCard.price).not.toBeNull();
     expect(firstCard.rating).not.toBeNull();
     expect(firstCard.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
@@ -170,10 +177,13 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     const firstExperience = searchStructured.experiences?.[0];
     expect(firstExperience).toBeTruthy();
+    expect(firstExperience?.description).toBeTruthy();
+    expect(firstExperience?.description?.length).toBeLessThanOrEqual(150);
     expectTrackedBookingUrl(firstExperience?.bookingUrl);
     expect(Object.keys(firstExperience ?? {}).sort()).toMatchInlineSnapshot(`
       [
         "bookingUrl",
+        "description",
         "imageUrl",
         "slug",
         "tickadooProductId",
@@ -301,6 +311,8 @@ describe.sequential("tickadoo MCP live integration", () => {
     const cards = parseExperienceCards(text);
     expect(cards.length).toBeGreaterThan(0);
     expect(cards[0]?.title).toBeTruthy();
+    expect(cards[0]?.description).toBeTruthy();
+    expect(cards[0]?.description?.length).toBeLessThanOrEqual(150);
     expect(cards[0]?.imageUrl).toMatch(/^https?:\/\//);
     expect(cards[0]?.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
     expectTrackedBookingUrl(cards[0]?.bookingUrl);
@@ -308,6 +320,8 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(nearbyStructured.radiusKm).toBe(5);
     expect(nearbyStructured.latitude).toBe(51.502606);
     expect(nearbyStructured.longitude).toBe(-0.118117);
+    expect(nearbyStructured.experiences?.[0]?.description).toBeTruthy();
+    expect(nearbyStructured.experiences?.[0]?.description?.length).toBeLessThanOrEqual(150);
     expectTrackedBookingUrl(nearbyStructured.experiences?.[0]?.bookingUrl);
     expect(Object.keys(nearbyStructured).sort()).toMatchInlineSnapshot(`
       [

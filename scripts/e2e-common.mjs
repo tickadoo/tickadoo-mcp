@@ -134,6 +134,14 @@ export async function runE2ESmoke(client, options = {}) {
   const firstExperience = searchResult.structuredContent?.experiences?.[0];
   requireMissingKey(firstExperience, "provider", `search_experiences(${searchCity}) structuredContent`);
   requireMissingKey(firstExperience, "providerId", `search_experiences(${searchCity}) structuredContent`);
+  requireCondition(
+    typeof firstExperience?.description === "string" && firstExperience.description.length > 0,
+    `search_experiences(${searchCity}) structuredContent did not include a description.`,
+  );
+  requireCondition(
+    firstExperience.description.length <= 150,
+    `search_experiences(${searchCity}) structuredContent description exceeded 150 chars. Received: ${firstExperience.description}`,
+  );
   requireCondition(Boolean(firstExperience?.imageUrl), `search_experiences(${searchCity}) structuredContent did not include an imageUrl.`);
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
@@ -272,6 +280,15 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(
     Boolean(nearbyResult.structuredContent?.experiences?.[0]?.imageUrl),
     `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include an imageUrl.`,
+  );
+  requireCondition(
+    typeof nearbyResult.structuredContent?.experiences?.[0]?.description === "string"
+      && nearbyResult.structuredContent.experiences[0].description.length > 0,
+    `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent did not include a description.`,
+  );
+  requireCondition(
+    nearbyResult.structuredContent.experiences[0].description.length <= 150,
+    `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent description exceeded 150 chars. Received: ${nearbyResult.structuredContent.experiences[0].description}`,
   );
   requireTrackedBookingUrl(
     nearbyResult.structuredContent?.experiences?.[0]?.bookingUrl,
