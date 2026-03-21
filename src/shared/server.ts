@@ -647,7 +647,7 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo®. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default("en").describe("Language code (e.g. 'en', 'de', 'fr', 'es')"),
@@ -750,7 +750,7 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "find_nearby_experiences",
-    "Find shows, events and experiences near a geographic location on tickadoo®. Use when a user shares their location or asks for things to do near them.",
+    "Find shows, events and experiences near a geographic location on tickadoo. Use when a user shares their location or asks for things to do near them.",
     {
       latitude: z.number().describe("Latitude"),
       longitude: z.number().describe("Longitude"),
@@ -803,7 +803,7 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "list_cities",
-    "List all cities where tickadoo® has bookable experiences. Use to help users discover available destinations.",
+    "List all cities where tickadoo has bookable experiences. Use to help users discover available destinations.",
     {
       language: z.string().optional().default("en").describe("Language code"),
       query: z.string().optional().describe("Optional city name or slug filter (e.g. 'new', 'paris', 'tokyo')"),
@@ -849,7 +849,7 @@ export function createTickadooServer(): McpServer {
 
   server.tool(
     "get_experience_details",
-    "Get detailed availability, venue details, and images for a specific tickadoo® experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs.",
+    "Get detailed availability, venue details, and images for a specific tickadoo experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs.",
     {
       slug: z.string().optional().describe("Preferred: tickadoo slug or path, e.g. 'london-dungeon-tickets' or '/london/london-dungeon-tickets'"),
       provider: z.string().optional().describe("Legacy fallback only: hidden provider name used internally"),

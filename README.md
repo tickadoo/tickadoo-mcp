@@ -139,6 +139,11 @@ This keeps stdio and HTTP behavior aligned while supporting both local and remot
 | `TICKADOO_API_BASE` | `https://api.tickadoo.com` | tickadoo API base URL |
 | `TICKADOO_SITE_BASE` | `https://www.tickadoo.com` | tickadoo website base URL |
 
+## Brand
+
+tickadoo® is always lowercase. The tagline is *What Do You Wanna Doo?®*
+Please preserve lowercase in all integrations and documentation.
+
 ## License
 
 MIT — tickadoo Inc.
