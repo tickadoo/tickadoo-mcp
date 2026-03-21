@@ -17,6 +17,81 @@ export function appendNextStepHint(text: string, hint?: string): string {
   return `${text}\n\n${hint}`;
 }
 
+type NearbyCitySuggestion = {
+  name: string;
+  slug: string;
+  distanceKm: number;
+  experienceCount: number;
+};
+
+function formatNearbyCitySuggestionList(cities: NearbyCitySuggestion[]): string[] {
+  return cities.map(city => `  • ${city.name} (${Math.round(city.distanceKm)}km) — ${city.experienceCount} experiences`);
+}
+
+export function formatDidYouMeanRecovery(
+  city: string,
+  suggestion: { name: string; slug: string },
+  nearbyCities: NearbyCitySuggestion[] = [],
+): string {
+  const lines = [
+    `No experiences found in "${city}".`,
+    "",
+    `💡 Did you mean ${suggestion.name}? Try: search_experiences(city: '${suggestion.name}')`,
+  ];
+
+  if (nearbyCities.length) {
+    lines.push("", "Alternatively, nearby cities with experiences:", ...formatNearbyCitySuggestionList(nearbyCities));
+  }
+
+  return lines.join("\n");
+}
+
+export function formatNoCoverageRecovery(city: string, nearbyCities: NearbyCitySuggestion[] = []): string {
+  const lines = [`tickadoo doesn't have experiences in "${city}" yet.`];
+
+  if (nearbyCities.length) {
+    lines.push("", "Nearby cities with experiences:", ...formatNearbyCitySuggestionList(nearbyCities));
+  } else {
+    lines.push("", "Try a nearby major city like London, New York, Paris, Dubai, or Tokyo.");
+  }
+
+  return lines.join("\n");
+}
+
+export function formatNearbyEmptyRecovery(
+  radiusKm: number,
+  suggestedRadiusKm: number,
+  nearestCity?: { name: string },
+): string {
+  const lines = [
+    `No experiences found within ${radiusKm}km.`,
+    "",
+    `💡 Try increasing the radius to ${suggestedRadiusKm}km${nearestCity ? `, or search in ${nearestCity.name}.` : "."}`,
+  ];
+
+  if (nearestCity) {
+    lines.push(`Try: search_experiences(city: '${nearestCity.name}')`);
+  }
+
+  return lines.join("\n");
+}
+
+export function formatEmptyCategoryRecovery(
+  category: string,
+  city: string,
+  availableCategories: string[],
+): string {
+  const lines = [`No ${category} experiences in ${city}.`];
+
+  if (availableCategories.length) {
+    lines.push("", `Available categories: ${availableCategories.join(", ")}.`);
+  } else {
+    lines.push("", "Try another category or remove the category filter.");
+  }
+
+  return lines.join("\n");
+}
+
 export function summarizeProductDescription(description: string | null | undefined): string | undefined {
   if (typeof description !== "string") {
     return undefined;

@@ -90,6 +90,8 @@ export async function runE2ESmoke(client, options = {}) {
     filteredSearchCity = process.env.MCP_FILTERED_SEARCH_CITY ?? searchCity,
     filteredSearchMinPrice = Number(process.env.MCP_FILTERED_SEARCH_MIN_PRICE ?? 1),
     filteredSearchMaxPrice = Number(process.env.MCP_FILTERED_SEARCH_MAX_PRICE ?? 50),
+    emptyCategorySearchCity = process.env.MCP_EMPTY_CATEGORY_SEARCH_CITY ?? searchCity,
+    emptyCategorySearchValue = process.env.MCP_EMPTY_CATEGORY_SEARCH_VALUE ?? "snowboarding",
     missingCity = process.env.MCP_MISSING_CITY ?? "__definitely-not-a-real-city__",
     nearbyLatitude = Number(process.env.MCP_NEARBY_LATITUDE ?? 51.502606),
     nearbyLongitude = Number(process.env.MCP_NEARBY_LONGITUDE ?? -0.118117),
@@ -229,8 +231,28 @@ export async function runE2ESmoke(client, options = {}) {
     arguments: { city: missingCity, language: "en" },
   });
   const missingSearchText = firstTextContent(missingSearchResult);
-  requireIncludes(missingSearchText, "No exact city match found", `search_experiences(${missingCity})`);
-  requireErrorResult(missingSearchResult, `search_experiences(${missingCity})`);
+  requireIncludes(missingSearchText, "doesn't have experiences", `search_experiences(${missingCity})`);
+  requireCondition(missingSearchResult?.isError !== true, `search_experiences(${missingCity}) unexpectedly returned isError=true.`);
+
+  const emptyCategoryResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: emptyCategorySearchCity, category: emptyCategorySearchValue, language: "en" },
+  });
+  const emptyCategoryText = firstTextContent(emptyCategoryResult);
+  requireIncludes(
+    emptyCategoryText,
+    `No ${emptyCategorySearchValue} experiences`,
+    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`,
+  );
+  requireIncludes(
+    emptyCategoryText,
+    "Available categories:",
+    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`,
+  );
+  requireCondition(
+    emptyCategoryResult?.isError !== true,
+    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue}) unexpectedly returned isError=true.`,
+  );
 
   const blankSearchResult = await client.callTool({
     name: "search_experiences",
@@ -324,6 +346,20 @@ export async function runE2ESmoke(client, options = {}) {
   });
   requireIncludes(firstTextContent(invalidNearbyRadiusResult), "Invalid radius_km", "find_nearby_experiences(radius_km=0)");
   requireErrorResult(invalidNearbyRadiusResult, "find_nearby_experiences(radius_km=0)");
+
+  const emptyNearbyResult = await client.callTool({
+    name: "find_nearby_experiences",
+    arguments: {
+      latitude: -75,
+      longitude: 0,
+      radius_km: 1,
+      language: "en",
+    },
+  });
+  const emptyNearbyText = firstTextContent(emptyNearbyResult);
+  requireIncludes(emptyNearbyText, "No experiences found within 1km.", "find_nearby_experiences(empty area)");
+  requireIncludes(emptyNearbyText, "Try increasing the radius to 2km", "find_nearby_experiences(empty area)");
+  requireCondition(emptyNearbyResult?.isError !== true, "find_nearby_experiences(empty area) unexpectedly returned isError=true.");
 
   const citiesResult = await client.callTool({
     name: "list_cities",

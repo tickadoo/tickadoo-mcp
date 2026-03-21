@@ -3,6 +3,7 @@ import {
   MAX_API_ATTEMPTS,
   REQUEST_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
+  SERVER_VERSION,
   SITE,
   TICKADOO_UTM_PARAMS,
 } from "./config.js";
@@ -19,6 +20,36 @@ const TOOL_CACHE_TTL_MS: Record<CacheToolName, number> = {
 type CacheContext = {
   toolName: CacheToolName;
   args: Record<string, unknown>;
+};
+
+type CityWithSlug = City & { slug: string };
+type CityWithLocation = CityWithSlug & { location: { latitude: number; longitude: number } };
+
+type GeocodedCityResponse = Array<{
+  lat?: string;
+  lon?: string;
+  type?: string;
+  importance?: number;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    county?: string;
+  };
+  display_name?: string;
+}>;
+
+export type NearbyCoveredCity = {
+  city: CityWithLocation;
+  distanceKm: number;
+  experienceCount: number;
+};
+
+export type GeocodedCity = {
+  name: string;
+  latitude: number;
+  longitude: number;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -78,13 +109,21 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
     }
   }
 
+  return fetchJsonFromUrl<T>(url);
+}
+
+async function fetchJsonFromUrl<T>(url: URL, headers?: Record<string, string>): Promise<T> {
   for (let attempt = 1; attempt <= MAX_API_ATTEMPTS; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
       const response = await fetch(url.toString(), {
-        headers: { Accept: "application/json", "User-Agent": "tickadoo-mcp/1.0" },
+        headers: {
+          Accept: "application/json",
+          "User-Agent": `tickadoo-mcp/${SERVER_VERSION}`,
+          ...headers,
+        },
         signal: controller.signal,
       });
 
@@ -243,6 +282,111 @@ export async function getProductsByLocation(
       languageCode: language,
     })).products,
   );
+}
+
+function isCityWithLocation(city: City): city is CityWithLocation {
+  return Boolean(city.slug && city.location?.latitude != null && city.location?.longitude != null);
+}
+
+function haversineDistanceKm(
+  latitudeA: number,
+  longitudeA: number,
+  latitudeB: number,
+  longitudeB: number,
+): number {
+  const earthRadiusKm = 6371;
+  const toRadians = (value: number) => value * (Math.PI / 180);
+  const latitudeDelta = toRadians(latitudeB - latitudeA);
+  const longitudeDelta = toRadians(longitudeB - longitudeA);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(toRadians(latitudeA))
+    * Math.cos(toRadians(latitudeB))
+    * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
+}
+
+export async function geocodeCityQuery(query: string): Promise<GeocodedCity | null> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return withToolCache(
+    {
+      toolName: "list_cities",
+      args: { geocodeQuery: trimmed.toLowerCase() },
+    },
+    async () => {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("q", trimmed);
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("limit", "1");
+      url.searchParams.set("featuretype", "city");
+      url.searchParams.set("addressdetails", "1");
+
+      const result = (await fetchJsonFromUrl<GeocodedCityResponse>(url))[0];
+      const latitude = Number(result?.lat);
+      const longitude = Number(result?.lon);
+      const geocodeType = result?.type?.toLowerCase();
+      const importance = result?.importance ?? 0;
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+
+      if (!geocodeType || !["administrative", "city", "town"].includes(geocodeType)) {
+        return null;
+      }
+
+      if (importance < 0.2) {
+        return null;
+      }
+
+      const name = result?.address?.city
+        ?? result?.address?.town
+        ?? result?.address?.village
+        ?? result?.address?.municipality
+        ?? result?.address?.county
+        ?? result?.display_name?.split(",", 1)[0]
+        ?? trimmed;
+
+      return {
+        name,
+        latitude,
+        longitude,
+      };
+    },
+  );
+}
+
+export async function getNearestCoveredCities(
+  latitude: number,
+  longitude: number,
+  language: string,
+  limit = 3,
+  excludeCitySlugs: string[] = [],
+): Promise<NearbyCoveredCity[]> {
+  const excluded = new Set(excludeCitySlugs);
+  const candidateCities = (await getCities(language))
+    .filter(isCityWithLocation)
+    .filter(city => !excluded.has(city.slug))
+    .map(city => ({
+      city,
+      distanceKm: haversineDistanceKm(latitude, longitude, city.location.latitude, city.location.longitude),
+    }))
+    .sort((left, right) => left.distanceKm - right.distanceKm)
+    .slice(0, limit);
+
+  const citiesWithCounts = await Promise.all(candidateCities.map(async candidate => ({
+    ...candidate,
+    experienceCount: (await getProductsForCitySlug(candidate.city.slug, language, {
+      toolName: "list_cities",
+      args: { nearestCitySlug: candidate.city.slug, language },
+    })).length,
+  })));
+
+  return citiesWithCounts;
 }
 
 export async function resolveProductBySlug(slugOrPath: string, language: string): Promise<ResolvedProduct> {

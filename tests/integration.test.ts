@@ -273,10 +273,21 @@ describe.sequential("tickadoo MCP live integration", () => {
       arguments: { city: "__definitely-not-a-real-city__", language: "en" },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).not.toBe(true);
     const text = firstTextContent(result);
-    expect(text).toContain("No exact city match found");
-    expect(text).toContain("Try");
+    expect(text).toContain("doesn't have experiences");
+  }, 30_000);
+
+  it("search_experiences suggests available categories when the chosen category has no matches", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", category: "snowboarding", language: "en" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const text = firstTextContent(result);
+    expect(text).toContain("No snowboarding experiences");
+    expect(text).toContain("Available categories:");
   }, 30_000);
 
   it("search_experiences returns a helpful error for a blank category", async () => {
@@ -354,7 +365,9 @@ describe.sequential("tickadoo MCP live integration", () => {
     });
 
     expect(result.isError).not.toBe(true);
-    expect(firstTextContent(result)).toContain("No experiences within 1km");
+    const text = firstTextContent(result);
+    expect(text).toContain("No experiences found within 1km.");
+    expect(text).toContain("Try increasing the radius to 2km");
   }, 30_000);
 
   it("list_cities reports the global city count and supports substring filtering", async () => {

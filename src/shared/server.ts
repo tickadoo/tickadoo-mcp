@@ -2,8 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   buildBookingUrl,
+  geocodeCityQuery,
   getCities,
   getExperienceDetails,
+  getNearestCoveredCities,
   getProductsByLocation,
   getProductsForCitySlug,
   resolveProductBySlug,
@@ -13,7 +15,11 @@ import {
   appendNextStepHint,
   DETAILS_NEXT_STEP_HINT,
   FILTERED_CITIES_NEXT_STEP_HINT,
+  formatDidYouMeanRecovery,
+  formatEmptyCategoryRecovery,
   formatExperienceDetails,
+  formatNearbyEmptyRecovery,
+  formatNoCoverageRecovery,
   formatProduct,
   NEARBY_NEXT_STEP_HINT,
   productStructuredData,
@@ -30,7 +36,9 @@ const MIN_RADIUS_KM = 1;
 const MAX_RADIUS_KM = 200;
 const AUTO_MATCH_CONFIDENCE = 0.88;
 const SUGGESTION_CONFIDENCE = 0.45;
+const SPELLING_CORRECTION_CONFIDENCE = 0.75;
 const CITY_SUGGESTION_LIMIT = 5;
+const NEARBY_CITY_SUGGESTION_LIMIT = 3;
 const AVAILABLE_SEARCH_CATEGORIES = [
   "theatre",
   "musicals",
@@ -351,8 +359,74 @@ function findCityCandidates(query: string, cities: City[]): Array<{ city: City &
     .sort((left, right) => right.score - left.score || left.city.name.localeCompare(right.city.name));
 }
 
-function formatCitySuggestions(suggestions: City[]): string {
-  return suggestions.map(city => city.name).join(", ");
+function getAvailableCategoriesForProducts(products: Product[]): string[] {
+  return AVAILABLE_SEARCH_CATEGORIES
+    .map(category => ({
+      category,
+      count: products.filter(product => productMatchesCategory(product, category)).length,
+    }))
+    .filter(entry => entry.count > 0)
+    .sort((left, right) => right.count - left.count || left.category.localeCompare(right.category))
+    .map(entry => entry.category);
+}
+
+async function getNearbyCitySuggestions(
+  latitude: number,
+  longitude: number,
+  language: string,
+  excludeCitySlugs: string[] = [],
+) {
+  return getNearestCoveredCities(latitude, longitude, language, NEARBY_CITY_SUGGESTION_LIMIT, excludeCitySlugs);
+}
+
+async function buildSearchMissResponse(
+  city: string,
+  language: string,
+  suggestions: Array<{ city: City & { slug: string }; score: number }>,
+) {
+  const bestSuggestion = suggestions[0];
+  if (bestSuggestion?.score >= SPELLING_CORRECTION_CONFIDENCE) {
+    const nearbyCities = bestSuggestion.city.location
+      ? await getNearbyCitySuggestions(
+        bestSuggestion.city.location.latitude,
+        bestSuggestion.city.location.longitude,
+        language,
+        [bestSuggestion.city.slug],
+      )
+      : [];
+
+    return createTextResponse(formatDidYouMeanRecovery(
+      city,
+      { name: bestSuggestion.city.name, slug: bestSuggestion.city.slug },
+      nearbyCities.map(entry => ({
+        name: entry.city.name,
+        slug: entry.city.slug,
+        distanceKm: entry.distanceKm,
+        experienceCount: entry.experienceCount,
+      })),
+    ));
+  }
+
+  const geocodedCity = await geocodeCityQuery(city);
+  if (geocodedCity) {
+    const nearbyCities = await getNearbyCitySuggestions(
+      geocodedCity.latitude,
+      geocodedCity.longitude,
+      language,
+    );
+
+    return createTextResponse(formatNoCoverageRecovery(
+      geocodedCity.name,
+      nearbyCities.map(entry => ({
+        name: entry.city.name,
+        slug: entry.city.slug,
+        distanceKm: entry.distanceKm,
+        experienceCount: entry.experienceCount,
+      })),
+    ));
+  }
+
+  return createTextResponse(formatNoCoverageRecovery(city));
 }
 
 function validateSearchArgs(args: {
@@ -564,14 +638,6 @@ function validateExperienceDetailsArgs(args: {
   };
 }
 
-function formatSearchMiss(city: string, suggestions: City[]): string {
-  if (suggestions.length) {
-    return `No exact city match found for "${city}". Try one of: ${formatCitySuggestions(suggestions)}.`;
-  }
-
-  return `No exact city match found for "${city}". Try a major city like London, New York, Paris, Dubai, or Tokyo.`;
-}
-
 export function createTickadooServer(): McpServer {
   const server = new McpServer({
     name: SERVER_NAME,
@@ -623,31 +689,34 @@ export function createTickadooServer(): McpServer {
             citySlug = bestMatch.city.slug;
             matchedKnownCity = true;
           } else {
-            const suggestions = candidates
-              .filter(candidate => candidate.score >= SUGGESTION_CONFIDENCE)
-              .slice(0, CITY_SUGGESTION_LIMIT)
-              .map(candidate => candidate.city);
-            return createErrorResponse(formatSearchMiss(city, suggestions));
+            return buildSearchMissResponse(city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT));
           }
         }
 
         if (!products.length) {
           if (!matchedKnownCity) {
-            return createErrorResponse(formatSearchMiss(city, []));
+            return buildSearchMissResponse(city, language, []);
           }
 
-          return createTextResponse(`No experiences found for "${cityName}". Try a major city like London, New York, Paris, Dubai, or Tokyo.`);
+          return createTextResponse(formatNoCoverageRecovery(cityName));
         }
 
         const categoryFilteredProducts = filterProductsByCategory(products, category);
+        if (category && !categoryFilteredProducts.length) {
+          return createTextResponse(formatEmptyCategoryRecovery(
+            category,
+            cityName,
+            getAvailableCategoriesForProducts(products),
+          ));
+        }
+
         const matchingProducts = filterProductsByPrice(categoryFilteredProducts, minPrice, maxPrice);
         if (!matchingProducts.length) {
-          const categoryHint = category ? ` matching category "${category}"` : "";
           const priceHint = minPrice != null || maxPrice != null
             ? " within the requested price range"
             : "";
           return createTextResponse(
-            `No experiences found for "${cityName}"${categoryHint}${priceHint}. Try another category, a different city, or wider filters.`,
+            `No experiences found for "${cityName}"${priceHint}. Try wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`,
           );
         }
 
@@ -700,7 +769,13 @@ export function createTickadooServer(): McpServer {
       try {
         const products = await getProductsByLocation(latitude, longitude, radiusKm, language);
         if (!products.length) {
-          return createTextResponse(`No experiences within ${radiusKm}km. Try increasing the radius or searching a specific city.`);
+          const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
+          const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
+          return createTextResponse(formatNearbyEmptyRecovery(
+            radiusKm,
+            suggestedRadiusKm,
+            nearestCity ? { name: nearestCity.city.name } : undefined,
+          ));
         }
 
         const rankedProducts = sortProductsForDisplay(products);

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { appendNextStepHint, formatProduct, productStructuredData, summarizeProductDescription } from "../src/shared/format.js";
+import {
+  appendNextStepHint,
+  formatDidYouMeanRecovery,
+  formatEmptyCategoryRecovery,
+  formatNearbyEmptyRecovery,
+  formatNoCoverageRecovery,
+  formatProduct,
+  productStructuredData,
+  summarizeProductDescription,
+} from "../src/shared/format.js";
 import type { Product } from "../src/shared/types.js";
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -49,6 +58,35 @@ describe("product formatting", () => {
   it("appends next-step hints as a final line when provided", () => {
     expect(appendNextStepHint("Body", "💡 Tip: Try another tool.")).toBe("Body\n\n💡 Tip: Try another tool.");
     expect(appendNextStepHint("Body")).toBe("Body");
+  });
+
+  it("formats misspelling recovery guidance with nearby cities", () => {
+    expect(formatDidYouMeanRecovery("Birminghan", { name: "Birmingham", slug: "birmingham" }, [
+      { name: "London", slug: "london", distanceKm: 180.2, experienceCount: 546 },
+    ])).toContain("💡 Did you mean Birmingham? Try: search_experiences(city: 'Birmingham')");
+    expect(formatDidYouMeanRecovery("Birminghan", { name: "Birmingham", slug: "birmingham" }, [
+      { name: "London", slug: "london", distanceKm: 180.2, experienceCount: 546 },
+    ])).toContain("  • London (180km) — 546 experiences");
+  });
+
+  it("formats no-coverage recovery guidance with nearby cities", () => {
+    expect(formatNoCoverageRecovery("Oxford", [
+      { name: "London", slug: "london", distanceKm: 92.6, experienceCount: 546 },
+    ])).toContain("tickadoo doesn't have experiences in \"Oxford\" yet.");
+    expect(formatNoCoverageRecovery("Oxford", [
+      { name: "London", slug: "london", distanceKm: 92.6, experienceCount: 546 },
+    ])).toContain("  • London (93km) — 546 experiences");
+  });
+
+  it("formats nearby empty-state recovery with a bigger radius and nearest city", () => {
+    expect(formatNearbyEmptyRecovery(5, 10, { name: "London" })).toContain("💡 Try increasing the radius to 10km, or search in London.");
+    expect(formatNearbyEmptyRecovery(5, 10, { name: "London" })).toContain("Try: search_experiences(city: 'London')");
+  });
+
+  it("formats empty-category recovery with available categories", () => {
+    expect(formatEmptyCategoryRecovery("opera", "Las Vegas", ["shows", "comedy", "tours"])).toBe(
+      "No opera experiences in Las Vegas.\n\nAvailable categories: shows, comedy, tours.",
+    );
   });
 
   it("includes the summarized description in structured search output", () => {
