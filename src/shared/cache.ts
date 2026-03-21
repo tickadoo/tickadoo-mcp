@@ -1,3 +1,5 @@
+import { TICKADOO_LOG_LEVEL } from "./config.js";
+
 export type CacheToolName =
   | "search_experiences"
   | "find_nearby_experiences"
@@ -17,6 +19,10 @@ type CacheLoadOptions<T> = {
 };
 
 function logCacheMessage(message: string) {
+  if (TICKADOO_LOG_LEVEL !== "debug") {
+    return;
+  }
+
   process.stderr.write(`${message}\n`);
 }
 
@@ -97,7 +103,9 @@ export class InMemoryLruCache {
     }
 
     void this.loadAndMaybeCache(key, options, load).catch(error => {
-      console.warn(`[cache refresh failed] ${key}`, error);
+      if (TICKADOO_LOG_LEVEL === "debug") {
+        console.warn(`[cache refresh failed] ${key}`, error);
+      }
     });
   }
 

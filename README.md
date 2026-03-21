@@ -137,6 +137,7 @@ This keeps stdio and HTTP behavior aligned while supporting both local and remot
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TICKADOO_API_BASE` | `https://api.tickadoo.com` | tickadoo API base URL |
+| `TICKADOO_LOG_LEVEL` | `info` | Logging verbosity: `none`, `info`, or `debug` |
 | `TICKADOO_SITE_BASE` | `https://www.tickadoo.com` | tickadoo website base URL |
 
 ## Brand

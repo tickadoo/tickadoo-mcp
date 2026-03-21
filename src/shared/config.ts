@@ -7,6 +7,12 @@ export const DEFAULT_TICKADOO_UTM_PARAMS = "utm_source=mcp&utm_medium=ai&utm_cam
 export const TICKADOO_UTM_PARAMS = (process.env.TICKADOO_UTM_PARAMS ?? DEFAULT_TICKADOO_UTM_PARAMS)
   .trim()
   .replace(/^[?&]+/, "");
+export type TickadooLogLevel = "none" | "info" | "debug";
+const RAW_TICKADOO_LOG_LEVEL = (process.env.TICKADOO_LOG_LEVEL ?? "info").trim().toLowerCase();
+export const TICKADOO_LOG_LEVEL: TickadooLogLevel = RAW_TICKADOO_LOG_LEVEL === "none"
+  || RAW_TICKADOO_LOG_LEVEL === "debug"
+  ? RAW_TICKADOO_LOG_LEVEL
+  : "info";
 
 export const SERVER_NAME = "tickadoo";
 export const SERVER_VERSION = "1.1.0";
