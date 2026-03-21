@@ -91,6 +91,10 @@ export async function runE2ESmoke(client, options = {}) {
     target = "unknown",
     searchCity = process.env.MCP_SEARCH_CITY ?? "vegas",
     expectedSlug = process.env.MCP_EXPECTED_SLUG ?? "las-vegas",
+    searchQueryValue = process.env.MCP_SEARCH_QUERY_VALUE ?? "walking",
+    categoryQuerySearchCity = process.env.MCP_CATEGORY_QUERY_SEARCH_CITY ?? searchCity,
+    categoryQuerySearchValue = process.env.MCP_CATEGORY_QUERY_SEARCH_VALUE ?? "walking",
+    categoryQueryCategoryValue = process.env.MCP_CATEGORY_QUERY_CATEGORY_VALUE ?? "tours",
     localizedLanguage = process.env.MCP_LOCALIZED_LANGUAGE ?? "de",
     categorySearchCity = process.env.MCP_CATEGORY_SEARCH_CITY ?? searchCity,
     categorySearchValue = process.env.MCP_CATEGORY_SEARCH_VALUE ?? "comedy",
@@ -180,6 +184,39 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(Array.isArray(searchJson.results) && searchJson.results.length === 2, `search_experiences(${searchCity}, format=json) did not return 2 results.`);
   requireCondition(typeof searchJson.results[0]?.title === "string", `search_experiences(${searchCity}, format=json) missing result title.`);
   requireTrackedBookingUrl(searchJson.results[0]?.booking_url, `search_experiences(${searchCity}, format=json)`);
+
+  const querySearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, query: searchQueryValue, language: "en", format: "json", max_results: 5 },
+  });
+  const querySearchJson = parseJsonText(firstTextContent(querySearchResult), `search_experiences(${searchCity}, query=${searchQueryValue}, format=json)`);
+  requireCondition(querySearchJson.filters?.query === searchQueryValue, `search_experiences(${searchCity}, query=${searchQueryValue}) did not echo the query filter. Received: ${JSON.stringify(querySearchJson)}`);
+  requireCondition(Array.isArray(querySearchJson.results) && querySearchJson.results.length > 0, `search_experiences(${searchCity}, query=${searchQueryValue}) returned no results.`);
+  requireCondition(
+    querySearchJson.results.every(result => normalizeCategoryText(`${result.title ?? ""} ${result.description ?? ""}`).includes(normalizeCategoryText(searchQueryValue))),
+    `search_experiences(${searchCity}, query=${searchQueryValue}) returned a result that does not visibly match the query. Received: ${JSON.stringify(querySearchJson)}`,
+  );
+  requireTrackedBookingUrl(querySearchJson.results[0]?.booking_url, `search_experiences(${searchCity}, query=${searchQueryValue}, format=json)`);
+
+  const categoryQuerySearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: {
+      city: categoryQuerySearchCity,
+      category: categoryQueryCategoryValue,
+      query: categoryQuerySearchValue,
+      language: "en",
+      format: "json",
+      max_results: 5,
+    },
+  });
+  const categoryQuerySearchJson = parseJsonText(firstTextContent(categoryQuerySearchResult), `search_experiences(${categoryQuerySearchCity}, category=${categoryQueryCategoryValue}, query=${categoryQuerySearchValue}, format=json)`);
+  requireCondition(categoryQuerySearchJson.filters?.category === categoryQueryCategoryValue, `search_experiences(${categoryQuerySearchCity}, category=${categoryQueryCategoryValue}, query=${categoryQuerySearchValue}) did not echo category filter. Received: ${JSON.stringify(categoryQuerySearchJson)}`);
+  requireCondition(categoryQuerySearchJson.filters?.query === categoryQuerySearchValue, `search_experiences(${categoryQuerySearchCity}, category=${categoryQueryCategoryValue}, query=${categoryQuerySearchValue}) did not echo query filter. Received: ${JSON.stringify(categoryQuerySearchJson)}`);
+  requireCondition(Array.isArray(categoryQuerySearchJson.results) && categoryQuerySearchJson.results.length > 0, `search_experiences(${categoryQuerySearchCity}, category=${categoryQueryCategoryValue}, query=${categoryQuerySearchValue}) returned no results.`);
+  requireCondition(
+    categoryQuerySearchJson.results.every(result => normalizeCategoryText(`${result.title ?? ""} ${result.description ?? ""}`).includes(normalizeCategoryText(categoryQuerySearchValue))),
+    `search_experiences(${categoryQuerySearchCity}, category=${categoryQueryCategoryValue}, query=${categoryQuerySearchValue}) returned a result that does not visibly match the query. Received: ${JSON.stringify(categoryQuerySearchJson)}`,
+  );
 
   const localizedSearchResult = await client.callTool({
     name: "search_experiences",
@@ -319,6 +356,13 @@ export async function runE2ESmoke(client, options = {}) {
   });
   requireIncludes(firstTextContent(invalidSearchCategoryResult), "Invalid category", "search_experiences(category=blank)");
   requireErrorResult(invalidSearchCategoryResult, "search_experiences(category=blank)");
+
+  const invalidSearchQueryResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, query: "   ", language: "en" },
+  });
+  requireIncludes(firstTextContent(invalidSearchQueryResult), "Invalid query", "search_experiences(query=blank)");
+  requireErrorResult(invalidSearchQueryResult, "search_experiences(query=blank)");
 
   const invalidSearchLanguageResult = await client.callTool({
     name: "search_experiences",

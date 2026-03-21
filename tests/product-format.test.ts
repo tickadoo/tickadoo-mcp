@@ -134,11 +134,14 @@ describe("product formatting", () => {
       },
     });
 
-    expect(searchJsonPayload("london", "London", 10, [product], { language: "de" })).toMatchObject({
+    expect(searchJsonPayload("london", "London", 10, [product], { language: "de", query: "ghost tour" })).toMatchObject({
       city: "london",
       city_name: "London",
       total: 10,
       showing: 1,
+      filters: {
+        query: "ghost tour",
+      },
       view_all_url: "https://www.tickadoo.com/de/london?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
     });
 

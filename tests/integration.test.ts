@@ -262,6 +262,31 @@ describe.sequential("tickadoo MCP live integration", () => {
     expectTrackedBookingUrl(json.results?.[0]?.booking_url);
   }, 30_000);
 
+  it("search_experiences supports free-text query filtering", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", query: "walking", max_results: 5, language: "en", format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      filters?: { query?: string };
+      results?: Array<{
+        title?: string;
+        description?: string | null;
+        booking_url?: string;
+      }>;
+    }>(firstTextContent(result), "search_experiences(query=walking, format=json)");
+
+    expect(json.filters?.query).toBe("walking");
+    expect(json.results?.length).toBeGreaterThan(0);
+    for (const entry of json.results ?? []) {
+      const haystack = normalizeCategoryText(`${entry.title ?? ""} ${entry.description ?? ""}`);
+      expect(haystack).toContain("walking");
+      expectTrackedBookingUrl(entry.booking_url);
+    }
+  }, 30_000);
+
   it("localizes booking URLs when a supported language is provided", async () => {
     const searchResult = await client.callTool({
       name: "search_experiences",
@@ -320,6 +345,30 @@ describe.sequential("tickadoo MCP live integration", () => {
     const cards = parseExperienceCards(text);
     expect(cards.length).toBeGreaterThan(0);
     expect(cards.some(card => normalizeCategoryText(card.block).includes("comedy"))).toBe(true);
+  }, 30_000);
+
+  it("search_experiences supports combining query and category filters", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", category: "tours", query: "walking", max_results: 5, language: "en", format: "json" },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      filters?: { category?: string; query?: string };
+      results?: Array<{
+        title?: string;
+        description?: string | null;
+      }>;
+    }>(firstTextContent(result), "search_experiences(category=tours, query=walking, format=json)");
+
+    expect(json.filters?.category).toBe("tours");
+    expect(json.filters?.query).toBe("walking");
+    expect(json.results?.length).toBeGreaterThan(0);
+    for (const entry of json.results ?? []) {
+      const haystack = normalizeCategoryText(`${entry.title ?? ""} ${entry.description ?? ""}`);
+      expect(haystack).toContain("walking");
+    }
   }, 30_000);
 
   it("search_experiences handles null-slug products during category filtering", async () => {
@@ -385,6 +434,16 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     expect(result.isError).toBe(true);
     expect(firstTextContent(result)).toContain("Invalid category");
+  }, 30_000);
+
+  it("search_experiences returns a helpful error for a blank query", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", query: "   ", language: "en" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(firstTextContent(result)).toContain("Invalid query");
   }, 30_000);
 
   it("search_experiences returns a helpful error for an unsupported language code", async () => {

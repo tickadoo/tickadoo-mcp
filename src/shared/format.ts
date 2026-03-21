@@ -262,6 +262,7 @@ export function searchJsonPayload(
   products: Product[],
   options?: {
     category?: string;
+    query?: string;
     language?: string;
     minPrice?: number;
     maxPrice?: number;
@@ -269,6 +270,7 @@ export function searchJsonPayload(
 ) {
   const filters = {
     ...(options?.category ? { category: options.category } : {}),
+    ...(options?.query ? { query: options.query } : {}),
     ...(options?.minPrice != null ? { min_price: options.minPrice } : {}),
     ...(options?.maxPrice != null ? { max_price: options.maxPrice } : {}),
   };

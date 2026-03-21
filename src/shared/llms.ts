@@ -21,10 +21,11 @@ type ToolDoc = {
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search tickadoo experiences by city, with fuzzy matching, optional category and price-range filtering, live pricing, ratings, booking links, and localised URLs.",
+    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query matching, optional category and price-range filtering, live pricing, ratings, booking links, and localised URLs.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
       "language (optional): supported language code for localised booking URLs, default en",
+      "query (optional): free-text filter matched against experience title and description, such as ghost tour, pizza, or harry potter",
       "category (optional): category filter such as theatre, musicals, tours, food, family, nightlife, sightseeing, concerts, comedy, or shows",
       "min_price (optional): minimum price in the experience's local currency",
       "max_price (optional): maximum price in the experience's local currency",

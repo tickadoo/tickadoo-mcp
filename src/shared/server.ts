@@ -258,6 +258,17 @@ function buildCategoryTerms(category: string): string[] {
   return [...terms];
 }
 
+function buildQueryTerms(query: string): { normalized: string[]; stemmed: string[] } {
+  const normalized = normalizeCategoryText(query)
+    .split(/\s+/)
+    .filter(Boolean);
+  const stemmed = stemCategoryText(query)
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return { normalized, stemmed };
+}
+
 export function productMatchesCategory(product: Product, category: string): boolean {
   const safeTitle = typeof product.title === "string" ? product.title : "";
   const safeDescription = typeof product.description === "string" ? product.description : "";
@@ -285,9 +296,85 @@ export function filterProductsByCategory(products: Product[], category?: string)
   return products.filter(product => productMatchesCategory(product, category));
 }
 
+export function productMatchesQuery(product: Product, query: string): boolean {
+  const safeTitle = typeof product.title === "string" ? product.title : "";
+  const safeDescription = typeof product.description === "string" ? product.description : "";
+  const haystackSource = `${safeTitle} ${safeDescription}`;
+  const normalizedHaystack = normalizeCategoryText(haystackSource);
+  const stemmedHaystack = stemCategoryText(haystackSource);
+  const normalizedQuery = normalizeCategoryText(query);
+  const stemmedQuery = stemCategoryText(query);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  if (normalizedHaystack.includes(normalizedQuery) || stemmedHaystack.includes(stemmedQuery)) {
+    return true;
+  }
+
+  const terms = buildQueryTerms(query);
+  return (
+    terms.normalized.length > 0
+      && terms.normalized.every(term => normalizedHaystack.includes(term))
+  ) || (
+    terms.stemmed.length > 0
+      && terms.stemmed.every(term => stemmedHaystack.includes(term))
+  );
+}
+
+export function filterProductsByQuery(products: Product[], query?: string): Product[] {
+  if (!query) {
+    return products;
+  }
+
+  return products.filter(product => productMatchesQuery(product, query));
+}
+
 function buildShownResultsLabel(shown: number, total: number, context: string): string {
   const prefix = total > shown ? `Showing top ${shown} of ${total}` : `Showing ${shown} of ${total}`;
   return `${prefix} experiences ${context}:`;
+}
+
+function buildSearchContext(cityName: string, options?: { category?: string; query?: string }): string {
+  const filters: string[] = [];
+  if (options?.category) {
+    filters.push(`category "${options.category}"`);
+  }
+  if (options?.query) {
+    filters.push(`query "${options.query}"`);
+  }
+
+  if (!filters.length) {
+    return `in ${cityName}`;
+  }
+
+  return `in ${cityName} matching ${filters.join(" and ")}`;
+}
+
+function buildNoResultsMessage(
+  cityName: string,
+  options?: {
+    category?: string;
+    query?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  },
+): string {
+  const filters: string[] = [];
+  if (options?.category) {
+    filters.push(`category "${options.category}"`);
+  }
+  if (options?.query) {
+    filters.push(`query "${options.query}"`);
+  }
+
+  const withFilters = filters.length ? ` matching ${filters.join(" and ")}` : "";
+  const priceHint = options?.minPrice != null || options?.maxPrice != null
+    ? " within the requested price range"
+    : "";
+
+  return `No experiences found in "${cityName}"${withFilters}${priceHint}. Try a broader query, a different category, wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`;
 }
 
 function createTextResponse(text: string, options?: { isError?: boolean; structuredContent?: unknown }) {
@@ -642,6 +729,7 @@ function validateSearchArgs(args: {
   min_price?: number;
   max_price?: number;
   category?: string;
+  query?: string;
   format?: string;
 }): ValidationResult<{
   city: string;
@@ -650,6 +738,7 @@ function validateSearchArgs(args: {
   minPrice?: number;
   maxPrice?: number;
   category?: string;
+  query?: string;
   format: ResponseFormat;
 }> {
   const format = normalizeResponseFormat(args.format ?? "text");
@@ -694,6 +783,16 @@ function validateSearchArgs(args: {
     };
   }
 
+  if (args.query != null && !args.query.trim()) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "Invalid query. If provided, query must be a non-empty string such as \"ghost tour\", \"pizza\", or \"harry potter\".",
+      ),
+    };
+  }
+
   if (args.min_price != null && (!Number.isFinite(args.min_price) || args.min_price < 0)) {
     return {
       ok: false,
@@ -733,6 +832,7 @@ function validateSearchArgs(args: {
       minPrice: args.min_price,
       maxPrice: args.max_price,
       category: args.category?.trim(),
+      query: args.query?.trim(),
       format,
     },
   };
@@ -928,11 +1028,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), and optional min/max price filtering in the local currency. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
+      query: z.string().optional().describe("Optional free-text filter matched against experience title and description (e.g. 'ghost tour', 'pizza', 'harry potter')"),
       category: z.string().optional().describe(`Optional category filter. Suggested values: ${formatAvailableSearchCategories()}`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
@@ -959,6 +1060,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         minPrice,
         maxPrice,
         category,
+        query,
         format,
       } = validated.data;
 
@@ -1030,12 +1132,15 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           };
         }
 
-        const matchingProducts = filterProductsByPrice(categoryFilteredProducts, minPrice, maxPrice);
+        const queryFilteredProducts = filterProductsByQuery(categoryFilteredProducts, query);
+        const matchingProducts = filterProductsByPrice(queryFilteredProducts, minPrice, maxPrice);
         if (!matchingProducts.length) {
-          const priceHint = minPrice != null || maxPrice != null
-            ? " within the requested price range"
-            : "";
-          const message = `No experiences found for "${cityName}"${priceHint}. Try wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`;
+          const message = buildNoResultsMessage(cityName, {
+            category,
+            query,
+            minPrice,
+            maxPrice,
+          });
           return {
             response: createFormattedResponse(
               format,
@@ -1048,20 +1153,19 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 results: [],
                 message,
                 ...(category ? { category } : {}),
+                ...(query ? { query } : {}),
                 ...(minPrice != null ? { min_price: minPrice } : {}),
                 ...(maxPrice != null ? { max_price: maxPrice } : {}),
               },
             ),
             resultCount: 0,
-            summary: { city, format },
+            summary: { city, query, format },
           };
         }
 
         const rankedProducts = sortProductsForDisplay(matchingProducts);
         const topProducts = rankedProducts.slice(0, maxResults);
-        const searchContext = category
-          ? `in ${cityName} matching category "${category}"`
-          : `in ${cityName}`;
+        const searchContext = buildSearchContext(cityName, { category, query });
         const jsonPayload = searchJsonPayload(
           citySlug,
           cityName,
@@ -1069,6 +1173,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           topProducts,
           {
             ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
+            ...(query ? { query } : {}),
             language,
             ...(minPrice != null ? { minPrice } : {}),
             ...(maxPrice != null ? { maxPrice } : {}),
@@ -1088,6 +1193,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 citySlug,
                 totalExperiences: matchingProducts.length,
                 ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
+                ...(query ? { query } : {}),
                 ...(minPrice != null ? { minPrice } : {}),
                 ...(maxPrice != null ? { maxPrice } : {}),
                 experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`, language)),
@@ -1095,13 +1201,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: topProducts.length,
-          summary: { city, format },
+          summary: { city, query, format },
         };
       } catch (error) {
         return {
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { city, format },
+          summary: { city, query, format },
         };
       }
     }),
