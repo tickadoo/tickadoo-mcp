@@ -1,5 +1,28 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "license": "MIT",
+      "tools": [
+        {
+          "name": "search_experiences",
+          "description": "Search for bookable experiences in a specific city with city fallback matching."
+        },
+        {
+          "name": "find_nearby_experiences",
+          "description": "Find experiences near a geographic location using latitude, longitude, and radius."
+        },
+        {
+          "name": "list_cities",
+          "description": "Browse supported cities with optional filtering and result limits."
+        },
+        {
+          "name": "get_experience_details",
+          "description": "Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path."
+        }
+      ]
+    }
+  },
   "name": "io.github.tickadoo/tickadoo-mcp",
   "title": "tickadoo \u2014 Experiences & Events",
   "description": "Discover and book theatre, shows, events and experiences in 700+ cities worldwide.",

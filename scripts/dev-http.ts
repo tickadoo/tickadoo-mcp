@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  void route.handler(req, res).catch(error => {
+  void Promise.resolve(route.handler(req, res)).catch(error => {
     console.error("Unhandled MCP dev server error:", error);
     if (!res.headersSent) {
       res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });

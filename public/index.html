@@ -31,6 +31,10 @@
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     h1 { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 1.05; margin-bottom: 20px; }
     h1 em { font-style: normal; background: linear-gradient(135deg, #818cf8, #6366f1 40%, #a78bfa 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .rotate-wrap { position: relative; display: inline-flex; align-items: flex-end; min-width: 13ch; height: 1.1em; overflow: hidden; vertical-align: bottom; }
+    .rotate-word { position: absolute; left: 0; top: 0; white-space: nowrap; opacity: 0; transform: translateY(115%); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease; }
+    .rotate-word.is-active { opacity: 1; transform: translateY(0); }
+    .rotate-word.is-exiting { opacity: 0; transform: translateY(-115%); }
     .tagline { font-size: 19px; color: #a1a1aa; line-height: 1.7; max-width: 580px; }
 
     /* Stats */
@@ -70,6 +74,14 @@
     pre .s { color: #6ee7b7; } /* string */
     pre .c { color: #3f3f46; } /* comment */
     pre .p { color: #71717a; } /* punctuation */
+    .connect-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .connect-tab { background: rgba(17,17,19,0.8); border: 1px solid #1e1e22; color: #71717a; border-radius: 999px; padding: 9px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.2px; cursor: pointer; transition: all 0.2s; }
+    .connect-tab:hover { color: #e4e4e7; border-color: rgba(99,102,241,0.3); }
+    .connect-tab.is-active { color: #e4e4e7; border-color: rgba(99,102,241,0.45); background: rgba(99,102,241,0.1); box-shadow: inset 0 0 0 1px rgba(99,102,241,0.08); }
+    .config-panel { display: none; }
+    .config-panel.is-active { display: block; }
+    .config-note { margin-top: 14px; font-size: 13px; color: #71717a; line-height: 1.7; }
+    .config-note code { font-family: 'SF Mono', monospace; color: #c4b5fd; }
 
     /* Architecture */
     .arch { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 16px; }
@@ -83,6 +95,10 @@
     .credits strong { color: #a1a1aa; font-weight: 600; }
     footer { text-align: center; padding: 48px 24px 40px; font-size: 12px; color: #27272a; }
     footer a { color: #3f3f46; text-decoration: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .rotate-word { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -103,7 +119,7 @@
 
     <div class="hero">
       <div class="status"><span class="pulse"></span> Production — Stateless HTTP Transport</div>
-      <h1>Every AI can now<br>sell <em>experiences</em></h1>
+      <h1>Every AI can now<br>sell <span class="rotate-wrap"><em class="rotate-word is-active">experiences</em><em class="rotate-word">the West End</em><em class="rotate-word">Broadway</em><em class="rotate-word">city tours</em><em class="rotate-word">attractions</em><em class="rotate-word">live shows</em><em class="rotate-word">hidden gems</em></span></h1>
       <p class="tagline">
         A standalone MCP server that lets Claude, ChatGPT, Cursor, and any AI assistant
         discover and recommend bookable theatre, shows, events, tours &amp; attractions from
@@ -153,16 +169,61 @@
 
     <section>
       <h2>Connect</h2>
+      <div class="connect-tabs" role="tablist" aria-label="MCP client setup">
+        <button class="connect-tab is-active" type="button" data-target="config-claude" aria-selected="true">Claude / Cursor</button>
+        <button class="connect-tab" type="button" data-target="config-gemini" aria-selected="false">Gemini CLI</button>
+        <button class="connect-tab" type="button" data-target="config-perplexity" aria-selected="false">Perplexity</button>
+      </div>
       <div class="code-block">
-        <div class="code-header"><span>remote_mcp_config.json</span><button onclick="navigator.clipboard.writeText(document.getElementById('config').textContent)">Copy</button></div>
-        <pre id="config"><span class="p">{</span>
+        <div class="code-header"><span id="connect-label">remote_mcp_config.json</span><button id="copy-config" type="button" data-copy-target="copy-claude">Copy</button></div>
+        <div class="config-panel is-active" id="config-claude" data-label="remote_mcp_config.json" data-copy-target="copy-claude">
+          <pre><span class="p">{</span>
   <span class="k">"mcpServers"</span><span class="p">:</span> <span class="p">{</span>
     <span class="k">"tickadoo"</span><span class="p">:</span> <span class="p">{</span>
       <span class="s">"url"</span><span class="p">:</span> <span class="s">"https://mcp.tickadoo.com/mcp"</span>
     <span class="p">}</span>
   <span class="p">}</span>
 <span class="p">}</span></pre>
+        </div>
+        <div class="config-panel" id="config-gemini" data-label="~/.gemini/settings.json" data-copy-target="copy-gemini">
+          <pre><span class="p">{</span>
+  <span class="k">"mcpServers"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"tickadoo"</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s">"httpUrl"</span><span class="p">:</span> <span class="s">"https://mcp.tickadoo.com/mcp"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+        </div>
+        <div class="config-panel" id="config-perplexity" data-label="Perplexity custom connector" data-copy-target="copy-perplexity">
+          <pre>Settings → Connectors → Custom connector → Remote
+Name: tickadoo
+MCP Server URL: https://mcp.tickadoo.com/mcp
+Transport: Streamable HTTP
+Auth: None
+Note: Available to Perplexity paid subscribers</pre>
+        </div>
       </div>
+      <p class="config-note">The same <code>httpUrl</code> setup also works in Android Studio (<code>mcp.json</code>) and Firebase Studio (<code>.idx/mcp.json</code> or <code>.gemini/settings.json</code>).</p>
+      <textarea id="copy-claude" hidden>{
+  "mcpServers": {
+    "tickadoo": {
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  }
+}</textarea>
+      <textarea id="copy-gemini" hidden>{
+  "mcpServers": {
+    "tickadoo": {
+      "httpUrl": "https://mcp.tickadoo.com/mcp"
+    }
+  }
+}</textarea>
+      <textarea id="copy-perplexity" hidden>Settings → Connectors → Custom connector → Remote
+Name: tickadoo
+MCP Server URL: https://mcp.tickadoo.com/mcp
+Transport: Streamable HTTP
+Auth: None
+Note: Available to Perplexity paid subscribers</textarea>
     </section>
 
     <section>
@@ -192,5 +253,71 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
 
   </div>
   <footer>© 2024–2026 tickadoo Inc. · <a href="https://www.tickadoo.com">tickadoo.com</a> · MCP Server v1.1.0</footer>
+  <script>
+    (() => {
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const rotatingWords = [...document.querySelectorAll(".rotate-word")];
+      if (!prefersReducedMotion && rotatingWords.length > 1) {
+        let activeIndex = 0;
+        window.setInterval(() => {
+          const current = rotatingWords[activeIndex];
+          const nextIndex = (activeIndex + 1) % rotatingWords.length;
+          const next = rotatingWords[nextIndex];
+          current.classList.add("is-exiting");
+          next.classList.add("is-active");
+          window.setTimeout(() => {
+            current.classList.remove("is-active", "is-exiting");
+            activeIndex = nextIndex;
+          }, 420);
+        }, 2000);
+      }
+
+      const connectTabs = [...document.querySelectorAll(".connect-tab")];
+      const connectPanels = [...document.querySelectorAll(".config-panel")];
+      const connectLabel = document.getElementById("connect-label");
+      const copyButton = document.getElementById("copy-config");
+
+      const setActiveTab = targetId => {
+        connectTabs.forEach(tab => {
+          const isActive = tab.dataset.target === targetId;
+          tab.classList.toggle("is-active", isActive);
+          tab.setAttribute("aria-selected", String(isActive));
+        });
+
+        connectPanels.forEach(panel => {
+          panel.classList.toggle("is-active", panel.id === targetId);
+        });
+
+        const activePanel = document.getElementById(targetId);
+        if (!activePanel || !connectLabel || !copyButton) return;
+        connectLabel.textContent = activePanel.dataset.label ?? "config";
+        copyButton.dataset.copyTarget = activePanel.dataset.copyTarget ?? "";
+      };
+
+      connectTabs.forEach(tab => {
+        tab.addEventListener("click", () => setActiveTab(tab.dataset.target));
+      });
+
+      copyButton?.addEventListener("click", async () => {
+        const copyTarget = copyButton.dataset.copyTarget;
+        const source = copyTarget ? document.getElementById(copyTarget) : null;
+        if (!source) return;
+        try {
+          await navigator.clipboard.writeText((source.value ?? source.textContent ?? "").trim());
+          const originalText = copyButton.textContent;
+          copyButton.textContent = "Copied";
+          window.setTimeout(() => {
+            copyButton.textContent = originalText;
+          }, 1200);
+        } catch {
+          // Ignore clipboard failures in restricted browser contexts.
+        }
+      });
+
+      if (connectTabs.length) {
+        setActiveTab(connectTabs[0].dataset.target);
+      }
+    })();
+  </script>
 </body>
 </html>

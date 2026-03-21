@@ -26,11 +26,13 @@ All tools expose MCP tool annotations for `readOnlyHint`, `destructiveHint`, and
 |----------|-------------|
 | `tickadoo://product-feed` | Machine-readable product feed in OpenAI Commerce Product Feed format |
 
-## Remote HTTP Endpoint
+## Connect
 
 Hosted MCP endpoint:
 
 `https://mcp.tickadoo.com/mcp`
+
+### Claude / Cursor
 
 Example remote MCP config:
 
@@ -43,6 +45,38 @@ Example remote MCP config:
   }
 }
 ```
+
+### Gemini CLI
+
+Add this to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "tickadoo": {
+      "httpUrl": "https://mcp.tickadoo.com/mcp"
+    }
+  }
+}
+```
+
+### Perplexity
+
+Use Perplexity's custom remote connector:
+
+- Settings → Connectors → Custom connector → Remote
+- Name: `tickadoo`
+- MCP Server URL: `https://mcp.tickadoo.com/mcp`
+- Transport: `Streamable HTTP`
+- Auth: `None`
+- Available to Perplexity paid subscribers
+
+### Android Studio / Firebase Studio
+
+The same `httpUrl` config works in:
+
+- Android Studio (`mcp.json`)
+- Firebase Studio (`.idx/mcp.json` or `.gemini/settings.json`)
 
 ## Local Development And Stdio
 
