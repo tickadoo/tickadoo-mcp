@@ -1,4 +1,4 @@
-import { DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
+import { DEFAULT_LANGUAGE, DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
 import { buildBookingUrl } from "./api.js";
 import type { Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
@@ -26,6 +26,25 @@ type NearbyCitySuggestion = {
   experienceCount: number;
 };
 
+export type SearchAppliedFilters = {
+  category?: string;
+  query?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  language?: string;
+};
+
+export type SearchOmittedReason = {
+  filter: "category" | "query" | "price";
+  reason: string;
+  count: number;
+};
+
+export type SearchOmittedResults = {
+  total: number;
+  reasons: SearchOmittedReason[];
+};
+
 function normalizeDistanceKm(distanceKm: number): number {
   return Math.round(distanceKm * 10) / 10;
 }
@@ -41,6 +60,60 @@ function mapNearbyCitySuggestion(city: NearbyCitySuggestion) {
 
 export function formatJsonText(payload: Record<string, unknown>): string {
   return JSON.stringify(payload, null, 2);
+}
+
+function searchAppliedFiltersJson(filters?: SearchAppliedFilters) {
+  const payload = {
+    ...(filters?.category ? { category: filters.category } : {}),
+    ...(filters?.query ? { query: filters.query } : {}),
+    ...(filters?.minPrice != null ? { min_price: filters.minPrice } : {}),
+    ...(filters?.maxPrice != null ? { max_price: filters.maxPrice } : {}),
+    ...(filters?.language && filters.language !== DEFAULT_LANGUAGE ? { language: filters.language } : {}),
+  };
+
+  return Object.keys(payload).length ? payload : undefined;
+}
+
+function searchOmittedResultsJson(omittedResults?: SearchOmittedResults) {
+  if (!omittedResults || omittedResults.total <= 0 || omittedResults.reasons.length === 0) {
+    return undefined;
+  }
+
+  return {
+    total: omittedResults.total,
+    reasons: omittedResults.reasons.map(reason => ({
+      filter: reason.filter,
+      count: reason.count,
+      reason: reason.reason,
+    })),
+  };
+}
+
+export function formatSearchFiltersLine(filters?: SearchAppliedFilters): string | undefined {
+  const payload = searchAppliedFiltersJson(filters);
+  if (!payload) {
+    return undefined;
+  }
+
+  return `🔎 Filters: ${Object.entries(payload).map(([key, value]) => `${key}=${value}`).join(", ")}`;
+}
+
+export function formatOmittedResultsHint(omittedResults?: SearchOmittedResults): string | undefined {
+  if (!omittedResults || omittedResults.total <= 0 || omittedResults.reasons.length === 0) {
+    return undefined;
+  }
+
+  const noun = omittedResults.total === 1 ? "experience was" : "experiences were";
+  const reasonSummary = omittedResults.reasons
+    .filter(reason => reason.count > 0)
+    .map(reason => `${reason.count} ${reason.reason}`)
+    .join(", ");
+
+  if (!reasonSummary) {
+    return undefined;
+  }
+
+  return `💡 ${omittedResults.total} ${noun} filtered out (${reasonSummary})`;
 }
 
 function formatNearbyCitySuggestionList(cities: NearbyCitySuggestion[]): string[] {
@@ -261,26 +334,21 @@ export function searchJsonPayload(
   total: number,
   products: Product[],
   options?: {
-    category?: string;
-    query?: string;
+    filters?: SearchAppliedFilters;
     language?: string;
-    minPrice?: number;
-    maxPrice?: number;
+    omittedResults?: SearchOmittedResults;
   },
 ) {
-  const filters = {
-    ...(options?.category ? { category: options.category } : {}),
-    ...(options?.query ? { query: options.query } : {}),
-    ...(options?.minPrice != null ? { min_price: options.minPrice } : {}),
-    ...(options?.maxPrice != null ? { max_price: options.maxPrice } : {}),
-  };
+  const filters = searchAppliedFiltersJson(options?.filters);
+  const omittedResults = searchOmittedResultsJson(options?.omittedResults);
 
   return {
     city: citySlug,
     city_name: cityName,
     total,
     showing: products.length,
-    ...(Object.keys(filters).length ? { filters } : {}),
+    ...(filters ? { filters } : {}),
+    ...(omittedResults ? { omitted_results: omittedResults } : {}),
     results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`, options?.language)),
     view_all_url: buildBookingUrl(citySlug, options?.language),
   };

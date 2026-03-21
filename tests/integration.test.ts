@@ -323,15 +323,49 @@ describe.sequential("tickadoo MCP live integration", () => {
     }
   }, 30_000);
 
+  it("search_experiences echoes applied filters and explains significant omissions", async () => {
+    const textResult = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", query: "walking", language: "en", max_results: 5 },
+    });
+
+    expect(textResult.isError).not.toBe(true);
+    const text = firstTextContent(textResult);
+    expect(text).toContain("🔎 Filters:");
+    expect(text).toContain("query=walking");
+    expect(text).toContain("filtered out");
+
+    const jsonResult = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", query: "walking", language: "en", max_results: 5, format: "json" },
+    });
+
+    expect(jsonResult.isError).not.toBe(true);
+    const json = parseJsonText<{
+      filters?: { query?: string; language?: string };
+      omitted_results?: {
+        total?: number;
+        reasons?: Array<{ filter?: string; count?: number; reason?: string }>;
+      };
+    }>(firstTextContent(jsonResult), "search_experiences(query=walking, format=json)");
+
+    expect(json.filters?.query).toBe("walking");
+    expect(json.filters?.language).toBeUndefined();
+    expect(json.omitted_results?.total).toBeGreaterThan(0);
+    expect(json.omitted_results?.reasons?.some(reason => reason.filter === "query" && reason.count! > 0)).toBe(true);
+  }, 30_000);
+
   it("localizes booking URLs when a supported language is provided", async () => {
     const searchResult = await client.callTool({
       name: "search_experiences",
       arguments: { city: "vegas", language: "de", max_results: 1, format: "json" },
     });
     const searchJson = parseJsonText<{
+      filters?: { language?: string };
       results?: Array<{ booking_url?: string }>;
       view_all_url?: string;
     }>(firstTextContent(searchResult), "search_experiences(language=de, format=json)");
+    expect(searchJson.filters?.language).toBe("de");
     expect(searchJson.results?.[0]?.booking_url).toContain("https://www.tickadoo.com/de/");
     expect(searchJson.view_all_url).toContain("https://www.tickadoo.com/de/");
     expectTrackedBookingUrl(searchJson.results?.[0]?.booking_url);

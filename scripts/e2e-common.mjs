@@ -254,6 +254,10 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const localizedSearchJson = parseJsonText(firstTextContent(localizedSearchResult), `search_experiences(${searchCity}, language=${localizedLanguage}, format=json)`);
   requireCondition(
+    localizedSearchJson.filters?.language === localizedLanguage,
+    `search_experiences(${searchCity}, language=${localizedLanguage}) did not echo the applied language filter. Received: ${JSON.stringify(localizedSearchJson)}`,
+  );
+  requireCondition(
     typeof localizedSearchJson.results?.[0]?.booking_url === "string"
       && localizedSearchJson.results[0].booking_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
     `search_experiences(${searchCity}, language=${localizedLanguage}) did not return a localized booking URL. Received: ${JSON.stringify(localizedSearchJson)}`,
@@ -328,6 +332,9 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const filteredSearchText = firstTextContent(filteredSearchResult);
   requireIncludes(filteredSearchText, filteredSearchCity, `search_experiences(${filteredSearchCity}, price filter)`);
+  requireIncludes(filteredSearchText, "🔎 Filters:", `search_experiences(${filteredSearchCity}, price filter)`);
+  requireIncludes(filteredSearchText, `min_price=${filteredSearchMinPrice}`, `search_experiences(${filteredSearchCity}, price filter)`);
+  requireIncludes(filteredSearchText, `max_price=${filteredSearchMaxPrice}`, `search_experiences(${filteredSearchCity}, price filter)`);
   const filteredCards = parseExperienceCards(filteredSearchText);
   requireCondition(filteredCards.length > 0, `search_experiences(${filteredSearchCity}, price filter) returned no cards. Received: ${filteredSearchText}`);
   for (const card of filteredCards) {

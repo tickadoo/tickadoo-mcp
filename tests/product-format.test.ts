@@ -9,7 +9,9 @@ import {
   formatJsonText,
   formatNearbyEmptyRecovery,
   formatNoCoverageRecovery,
+  formatOmittedResultsHint,
   formatProduct,
+  formatSearchFiltersLine,
   nearbyJsonPayload,
   productJsonData,
   productStructuredData,
@@ -134,13 +136,38 @@ describe("product formatting", () => {
       },
     });
 
-    expect(searchJsonPayload("london", "London", 10, [product], { language: "de", query: "ghost tour" })).toMatchObject({
+    expect(searchJsonPayload("london", "London", 10, [product], {
+      language: "de",
+      filters: {
+        query: "ghost tour",
+        maxPrice: 50,
+        language: "de",
+      },
+      omittedResults: {
+        total: 9,
+        reasons: [
+          { filter: "price", count: 9, reason: "outside price range" },
+        ],
+      },
+    })).toMatchObject({
       city: "london",
       city_name: "London",
       total: 10,
       showing: 1,
       filters: {
         query: "ghost tour",
+        max_price: 50,
+        language: "de",
+      },
+      omitted_results: {
+        total: 9,
+        reasons: [
+          {
+            filter: "price",
+            count: 9,
+            reason: "outside price range",
+          },
+        ],
       },
       view_all_url: "https://www.tickadoo.com/de/london?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
     });
@@ -206,6 +233,22 @@ describe("product formatting", () => {
 
   it("renders json payloads as pretty-printed text", () => {
     expect(formatJsonText({ hello: "world" })).toBe('{\n  "hello": "world"\n}');
+  });
+
+  it("formats search filter echoes and omitted-results hints", () => {
+    expect(formatSearchFiltersLine({
+      category: "tours",
+      maxPrice: 50,
+      language: "de",
+    })).toBe("🔎 Filters: category=tours, max_price=50, language=de");
+
+    expect(formatOmittedResultsHint({
+      total: 196,
+      reasons: [
+        { filter: "price", count: 150, reason: "outside price range" },
+        { filter: "category", count: 46, reason: "didn't match category" },
+      ],
+    })).toBe("💡 196 experiences were filtered out (150 outside price range, 46 didn't match category)");
   });
 
   it("uses the summarized one-line description in visible result cards", () => {

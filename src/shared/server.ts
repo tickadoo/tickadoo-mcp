@@ -31,10 +31,12 @@ import {
   formatDidYouMeanRecovery,
   formatEmptyCategoryRecovery,
   formatExperienceDetails,
+  formatOmittedResultsHint,
   formatNearbyEmptyRecovery,
   formatNoCoverageRecovery,
   formatJsonText,
   formatProduct,
+  formatSearchFiltersLine,
   genericJsonError,
   NEARBY_NEXT_STEP_HINT,
   nearbyEmptyRecoveryJson,
@@ -45,6 +47,8 @@ import {
   type ResponseFormat,
   SEARCH_NEXT_STEP_HINT,
   searchJsonPayload,
+  type SearchAppliedFilters,
+  type SearchOmittedResults,
 } from "./format.js";
 import type { City, Product, ResolvedProduct } from "./types.js";
 
@@ -356,20 +360,93 @@ function buildShownResultsLabel(shown: number, total: number, context: string): 
   return `${prefix} experiences ${context}:`;
 }
 
-function buildSearchContext(cityName: string, options?: { category?: string; query?: string }): string {
-  const filters: string[] = [];
+function buildSearchContext(cityName: string): string {
+  return `in ${cityName}`;
+}
+
+function buildAppliedSearchFilters(
+  language: string,
+  options?: {
+    category?: string;
+    query?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  },
+): SearchAppliedFilters | undefined {
+  const filters: SearchAppliedFilters = {
+    ...(options?.category ? { category: options.category } : {}),
+    ...(options?.query ? { query: options.query } : {}),
+    ...(options?.minPrice != null ? { minPrice: options.minPrice } : {}),
+    ...(options?.maxPrice != null ? { maxPrice: options.maxPrice } : {}),
+    ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
+  };
+
+  return Object.keys(filters).length ? filters : undefined;
+}
+
+function buildPriceOmittedReason(minPrice?: number, maxPrice?: number): string {
+  if (minPrice != null && maxPrice != null) {
+    return "outside price range";
+  }
+  if (minPrice != null) {
+    return "below minimum price";
+  }
+  return "above maximum price";
+}
+
+function buildOmittedResultsSummary(
+  totalProducts: number,
+  categoryFilteredProducts: Product[],
+  queryFilteredProducts: Product[],
+  matchingProducts: Product[],
+  options?: {
+    category?: string;
+    query?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  },
+): SearchOmittedResults | undefined {
+  const totalOmitted = totalProducts - matchingProducts.length;
+  if (totalProducts <= 0 || totalOmitted <= 0 || totalOmitted / totalProducts <= 0.2) {
+    return undefined;
+  }
+
+  const reasons: SearchOmittedResults["reasons"] = [];
+
   if (options?.category) {
-    filters.push(`category "${options.category}"`);
+    const count = totalProducts - categoryFilteredProducts.length;
+    if (count > 0) {
+      reasons.push({
+        filter: "category",
+        count,
+        reason: "didn't match category",
+      });
+    }
   }
+
   if (options?.query) {
-    filters.push(`query "${options.query}"`);
+    const count = categoryFilteredProducts.length - queryFilteredProducts.length;
+    if (count > 0) {
+      reasons.push({
+        filter: "query",
+        count,
+        reason: "didn't match query",
+      });
+    }
   }
 
-  if (!filters.length) {
-    return `in ${cityName}`;
+  if (options?.minPrice != null || options?.maxPrice != null) {
+    const count = queryFilteredProducts.length - matchingProducts.length;
+    if (count > 0) {
+      reasons.push({
+        filter: "price",
+        count,
+        reason: buildPriceOmittedReason(options?.minPrice, options?.maxPrice),
+      });
+    }
   }
 
-  return `in ${cityName} matching ${filters.join(" and ")}`;
+  return reasons.length ? { total: totalOmitted, reasons } : undefined;
 }
 
 function buildNoResultsMessage(
@@ -1185,25 +1262,46 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
         const rankedProducts = sortProductsForDisplay(matchingProducts);
         const topProducts = rankedProducts.slice(0, maxResults);
-        const searchContext = buildSearchContext(cityName, { category, query });
+        const searchContext = buildSearchContext(cityName);
+        const appliedFilters = buildAppliedSearchFilters(language, {
+          category: category ? canonicalizeSearchCategory(category) ?? category : undefined,
+          query,
+          minPrice,
+          maxPrice,
+        });
+        const omittedResults = buildOmittedResultsSummary(
+          products.length,
+          categoryFilteredProducts,
+          queryFilteredProducts,
+          matchingProducts,
+          {
+            category,
+            query,
+            minPrice,
+            maxPrice,
+          },
+        );
+        const resultIntro = [
+          buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext),
+          formatSearchFiltersLine(appliedFilters),
+          formatOmittedResultsHint(omittedResults),
+        ].filter(Boolean).join("\n");
         const jsonPayload = searchJsonPayload(
           citySlug,
           cityName,
           matchingProducts.length,
           topProducts,
           {
-            ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
-            ...(query ? { query } : {}),
+            filters: appliedFilters,
             language,
-            ...(minPrice != null ? { minPrice } : {}),
-            ...(maxPrice != null ? { maxPrice } : {}),
+            omittedResults,
           },
         );
         return {
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}`,
+              `${resultIntro}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}`,
               SEARCH_NEXT_STEP_HINT,
             ),
             jsonPayload,
@@ -1216,6 +1314,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 ...(query ? { query } : {}),
                 ...(minPrice != null ? { minPrice } : {}),
                 ...(maxPrice != null ? { maxPrice } : {}),
+                ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
+                ...(appliedFilters ? { filters: appliedFilters } : {}),
+                ...(omittedResults ? { omittedResults } : {}),
                 experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`, language)),
               },
             },
