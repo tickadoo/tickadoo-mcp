@@ -5,8 +5,10 @@
   },
   "rewrites": [
     { "source": "/", "destination": "/api/index" },
+    { "source": "/health", "destination": "/api/health" },
     { "source": "/llms.txt", "destination": "/api/llms" },
     { "source": "/llms-full.txt", "destination": "/api/llms-full" },
+    { "source": "/.well-known/mcp.json", "destination": "/api/well-known-mcp" },
     { "source": "/mcp", "destination": "/api/mcp" }
   ],
   "headers": [

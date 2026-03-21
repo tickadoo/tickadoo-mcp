@@ -1,29 +1,12 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { MCP_ENDPOINT_URL, SERVER_NAME, SERVER_VERSION } from "../src/shared/config.js";
+import { buildHealthPayload, CONTENT_SECURITY_POLICY, RESPONSE_CACHE_CONTROL, writeJson } from "./_shared.js";
 import { createTickadooServer } from "../src/shared/server.js";
 
 type BodyCapableRequest = IncomingMessage & { body?: unknown };
-const CONTENT_SECURITY_POLICY = "default-src 'none'; connect-src https://api.tickadoo.com https://content.tickadoo.com https://www.tickadoo.com";
-const RESPONSE_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 
 function writeHealthResponse(req: IncomingMessage, res: ServerResponse): void {
-  const body = JSON.stringify({
-    name: SERVER_NAME,
-    version: SERVER_VERSION,
-    status: "ok",
-    endpoint: MCP_ENDPOINT_URL,
-    transport: "streamable-http",
-  });
-
-  res.statusCode = 200;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", RESPONSE_CACHE_CONTROL);
-  if (req.method === "HEAD") {
-    res.end();
-    return;
-  }
-  res.end(body);
+  writeJson(req, res, buildHealthPayload());
 }
 
 function parseBody(req: BodyCapableRequest): Promise<unknown> {
