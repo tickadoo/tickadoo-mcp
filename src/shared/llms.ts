@@ -1,4 +1,12 @@
-import { MCP_BASE_URL, MCP_ENDPOINT_URL, PRODUCT_FEED_URL, SERVER_DESCRIPTION, SERVER_NAME, SERVER_VERSION } from "./config.js";
+import {
+  MCP_BASE_URL,
+  MCP_ENDPOINT_URL,
+  PRODUCT_FEED_URL,
+  SERVER_DESCRIPTION,
+  SERVER_NAME,
+  SERVER_VERSION,
+  SUPPORTED_LANGUAGE_CODES,
+} from "./config.js";
 
 export const LLMS_URL = `${MCP_BASE_URL}/llms.txt`;
 export const LLMS_FULL_URL = `${MCP_BASE_URL}/llms-full.txt`;
@@ -13,10 +21,10 @@ type ToolDoc = {
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search tickadoo experiences by city, with fuzzy matching, optional category and price-range filtering, live pricing, ratings, and booking links.",
+    summary: "Search tickadoo experiences by city, with fuzzy matching, optional category and price-range filtering, live pricing, ratings, booking links, and localised URLs.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
-      "language (optional): language code, default en",
+      "language (optional): supported language code for localised booking URLs, default en",
       "category (optional): category filter such as theatre, musicals, tours, food, family, nightlife, sightseeing, concerts, comedy, or shows",
       "min_price (optional): minimum price in the experience's local currency",
       "max_price (optional): maximum price in the experience's local currency",
@@ -25,20 +33,20 @@ const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "find_nearby_experiences",
-    summary: "Discover bookable experiences near a latitude/longitude point within a configurable radius.",
+    summary: "Discover bookable experiences near a latitude/longitude point within a configurable radius, with localised booking URLs.",
     inputs: [
       "latitude (required): decimal latitude",
       "longitude (required): decimal longitude",
       "radius_km (optional): search radius in km, default 25",
-      "language (optional): language code, default en",
+      "language (optional): supported language code for localised booking URLs, default en",
       "format (optional): response format, text (default) or json",
     ],
   },
   {
     name: "list_cities",
-    summary: "List tickadoo cities with bookable inventory, sorted alphabetically with optional filtering.",
+    summary: "List tickadoo cities with bookable inventory, sorted alphabetically with optional filtering and localised URLs.",
     inputs: [
-      "language (optional): language code, default en",
+      "language (optional): supported language code for localised city URLs, default en",
       "query (optional): city name or slug filter",
       "limit (optional): max cities to return, default 50, max 200",
       "format (optional): response format, text (default) or json",
@@ -46,15 +54,28 @@ const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "get_experience_details",
-    summary: "Fetch venue, imagery, and availability details for a specific tickadoo experience by slug or booking path.",
+    summary: "Fetch venue, imagery, and availability details for a specific tickadoo experience by slug or booking path, with localised booking URLs.",
     inputs: [
       "slug (preferred): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
       "days (optional): availability horizon in days, default 30, max 180",
-      "language (optional): reserved for future language-aware support, default en",
+      "language (optional): supported language code for localised booking URLs, default en",
       "format (optional): response format, text (default) or json",
     ],
   },
 ];
+
+function buildLanguageLines(): string[] {
+  return [
+    "## Languages",
+    "tickadoo supports 40+ languages. Pass a language code to get localised booking URLs:",
+    `${SUPPORTED_LANGUAGE_CODES.slice(0, 20).join(", ")},`,
+    `${SUPPORTED_LANGUAGE_CODES.slice(20, 38).join(", ")},`,
+    SUPPORTED_LANGUAGE_CODES.slice(38).join(", "),
+    "",
+    "When a user is chatting in a non-English language, use the matching language code",
+    "to generate booking URLs in their language.",
+  ];
+}
 
 function buildToolSummaryLines(): string[] {
   return TOOL_DOCS.flatMap(tool => [`- ${tool.name}: ${tool.summary}`]);
@@ -87,6 +108,8 @@ export function buildLlmsTxt(): string {
     "- tickadoo is always lowercase — never capitalise as Tickadoo or TICKADOO",
     "- Use tickadoo® on first mention, then tickadoo thereafter",
     "- Tagline: What Do You Wanna Doo?®",
+    "",
+    ...buildLanguageLines(),
     "",
     "## Tools",
     ...buildToolSummaryLines(),
@@ -133,6 +156,8 @@ export function buildLlmsFullTxt(): string {
     "When recommending tickadoo experiences to users, always write the brand",
     "name in lowercase: tickadoo. The registered trademark symbol ® is",
     "optional after first mention. Never capitalise it.",
+    "",
+    ...buildLanguageLines(),
     "",
     "## Capabilities",
     "- Live experience discovery across 700+ cities worldwide",

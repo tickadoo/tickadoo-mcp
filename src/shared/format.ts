@@ -215,7 +215,7 @@ export function summarizeProductDescription(description: string | null | undefin
   return `${truncated.slice(0, safeBoundary).trimEnd()}...`;
 }
 
-export function productStructuredData(product: Product, bookingPath = product.slug) {
+export function productStructuredData(product: Product, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const priceAmount = product.minPrice ?? undefined;
   const priceCurrency = priceAmount != null ? product.currency : undefined;
@@ -227,12 +227,12 @@ export function productStructuredData(product: Product, bookingPath = product.sl
     description,
     priceAmount,
     priceCurrency,
-    bookingUrl: buildBookingUrl(bookingPath),
+    bookingUrl: buildBookingUrl(bookingPath, language),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };
 }
 
-export function productJsonData(product: Product, bookingPath = product.slug) {
+export function productJsonData(product: Product, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const imageUrl = product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? null;
 
@@ -248,7 +248,7 @@ export function productJsonData(product: Product, bookingPath = product.slug) {
       : null,
     rating: product.averageRating ?? null,
     image_url: imageUrl,
-    booking_url: buildBookingUrl(bookingPath),
+    booking_url: buildBookingUrl(bookingPath, language),
     location: {
       address: product.address ?? null,
     },
@@ -262,6 +262,7 @@ export function searchJsonPayload(
   products: Product[],
   options?: {
     category?: string;
+    language?: string;
     minPrice?: number;
     maxPrice?: number;
   },
@@ -278,8 +279,8 @@ export function searchJsonPayload(
     total,
     showing: products.length,
     ...(Object.keys(filters).length ? { filters } : {}),
-    results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`)),
-    view_all_url: buildBookingUrl(citySlug),
+    results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`, options?.language)),
+    view_all_url: buildBookingUrl(citySlug, options?.language),
   };
 }
 
@@ -289,6 +290,7 @@ export function nearbyJsonPayload(
   radiusKm: number,
   total: number,
   products: Product[],
+  language = "en",
 ) {
   return {
     latitude,
@@ -296,7 +298,7 @@ export function nearbyJsonPayload(
     radius_km: radiusKm,
     total,
     showing: products.length,
-    results: products.map(product => productJsonData(product)),
+    results: products.map(product => productJsonData(product, product.slug, language)),
   };
 }
 
@@ -304,6 +306,7 @@ export function cityDirectoryJsonPayload(
   query: string | undefined,
   total: number,
   cities: Array<{ name: string; slug: string }>,
+  language = "en",
 ) {
   return {
     query: query ?? null,
@@ -312,12 +315,12 @@ export function cityDirectoryJsonPayload(
     results: cities.map(city => ({
       name: city.name,
       slug: city.slug,
-      booking_url: buildBookingUrl(city.slug),
+      booking_url: buildBookingUrl(city.slug, language),
     })),
   };
 }
 
-export function formatProduct(product: Product, bookingPath = product.slug): string {
+export function formatProduct(product: Product, bookingPath = product.slug, language = "en"): string {
   const description = summarizeProductDescription(product.description);
   const lines = [`🎭 ${product.title}`];
   if (description) lines.push(`   ${description}`);
@@ -327,7 +330,7 @@ export function formatProduct(product: Product, bookingPath = product.slug): str
   if (product.desktopFeatureImageUrl || product.verticalImageUrl) {
     lines.push(`   🖼️ ${product.desktopFeatureImageUrl || product.verticalImageUrl}`);
   }
-  lines.push(`   🔗 ${buildBookingUrl(bookingPath)}`);
+  lines.push(`   🔗 ${buildBookingUrl(bookingPath, language)}`);
   return lines.join("\n");
 }
 
@@ -396,6 +399,7 @@ export function experienceDetailsJsonPayload(
     title?: string;
     slug?: string;
     bookingPath?: string;
+    language?: string;
   },
 ) {
   const uniqueDates = new Set(details.dates.map(item => item.date)).size;
@@ -403,7 +407,7 @@ export function experienceDetailsJsonPayload(
   return {
     title: options?.title ?? null,
     slug: options?.slug ?? null,
-    booking_url: options?.bookingPath ? buildBookingUrl(options.bookingPath) : null,
+    booking_url: options?.bookingPath ? buildBookingUrl(options.bookingPath, options.language) : null,
     days,
     currency: details.currencyCode,
     location: {

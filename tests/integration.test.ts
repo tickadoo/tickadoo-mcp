@@ -262,6 +262,50 @@ describe.sequential("tickadoo MCP live integration", () => {
     expectTrackedBookingUrl(json.results?.[0]?.booking_url);
   }, 30_000);
 
+  it("localizes booking URLs when a supported language is provided", async () => {
+    const searchResult = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", language: "de", max_results: 1, format: "json" },
+    });
+    const searchJson = parseJsonText<{
+      results?: Array<{ booking_url?: string }>;
+      view_all_url?: string;
+    }>(firstTextContent(searchResult), "search_experiences(language=de, format=json)");
+    expect(searchJson.results?.[0]?.booking_url).toContain("https://www.tickadoo.com/de/");
+    expect(searchJson.view_all_url).toContain("https://www.tickadoo.com/de/");
+    expectTrackedBookingUrl(searchJson.results?.[0]?.booking_url);
+
+    const nearbyResult = await client.callTool({
+      name: "find_nearby_experiences",
+      arguments: { latitude: 51.502606, longitude: -0.118117, radius_km: 5, language: "de", format: "json" },
+    });
+    const nearbyJson = parseJsonText<{
+      results?: Array<{ booking_url?: string }>;
+    }>(firstTextContent(nearbyResult), "find_nearby_experiences(language=de, format=json)");
+    expect(nearbyJson.results?.[0]?.booking_url).toContain("https://www.tickadoo.com/de/");
+    expectTrackedBookingUrl(nearbyJson.results?.[0]?.booking_url);
+
+    const detailsResult = await client.callTool({
+      name: "get_experience_details",
+      arguments: { slug: "london-dungeon-tickets", days: 7, language: "de", format: "json" },
+    });
+    const detailsJson = parseJsonText<{
+      booking_url?: string;
+    }>(firstTextContent(detailsResult), "get_experience_details(language=de, format=json)");
+    expect(detailsJson.booking_url).toContain("https://www.tickadoo.com/de/");
+    expectTrackedBookingUrl(detailsJson.booking_url);
+
+    const citiesResult = await client.callTool({
+      name: "list_cities",
+      arguments: { query: "paris", limit: 1, language: "de", format: "json" },
+    });
+    const citiesJson = parseJsonText<{
+      results?: Array<{ booking_url?: string }>;
+    }>(firstTextContent(citiesResult), "list_cities(language=de, format=json)");
+    expect(citiesJson.results?.[0]?.booking_url).toContain("https://www.tickadoo.com/de/");
+    expectTrackedBookingUrl(citiesJson.results?.[0]?.booking_url);
+  }, 30_000);
+
   it("search_experiences supports category filtering", async () => {
     const result = await client.callTool({
       name: "search_experiences",
@@ -341,6 +385,16 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     expect(result.isError).toBe(true);
     expect(firstTextContent(result)).toContain("Invalid category");
+  }, 30_000);
+
+  it("search_experiences returns a helpful error for an unsupported language code", async () => {
+    const result = await client.callTool({
+      name: "search_experiences",
+      arguments: { city: "vegas", language: "zz" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(firstTextContent(result)).toContain("Invalid language");
   }, 30_000);
 
   it("search_experiences returns a helpful error for an invalid price range", async () => {

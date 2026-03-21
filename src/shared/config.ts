@@ -3,6 +3,55 @@ export const SITE = process.env.TICKADOO_SITE_BASE ?? "https://www.tickadoo.com"
 export const MCP_BASE_URL = process.env.TICKADOO_MCP_BASE ?? "https://mcp.tickadoo.com";
 export const MCP_ENDPOINT_URL = `${MCP_BASE_URL}/mcp`;
 export const PRODUCT_FEED_URL = "https://content.tickadoo.com/openai/ProductFeed.jsonl.gz";
+export const DEFAULT_LANGUAGE = "en";
+export const SUPPORTED_LANGUAGE_CODES = [
+  "en",
+  "fr",
+  "de",
+  "es",
+  "it",
+  "pt",
+  "pl",
+  "cs",
+  "nl",
+  "da",
+  "sv",
+  "no",
+  "zh",
+  "ja",
+  "hi",
+  "ar",
+  "tr",
+  "ko",
+  "he",
+  "fi",
+  "ru",
+  "el",
+  "hu",
+  "th",
+  "vi",
+  "uk",
+  "es-mx",
+  "pt-br",
+  "ur",
+  "bn",
+  "fa",
+  "tl",
+  "ms",
+  "ca",
+  "is",
+  "id",
+  "ta",
+  "pa-in",
+  "gu",
+  "zh-hant-hk",
+  "yue",
+  "bg",
+  "ro",
+  "hr",
+] as const;
+export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGE_CODES)[number];
+export const SUPPORTED_LANGUAGE_CODE_SET = new Set<string>(SUPPORTED_LANGUAGE_CODES);
 export const DEFAULT_TICKADOO_UTM_PARAMS = "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp";
 export const TICKADOO_UTM_PARAMS = (process.env.TICKADOO_UTM_PARAMS ?? DEFAULT_TICKADOO_UTM_PARAMS)
   .trim()

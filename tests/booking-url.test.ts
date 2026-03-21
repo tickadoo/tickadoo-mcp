@@ -14,4 +14,19 @@ describe("buildBookingUrl", () => {
       "https://www.tickadoo.com/london/london-dungeon-tickets?ref=homepage&utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
     );
   });
+
+  it("adds a language prefix for non-English booking URLs", () => {
+    expect(buildBookingUrl("/london/london-dungeon-tickets", "de")).toBe(
+      "https://www.tickadoo.com/de/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+    );
+  });
+
+  it("replaces an existing language prefix when generating English or another locale", () => {
+    expect(buildBookingUrl("/fr/london/london-dungeon-tickets?ref=homepage", "en")).toBe(
+      "https://www.tickadoo.com/london/london-dungeon-tickets?ref=homepage&utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+    );
+    expect(buildBookingUrl("/fr/london/london-dungeon-tickets?ref=homepage", "ja")).toBe(
+      "https://www.tickadoo.com/ja/london/london-dungeon-tickets?ref=homepage&utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+    );
+  });
 });

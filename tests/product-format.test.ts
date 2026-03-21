@@ -107,23 +107,24 @@ describe("product formatting", () => {
     const description = "Experience a dazzling 60-minute cabaret journey through pop culture with live vocals, bold choreography, and immersive staging.";
     const product = makeProduct({ description });
 
-    expect(productStructuredData(product)).toMatchObject({
+    expect(productStructuredData(product, product.slug, "de")).toMatchObject({
       tickadooProductId: "product-id",
       slug: "product-slug",
       title: "Product",
       description,
       priceAmount: 25,
       priceCurrency: "GBP",
+      bookingUrl: "https://www.tickadoo.com/de/product-slug?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
     });
   });
 
   it("builds structured json payloads for search and nearby results", () => {
     const product = makeProduct({ slug: "ghost-tour" });
 
-    expect(productJsonData(product)).toMatchObject({
+    expect(productJsonData(product, product.slug, "de")).toMatchObject({
       title: "Product",
       slug: "ghost-tour",
-      booking_url: "https://www.tickadoo.com/ghost-tour?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+      booking_url: "https://www.tickadoo.com/de/ghost-tour?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
       price: {
         amount: 25,
         currency: "GBP",
@@ -133,14 +134,15 @@ describe("product formatting", () => {
       },
     });
 
-    expect(searchJsonPayload("london", "London", 10, [product])).toMatchObject({
+    expect(searchJsonPayload("london", "London", 10, [product], { language: "de" })).toMatchObject({
       city: "london",
       city_name: "London",
       total: 10,
       showing: 1,
+      view_all_url: "https://www.tickadoo.com/de/london?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
     });
 
-    expect(nearbyJsonPayload(51.5, -0.1, 5, 10, [product])).toMatchObject({
+    expect(nearbyJsonPayload(51.5, -0.1, 5, 10, [product], "de")).toMatchObject({
       latitude: 51.5,
       longitude: -0.1,
       radius_km: 5,
@@ -150,7 +152,7 @@ describe("product formatting", () => {
   });
 
   it("builds structured json payloads for city lists and details", () => {
-    expect(cityDirectoryJsonPayload("paris", 3, [{ name: "PARIS", slug: "paris" }])).toMatchObject({
+    expect(cityDirectoryJsonPayload("paris", 3, [{ name: "PARIS", slug: "paris" }], "de")).toMatchObject({
       query: "paris",
       total: 3,
       showing: 1,
@@ -158,7 +160,7 @@ describe("product formatting", () => {
         {
           name: "PARIS",
           slug: "paris",
-          booking_url: "https://www.tickadoo.com/paris?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+          booking_url: "https://www.tickadoo.com/de/paris?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
         },
       ],
     });
@@ -185,10 +187,11 @@ describe("product formatting", () => {
       title: "London Dungeon",
       slug: "london-dungeon-tickets",
       bookingPath: "london/london-dungeon-tickets",
+      language: "de",
     })).toMatchObject({
       title: "London Dungeon",
       slug: "london-dungeon-tickets",
-      booking_url: "https://www.tickadoo.com/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
+      booking_url: "https://www.tickadoo.com/de/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
       days: 7,
       currency: "GBP",
       availability: {
@@ -208,7 +211,8 @@ describe("product formatting", () => {
     const summary = summarizeProductDescription(longDescription);
 
     expect(summary).toBeTruthy();
-    expect(formatProduct(product)).toContain(`   ${summary}`);
-    expect(formatProduct(product)).not.toContain(longDescription);
+    expect(formatProduct(product, product.slug, "de")).toContain(`   ${summary}`);
+    expect(formatProduct(product, product.slug, "de")).toContain("https://www.tickadoo.com/de/product-slug");
+    expect(formatProduct(product, product.slug, "de")).not.toContain(longDescription);
   });
 });

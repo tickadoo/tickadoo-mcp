@@ -91,6 +91,7 @@ export async function runE2ESmoke(client, options = {}) {
     target = "unknown",
     searchCity = process.env.MCP_SEARCH_CITY ?? "vegas",
     expectedSlug = process.env.MCP_EXPECTED_SLUG ?? "las-vegas",
+    localizedLanguage = process.env.MCP_LOCALIZED_LANGUAGE ?? "de",
     categorySearchCity = process.env.MCP_CATEGORY_SEARCH_CITY ?? searchCity,
     categorySearchValue = process.env.MCP_CATEGORY_SEARCH_VALUE ?? "comedy",
     categoryRegressionCity = process.env.MCP_CATEGORY_REGRESSION_CITY ?? "london",
@@ -179,6 +180,23 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(Array.isArray(searchJson.results) && searchJson.results.length === 2, `search_experiences(${searchCity}, format=json) did not return 2 results.`);
   requireCondition(typeof searchJson.results[0]?.title === "string", `search_experiences(${searchCity}, format=json) missing result title.`);
   requireTrackedBookingUrl(searchJson.results[0]?.booking_url, `search_experiences(${searchCity}, format=json)`);
+
+  const localizedSearchResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, language: localizedLanguage, format: "json", max_results: 1 },
+  });
+  const localizedSearchJson = parseJsonText(firstTextContent(localizedSearchResult), `search_experiences(${searchCity}, language=${localizedLanguage}, format=json)`);
+  requireCondition(
+    typeof localizedSearchJson.results?.[0]?.booking_url === "string"
+      && localizedSearchJson.results[0].booking_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
+    `search_experiences(${searchCity}, language=${localizedLanguage}) did not return a localized booking URL. Received: ${JSON.stringify(localizedSearchJson)}`,
+  );
+  requireCondition(
+    typeof localizedSearchJson.view_all_url === "string"
+      && localizedSearchJson.view_all_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
+    `search_experiences(${searchCity}, language=${localizedLanguage}) did not return a localized view_all_url. Received: ${JSON.stringify(localizedSearchJson)}`,
+  );
+  requireTrackedBookingUrl(localizedSearchJson.results[0]?.booking_url, `search_experiences(${searchCity}, language=${localizedLanguage}, format=json)`);
 
   const categorySearchResult = await client.callTool({
     name: "search_experiences",
@@ -302,6 +320,13 @@ export async function runE2ESmoke(client, options = {}) {
   requireIncludes(firstTextContent(invalidSearchCategoryResult), "Invalid category", "search_experiences(category=blank)");
   requireErrorResult(invalidSearchCategoryResult, "search_experiences(category=blank)");
 
+  const invalidSearchLanguageResult = await client.callTool({
+    name: "search_experiences",
+    arguments: { city: searchCity, language: "zz" },
+  });
+  requireIncludes(firstTextContent(invalidSearchLanguageResult), "Invalid language", "search_experiences(language=zz)");
+  requireErrorResult(invalidSearchLanguageResult, "search_experiences(language=zz)");
+
   const invalidSearchPriceRangeResult = await client.callTool({
     name: "search_experiences",
     arguments: {
@@ -375,6 +400,24 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(Array.isArray(nearbyJson.results) && nearbyJson.results.length > 0, `find_nearby_experiences(..., format=json) returned no results.`);
   requireTrackedBookingUrl(nearbyJson.results[0]?.booking_url, `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}, format=json)`);
 
+  const localizedNearbyJsonResult = await client.callTool({
+    name: "find_nearby_experiences",
+    arguments: {
+      latitude: nearbyLatitude,
+      longitude: nearbyLongitude,
+      radius_km: nearbyRadiusKm,
+      language: localizedLanguage,
+      format: "json",
+    },
+  });
+  const localizedNearbyJson = parseJsonText(firstTextContent(localizedNearbyJsonResult), `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}, language=${localizedLanguage}, format=json)`);
+  requireCondition(
+    typeof localizedNearbyJson.results?.[0]?.booking_url === "string"
+      && localizedNearbyJson.results[0].booking_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
+    `find_nearby_experiences(..., language=${localizedLanguage}) did not return a localized booking URL. Received: ${JSON.stringify(localizedNearbyJson)}`,
+  );
+  requireTrackedBookingUrl(localizedNearbyJson.results[0]?.booking_url, `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}, language=${localizedLanguage}, format=json)`);
+
   const invalidNearbyLatitudeResult = await client.callTool({
     name: "find_nearby_experiences",
     arguments: {
@@ -430,6 +473,18 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(citiesJson.query === cityQuery, `list_cities(query=${cityQuery}, format=json) returned unexpected query: ${JSON.stringify(citiesJson)}`);
   requireCondition(Array.isArray(citiesJson.results) && citiesJson.results.length === 1, `list_cities(query=${cityQuery}, format=json) did not return exactly 1 result.`);
   requireTrackedBookingUrl(citiesJson.results[0]?.booking_url, `list_cities(query=${cityQuery}, format=json)`);
+
+  const localizedCitiesJsonResult = await client.callTool({
+    name: "list_cities",
+    arguments: { query: cityQuery, limit: 1, language: localizedLanguage, format: "json" },
+  });
+  const localizedCitiesJson = parseJsonText(firstTextContent(localizedCitiesJsonResult), `list_cities(query=${cityQuery}, language=${localizedLanguage}, format=json)`);
+  requireCondition(
+    typeof localizedCitiesJson.results?.[0]?.booking_url === "string"
+      && localizedCitiesJson.results[0].booking_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
+    `list_cities(query=${cityQuery}, language=${localizedLanguage}) did not return a localized booking URL. Received: ${JSON.stringify(localizedCitiesJson)}`,
+  );
+  requireTrackedBookingUrl(localizedCitiesJson.results[0]?.booking_url, `list_cities(query=${cityQuery}, language=${localizedLanguage}, format=json)`);
 
   const invalidCitiesQueryResult = await client.callTool({
     name: "list_cities",
@@ -492,6 +547,23 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(detailsJson.slug === detailsSlug, `get_experience_details(slug=${detailsSlug}, format=json) returned unexpected slug: ${JSON.stringify(detailsJson)}`);
   requireTrackedBookingUrl(detailsJson.booking_url, `get_experience_details(slug=${detailsSlug}, format=json)`);
   requireCondition(Array.isArray(detailsJson.availability?.results), `get_experience_details(slug=${detailsSlug}, format=json) missing availability results.`);
+
+  const localizedDetailsJsonResult = await client.callTool({
+    name: "get_experience_details",
+    arguments: {
+      slug: detailsSlug,
+      days: detailsDays,
+      language: localizedLanguage,
+      format: "json",
+    },
+  });
+  const localizedDetailsJson = parseJsonText(firstTextContent(localizedDetailsJsonResult), `get_experience_details(slug=${detailsSlug}, language=${localizedLanguage}, format=json)`);
+  requireCondition(
+    typeof localizedDetailsJson.booking_url === "string"
+      && localizedDetailsJson.booking_url.startsWith(`https://www.tickadoo.com/${localizedLanguage}/`),
+    `get_experience_details(slug=${detailsSlug}, language=${localizedLanguage}) did not return a localized booking URL. Received: ${JSON.stringify(localizedDetailsJson)}`,
+  );
+  requireTrackedBookingUrl(localizedDetailsJson.booking_url, `get_experience_details(slug=${detailsSlug}, language=${localizedLanguage}, format=json)`);
 
   const blankDetailsSlugResult = await client.callTool({
     name: "get_experience_details",

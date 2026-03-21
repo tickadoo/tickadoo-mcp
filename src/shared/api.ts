@@ -1,10 +1,12 @@
 import {
   API_BASE,
+  DEFAULT_LANGUAGE,
   MAX_API_ATTEMPTS,
   REQUEST_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
   SERVER_VERSION,
   SITE,
+  SUPPORTED_LANGUAGE_CODE_SET,
   TICKADOO_UTM_PARAMS,
 } from "./config.js";
 import { apiResponseCache, createCacheKey, type CacheToolName } from "./cache.js";
@@ -210,8 +212,22 @@ function createCanonicalBookingUrl(pathOrSlug: string): URL {
   }
 }
 
-export function buildBookingUrl(pathOrSlug: string): string {
+function applyLanguagePrefix(pathname: string, language: string): string {
+  const normalizedLanguage = language.trim().toLowerCase() || DEFAULT_LANGUAGE;
+  const segments = pathname.split("/").filter(Boolean);
+  const hasLanguagePrefix = segments.length >= 2 && SUPPORTED_LANGUAGE_CODE_SET.has(segments[0].toLowerCase());
+  const pathSegments = hasLanguagePrefix ? segments.slice(1) : segments;
+
+  if (normalizedLanguage !== DEFAULT_LANGUAGE) {
+    pathSegments.unshift(normalizedLanguage);
+  }
+
+  return pathSegments.length ? `/${pathSegments.join("/")}` : "/";
+}
+
+export function buildBookingUrl(pathOrSlug: string, language = DEFAULT_LANGUAGE): string {
   const bookingUrl = createCanonicalBookingUrl(pathOrSlug);
+  bookingUrl.pathname = applyLanguagePrefix(bookingUrl.pathname, language);
   if (TICKADOO_UTM_PARAMS) {
     const trackingParams = new URLSearchParams(TICKADOO_UTM_PARAMS);
     for (const [key, value] of trackingParams.entries()) {

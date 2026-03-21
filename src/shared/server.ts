@@ -11,11 +11,13 @@ import {
   resolveProductBySlug,
 } from "./api.js";
 import {
+  DEFAULT_LANGUAGE,
   PRODUCT_FEED_URL,
   SERVER_DESCRIPTION,
   SERVER_NAME,
   SERVER_VERSION,
   SITE,
+  SUPPORTED_LANGUAGE_CODE_SET,
   TICKADOO_LOG_LEVEL,
 } from "./config.js";
 import {
@@ -70,6 +72,8 @@ const AVAILABLE_SEARCH_CATEGORIES = [
   "comedy",
   "shows",
 ] as const;
+const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
+const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
 
 type SearchCategory = (typeof AVAILABLE_SEARCH_CATEGORIES)[number];
 type LogWriter = (message: string) => void;
@@ -451,6 +455,40 @@ function normalizeResponseFormat(value: unknown): ResponseFormat | undefined {
   return value === "text" || value === "json" ? value : undefined;
 }
 
+function normalizeLanguageInput(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return value == null ? DEFAULT_LANGUAGE : undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized || undefined;
+}
+
+function validateLanguageArg(language: unknown, format: ResponseFormat): ValidationResult<string> {
+  const normalized = normalizeLanguageInput(language);
+  if (!normalized) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid language. Provide a non-empty supported language code such as "en", "de", "fr", "es", "ja", or "pt-br" (got: ${formatValue(language)}).`,
+      ),
+    };
+  }
+
+  if (!SUPPORTED_LANGUAGE_CODE_SET.has(normalized)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid language. Use a supported tickadoo language code such as "en", "de", "fr", "es", "ja", or "pt-br" (got: ${formatValue(language)}).`,
+      ),
+    };
+  }
+
+  return { ok: true, data: normalized };
+}
+
 function levenshteinDistance(left: string, right: string): number {
   if (left === right) return 0;
   if (!left.length) return right.length;
@@ -622,6 +660,11 @@ function validateSearchArgs(args: {
     };
   }
 
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
   const city = args.city.trim();
   if (!city) {
     return {
@@ -685,7 +728,7 @@ function validateSearchArgs(args: {
     ok: true,
     data: {
       city,
-      language: args.language ?? "en",
+      language: language.data,
       maxResults,
       minPrice: args.min_price,
       maxPrice: args.max_price,
@@ -714,6 +757,11 @@ function validateNearbyArgs(args: {
       ok: false,
       error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
     };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
   }
 
   if (!Number.isFinite(args.latitude) || args.latitude < -90 || args.latitude > 90) {
@@ -753,7 +801,7 @@ function validateNearbyArgs(args: {
       latitude: args.latitude,
       longitude: args.longitude,
       radiusKm,
-      language: args.language ?? "en",
+      language: language.data,
       format,
     },
   };
@@ -771,6 +819,11 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
       ok: false,
       error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
     };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
   }
 
   if (args.query != null && !args.query.trim()) {
@@ -794,7 +847,7 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
   return {
     ok: true,
     data: {
-      language: args.language ?? "en",
+      language: language.data,
       query: args.query?.trim(),
       limit,
       format,
@@ -823,6 +876,11 @@ function validateExperienceDetailsArgs(args: {
       ok: false,
       error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
     };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
   }
 
   if (args.slug != null && !args.slug.trim()) {
@@ -854,7 +912,7 @@ function validateExperienceDetailsArgs(args: {
       provider,
       providerId,
       days: args.days ?? 30,
-      language: args.language ?? "en",
+      language: language.data,
       format,
     },
   };
@@ -870,10 +928,10 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional category filtering (${formatAvailableSearchCategories()}) plus optional min/max price filtering in the local currency. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
-      language: z.string().optional().default("en").describe("Language code (e.g. 'en', 'de', 'fr', 'es')"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
       category: z.string().optional().describe(`Optional category filter. Suggested values: ${formatAvailableSearchCategories()}`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
@@ -1011,6 +1069,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           topProducts,
           {
             ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
+            language,
             ...(minPrice != null ? { minPrice } : {}),
             ...(maxPrice != null ? { maxPrice } : {}),
           },
@@ -1019,7 +1078,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
+              `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}`,
               SEARCH_NEXT_STEP_HINT,
             ),
             jsonPayload,
@@ -1031,7 +1090,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
                 ...(minPrice != null ? { minPrice } : {}),
                 ...(maxPrice != null ? { maxPrice } : {}),
-                experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`)),
+                experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`, language)),
               },
             },
           ),
@@ -1050,12 +1109,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "find_nearby_experiences",
-    "Find shows, events and experiences near a geographic location on tickadoo. Use when a user shares their location or asks for things to do near them.",
+    `Find shows, events and experiences near a geographic location on tickadoo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
     {
       latitude: z.number().describe("Latitude"),
       longitude: z.number().describe("Longitude"),
       radius_km: z.number().optional().default(DEFAULT_RADIUS_KM).describe(`Search radius in km (default ${DEFAULT_RADIUS_KM})`),
-      language: z.string().optional().default("en").describe("Language code"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
@@ -1107,17 +1166,17 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product)).join("\n\n")}`,
+              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts),
+            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language),
             {
               structuredContent: {
                 latitude,
                 longitude,
                 radiusKm,
                 totalExperiences: products.length,
-                experiences: topProducts.map(product => productStructuredData(product)),
+                experiences: topProducts.map(product => productStructuredData(product, product.slug, language)),
               },
             },
           ),
@@ -1138,7 +1197,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     "list_cities",
     "List all cities where tickadoo has bookable experiences. Use to help users discover available destinations.",
     {
-      language: z.string().optional().default("en").describe("Language code"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       query: z.string().optional().describe("Optional city name or slug filter (e.g. 'new', 'paris', 'tokyo')"),
       limit: z.number().optional().default(DEFAULT_CITY_DIRECTORY_LIMIT).describe(`Maximum number of cities to return (default ${DEFAULT_CITY_DIRECTORY_LIMIT})`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
@@ -1175,7 +1234,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         }
 
         const cities = withSlug.slice(0, limit);
-        const list = cities.map(city => `📍 ${city.name} → ${buildBookingUrl(city.slug)}`).join("\n");
+        const list = cities.map(city => `📍 ${city.name} → ${buildBookingUrl(city.slug, language)}`).join("\n");
         const header = filter
           ? `Found ${withSlug.length} matching cities${withSlug.length > cities.length ? ` (showing ${cities.length})` : ""}:`
           : `Showing ${cities.length} of ${withSlug.length} cities, sorted alphabetically. Use the optional query parameter to filter further:`;
@@ -1187,7 +1246,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `tickadoo® city directory\n\n${header}\n\n${list}`,
               filter ? FILTERED_CITIES_NEXT_STEP_HINT : undefined,
             ),
-            cityDirectoryJsonPayload(query, withSlug.length, cities),
+            cityDirectoryJsonPayload(query, withSlug.length, cities, language),
           ),
           resultCount: cities.length,
           summary: { query: query ?? "all", format },
@@ -1204,13 +1263,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_experience_details",
-    "Get detailed availability, venue details, and images for a specific tickadoo experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs.",
+    `Get detailed availability, venue details, and images for a specific tickadoo experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       slug: z.string().optional().describe("Preferred: tickadoo slug or path, e.g. 'london-dungeon-tickets' or '/london/london-dungeon-tickets'"),
       provider: z.string().optional().describe("Legacy fallback only: hidden provider name used internally"),
       provider_id: z.string().optional().describe("Legacy fallback only: hidden provider-specific product ID"),
       days: z.number().int().min(1).max(180).optional().default(30).describe("Number of days of availability to fetch (default 30, max 180)"),
-      language: z.string().optional().default("en").describe("Reserved for future language-aware API support"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
@@ -1255,19 +1314,20 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             appendNextStepHint([
               resolved ? `🎭 ${resolved.product.title}` : "",
               formatExperienceDetails(days, details),
-              resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath)}` : "",
+              resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath, language)}` : "",
             ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
             experienceDetailsJsonPayload(days, details, {
               title: resolved?.product.title,
               slug: resolved?.product.slug,
               bookingPath,
+              language,
             }),
             {
               structuredContent: {
                 source: "tickadoo",
                 slug: resolved?.product.slug,
                 tickadooProductId: resolved?.product.id,
-                bookingUrl: resolved ? buildBookingUrl(resolved.bookingPath) : undefined,
+                bookingUrl: resolved ? buildBookingUrl(resolved.bookingPath, language) : undefined,
                 days,
                 details,
               },
