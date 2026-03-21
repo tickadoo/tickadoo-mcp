@@ -16,6 +16,10 @@ type CacheLoadOptions<T> = {
   shouldCache?: (value: T) => boolean;
 };
 
+function logCacheMessage(message: string) {
+  process.stderr.write(`${message}\n`);
+}
+
 function defaultShouldCache(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.length > 0;
@@ -62,12 +66,12 @@ export class InMemoryLruCache {
       this.touch(key, cached);
 
       if (cached.expiresAt > now) {
-        console.info(`[cache hit] ${key}`);
+        logCacheMessage(`[cache hit] ${key}`);
         return cached.value;
       }
 
       if (cached.staleUntil > now) {
-        console.info(`[cache stale hit] ${key}`);
+        logCacheMessage(`[cache stale hit] ${key}`);
         this.refreshInBackground(key, options, load);
         return cached.value;
       }

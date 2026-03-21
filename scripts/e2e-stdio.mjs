@@ -13,9 +13,16 @@ const transport = new StdioClientTransport({
   cwd,
   stderr: "pipe",
 });
+let hadTransportError = false;
+let isClosing = false;
 
 transport.onerror = error => {
-  console.error("transport_error", error?.message ?? error);
+  const message = error?.message ?? String(error);
+  if (isClosing && message.toLowerCase().includes("aborted")) {
+    return;
+  }
+  hadTransportError = true;
+  console.error("transport_error", message);
 };
 
 if (transport.stderr) {
@@ -29,11 +36,15 @@ try {
   const result = await runE2ESmoke(client, {
     target: `${command} ${args.join(" ")}`.trim(),
   });
+  if (hadTransportError) {
+    throw new Error("Stdio transport emitted unexpected errors; see transport_error output above.");
+  }
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {
   console.error("E2E_STDIO_FAILURE");
   console.error(error);
   process.exitCode = 1;
 } finally {
+  isClosing = true;
   await transport.close().catch(() => undefined);
 }
