@@ -9,7 +9,16 @@ import {
   resolveProductBySlug,
 } from "./api.js";
 import { PRODUCT_FEED_URL, SERVER_DESCRIPTION, SERVER_NAME, SERVER_VERSION, SITE } from "./config.js";
-import { formatExperienceDetails, formatProduct, productStructuredData } from "./format.js";
+import {
+  appendNextStepHint,
+  DETAILS_NEXT_STEP_HINT,
+  FILTERED_CITIES_NEXT_STEP_HINT,
+  formatExperienceDetails,
+  formatProduct,
+  NEARBY_NEXT_STEP_HINT,
+  productStructuredData,
+  SEARCH_NEXT_STEP_HINT,
+} from "./format.js";
 import type { City, Product, ResolvedProduct } from "./types.js";
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
@@ -648,7 +657,10 @@ export function createTickadooServer(): McpServer {
           ? `in ${cityName} matching category "${category}"`
           : `in ${cityName}`;
         return createTextResponse(
-          `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
+          appendNextStepHint(
+            `${buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext)}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug)}`,
+            SEARCH_NEXT_STEP_HINT,
+          ),
           {
             structuredContent: {
               city: cityName,
@@ -694,7 +706,10 @@ export function createTickadooServer(): McpServer {
         const rankedProducts = sortProductsForDisplay(products);
         const topProducts = rankedProducts.slice(0, DEFAULT_SEARCH_RESULT_LIMIT);
         return createTextResponse(
-          `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product)).join("\n\n")}`,
+          appendNextStepHint(
+            `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product)).join("\n\n")}`,
+            NEARBY_NEXT_STEP_HINT,
+          ),
           {
             structuredContent: {
               latitude,
@@ -745,7 +760,12 @@ export function createTickadooServer(): McpServer {
           ? `Found ${withSlug.length} matching cities${withSlug.length > cities.length ? ` (showing ${cities.length})` : ""}:`
           : `Showing ${cities.length} of ${withSlug.length} cities, sorted alphabetically. Use the optional query parameter to filter further:`;
 
-        return createTextResponse(`tickadoo® city directory\n\n${header}\n\n${list}`);
+        return createTextResponse(
+          appendNextStepHint(
+            `tickadoo® city directory\n\n${header}\n\n${list}`,
+            filter ? FILTERED_CITIES_NEXT_STEP_HINT : undefined,
+          ),
+        );
       } catch (error) {
         return createErrorResponse(getErrorMessage(error));
       }
@@ -790,11 +810,11 @@ export function createTickadooServer(): McpServer {
 
         const details = await getExperienceDetails(providerName!, detailsProviderId!, days);
         return createTextResponse(
-          [
+          appendNextStepHint([
             resolved ? `🎭 ${resolved.product.title}` : "",
             formatExperienceDetails(days, details),
             resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath)}` : "",
-          ].filter(Boolean).join("\n"),
+          ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
           {
             structuredContent: {
               source: "tickadoo",

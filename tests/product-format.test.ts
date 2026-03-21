@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatProduct, productStructuredData, summarizeProductDescription } from "../src/shared/format.js";
+import { appendNextStepHint, formatProduct, productStructuredData, summarizeProductDescription } from "../src/shared/format.js";
 import type { Product } from "../src/shared/types.js";
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -46,6 +46,11 @@ describe("summarizeProductDescription", () => {
 });
 
 describe("product formatting", () => {
+  it("appends next-step hints as a final line when provided", () => {
+    expect(appendNextStepHint("Body", "💡 Tip: Try another tool.")).toBe("Body\n\n💡 Tip: Try another tool.");
+    expect(appendNextStepHint("Body")).toBe("Body");
+  });
+
   it("includes the summarized description in structured search output", () => {
     const description = "Experience a dazzling 60-minute cabaret journey through pop culture with live vocals, bold choreography, and immersive staging.";
     const product = makeProduct({ description });

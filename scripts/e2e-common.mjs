@@ -10,6 +10,10 @@ const EXPECTED_UTM_PARAMS = new URLSearchParams(
 );
 
 const REQUIRED_RESOURCE = "tickadoo://product-feed";
+const SEARCH_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for availability & pricing. Use find_nearby_experiences(lat, lng) for location-based discovery.";
+const NEARBY_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for full details. Results sorted by distance from your coordinates.";
+const FILTERED_CITIES_NEXT_STEP_HINT = "💡 Tip: Use search_experiences(city) to see what's available in any of these cities.";
+const DETAILS_NEXT_STEP_HINT = "💡 Tip: Share the booking URL with the user. For similar experiences, use search_experiences(city).";
 
 function firstTextContent(result) {
   return result?.content?.find(item => item.type === "text")?.text ?? "";
@@ -145,6 +149,7 @@ export async function runE2ESmoke(client, options = {}) {
   requireCondition(Boolean(firstExperience?.imageUrl), `search_experiences(${searchCity}) structuredContent did not include an imageUrl.`);
   requireTrackedBookingUrl(firstExperience?.bookingUrl, `search_experiences(${searchCity}) structuredContent`);
   requireIncludes(searchText, "utm_source=mcp", `search_experiences(${searchCity})`);
+  requireIncludes(searchText, SEARCH_NEXT_STEP_HINT, `search_experiences(${searchCity})`);
 
   const categorySearchResult = await client.callTool({
     name: "search_experiences",
@@ -294,6 +299,7 @@ export async function runE2ESmoke(client, options = {}) {
     nearbyResult.structuredContent?.experiences?.[0]?.bookingUrl,
     `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude}) structuredContent`,
   );
+  requireIncludes(nearbyText, NEARBY_NEXT_STEP_HINT, `find_nearby_experiences(${nearbyLatitude},${nearbyLongitude})`);
 
   const invalidNearbyLatitudeResult = await client.callTool({
     name: "find_nearby_experiences",
@@ -326,6 +332,7 @@ export async function runE2ESmoke(client, options = {}) {
   const citiesText = firstTextContent(citiesResult);
   requireIncludes(citiesText, cityQuery, `list_cities(query=${cityQuery})`);
   requireIncludes(citiesText, "utm_source=mcp", `list_cities(query=${cityQuery})`);
+  requireIncludes(citiesText, FILTERED_CITIES_NEXT_STEP_HINT, `list_cities(query=${cityQuery})`);
 
   const invalidCitiesQueryResult = await client.callTool({
     name: "list_cities",
@@ -347,6 +354,7 @@ export async function runE2ESmoke(client, options = {}) {
   });
   const directoryText = firstTextContent(directoryResult);
   requireIncludes(directoryText, `Showing ${directoryLimit} of`, `list_cities(limit=${directoryLimit})`);
+  requireExcludes(directoryText, FILTERED_CITIES_NEXT_STEP_HINT, `list_cities(limit=${directoryLimit})`);
   const directoryLines = directoryText.split("\n").filter(line => line.startsWith("📍 "));
   requireCondition(
     directoryLines.length === directoryLimit,
@@ -372,6 +380,7 @@ export async function runE2ESmoke(client, options = {}) {
   requireMissingKey(detailsResult.structuredContent, "providerId", `get_experience_details(slug=${detailsSlug}) structuredContent`);
   requireTrackedBookingUrl(detailsResult.structuredContent?.bookingUrl, `get_experience_details(slug=${detailsSlug}) structuredContent`);
   requireIncludes(detailsText, "utm_source=mcp", `get_experience_details(slug=${detailsSlug})`);
+  requireIncludes(detailsText, DETAILS_NEXT_STEP_HINT, `get_experience_details(slug=${detailsSlug})`);
 
   const blankDetailsSlugResult = await client.callTool({
     name: "get_experience_details",

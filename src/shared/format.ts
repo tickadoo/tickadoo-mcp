@@ -4,6 +4,19 @@ import type { Product, StructuredDataDatePrice, StructuredDataResponse } from ".
 
 const MAX_RESULT_DESCRIPTION_LENGTH = 150;
 
+export const SEARCH_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for availability & pricing. Use find_nearby_experiences(lat, lng) for location-based discovery.";
+export const NEARBY_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for full details. Results sorted by distance from your coordinates.";
+export const FILTERED_CITIES_NEXT_STEP_HINT = "💡 Tip: Use search_experiences(city) to see what's available in any of these cities.";
+export const DETAILS_NEXT_STEP_HINT = "💡 Tip: Share the booking URL with the user. For similar experiences, use search_experiences(city).";
+
+export function appendNextStepHint(text: string, hint?: string): string {
+  if (!hint) {
+    return text;
+  }
+
+  return `${text}\n\n${hint}`;
+}
+
 export function summarizeProductDescription(description: string | null | undefined): string | undefined {
   if (typeof description !== "string") {
     return undefined;

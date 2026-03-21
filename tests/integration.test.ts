@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  DETAILS_NEXT_STEP_HINT,
+  FILTERED_CITIES_NEXT_STEP_HINT,
+  NEARBY_NEXT_STEP_HINT,
+  SEARCH_NEXT_STEP_HINT,
+} from "../src/shared/format.js";
 
 type ToolCallResult = Awaited<ReturnType<Client["callTool"]>>;
 type TextContentItem = { type: "text"; text: string };
@@ -160,6 +166,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     const text = firstTextContent(result);
     expect(text).toContain("Showing top");
     expect(text).toContain("in Las Vegas");
+    expect(text).toContain(SEARCH_NEXT_STEP_HINT);
 
     const cards = parseExperienceCards(text);
     expect(cards.length).toBeGreaterThan(3);
@@ -306,6 +313,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(result.isError).not.toBe(true);
     const text = firstTextContent(result);
     expect(text).toContain("experiences nearby");
+    expect(text).toContain(NEARBY_NEXT_STEP_HINT);
     const nearbyStructured = getStructuredContent<NearbyStructuredContent>(result);
 
     const cards = parseExperienceCards(text);
@@ -359,6 +367,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     const directoryText = firstTextContent(directoryResult);
     const totalCities = extractCount(directoryText, /Showing \d+ of (\d+) cities/i, "list_cities directory count");
     expect(totalCities).toBeGreaterThanOrEqual(700);
+    expect(directoryText).not.toContain(FILTERED_CITIES_NEXT_STEP_HINT);
 
     const filteredResult = await client.callTool({
       name: "list_cities",
@@ -370,6 +379,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(filteredText).toContain("Found");
     expect(filteredText).toContain("PARIS");
     expect(filteredText).toContain("utm_source=mcp");
+    expect(filteredText).toContain(FILTERED_CITIES_NEXT_STEP_HINT);
     expect(extractCount(filteredText, /Found (\d+) matching cities/i, "list_cities filtered count")).toBeGreaterThanOrEqual(1);
   }, 30_000);
 
@@ -385,6 +395,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(text).toContain("Availability:");
     expect(text).toContain("Desktop image:");
     expect(text).toContain("Mobile image:");
+    expect(text).toContain(DETAILS_NEXT_STEP_HINT);
     const detailsStructured = getStructuredContent<DetailsStructuredContent>(result);
 
     expect(detailsStructured.bookingUrl).toMatch(/^https:\/\/www\.tickadoo\.com\//);
