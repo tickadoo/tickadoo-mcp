@@ -246,6 +246,7 @@
       <h2 id="section-connect-title">Connect</h2>
       <div class="connect-tabs" role="tablist" aria-label="MCP client setup" id="connect-tabs">
         <button class="connect-tab is-active" id="connect-tab-claude" type="button" data-target="config-claude" aria-selected="true">Claude / Cursor</button>
+        <button class="connect-tab" id="connect-tab-dispatch" type="button" data-target="config-dispatch" aria-selected="false">Dispatch</button>
         <button class="connect-tab" id="connect-tab-chatgpt" type="button" data-target="config-chatgpt" aria-selected="false">ChatGPT</button>
         <button class="connect-tab" id="connect-tab-gemini" type="button" data-target="config-gemini" aria-selected="false">Gemini CLI</button>
         <button class="connect-tab" id="connect-tab-perplexity" type="button" data-target="config-perplexity" aria-selected="false">Perplexity</button>
@@ -253,6 +254,15 @@
       <div class="code-block">
         <div class="code-header"><span id="connect-label">remote_mcp_config.json</span><button id="copy-config" type="button" data-copy-target="copy-claude">Copy</button></div>
         <div class="config-panel is-active" id="config-claude" data-label="remote_mcp_config.json" data-copy-target="copy-claude">
+          <pre><span class="p">{</span>
+  <span class="k">"mcpServers"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"tickadoo"</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s">"url"</span><span class="p">:</span> <span class="s">"https://mcp.tickadoo.com/mcp"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+        </div>
+        <div class="config-panel" id="config-dispatch" data-label="dispatch_mcp_config.json" data-copy-target="copy-dispatch">
           <pre><span class="p">{</span>
   <span class="k">"mcpServers"</span><span class="p">:</span> <span class="p">{</span>
     <span class="k">"tickadoo"</span><span class="p">:</span> <span class="p">{</span>
@@ -291,6 +301,13 @@ Note: Available to Perplexity paid subscribers</pre>
       </div>
       <p class="config-note" id="connect-note">The same <code>httpUrl</code> setup also works in Android Studio (<code>mcp.json</code>) and Firebase Studio (<code>.idx/mcp.json</code> or <code>.gemini/settings.json</code>).</p>
       <textarea id="copy-claude" hidden>{
+  "mcpServers": {
+    "tickadoo": {
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  }
+}</textarea>
+      <textarea id="copy-dispatch" hidden>{
   "mcpServers": {
     "tickadoo": {
       "url": "https://mcp.tickadoo.com/mcp"
@@ -980,6 +997,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
           connectTabList.setAttribute("aria-label", locale.connect.ariaLabel);
         }
         setText("connect-tab-claude", locale.connect.claude);
+        setText("connect-tab-dispatch", locale.connect.dispatch ?? "Dispatch");
         setText("connect-tab-chatgpt", locale.connect.chatgpt);
         setText("connect-tab-gemini", locale.connect.gemini);
         setText("connect-tab-perplexity", locale.connect.perplexity);

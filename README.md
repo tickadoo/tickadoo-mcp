@@ -46,6 +46,20 @@ Example remote MCP config:
 }
 ```
 
+### Claude Dispatch
+
+Claude Dispatch uses the same remote MCP URL config:
+
+```json
+{
+  "mcpServers": {
+    "tickadoo": {
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  }
+}
+```
+
 ### Gemini CLI
 
 Add this to `~/.gemini/settings.json`:
@@ -79,6 +93,25 @@ The same `httpUrl` config works in:
 - Firebase Studio (`.idx/mcp.json` or `.gemini/settings.json`)
 
 ## Local Development And Stdio
+
+Run from npm after publish:
+
+```bash
+npx -y @tickadoo/mcp-server
+```
+
+Example stdio config via `npx`:
+
+```json
+{
+  "mcpServers": {
+    "tickadoo": {
+      "command": "npx",
+      "args": ["-y", "@tickadoo/mcp-server"]
+    }
+  }
+}
+```
 
 Install and build:
 
