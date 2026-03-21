@@ -14,6 +14,22 @@ const SEARCH_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for av
 const NEARBY_NEXT_STEP_HINT = "💡 Tip: Use get_experience_details(slug) for full details. Results sorted by distance from your coordinates.";
 const FILTERED_CITIES_NEXT_STEP_HINT = "💡 Tip: Use search_experiences(city) to see what's available in any of these cities.";
 const DETAILS_NEXT_STEP_HINT = "💡 Tip: Share the booking URL with the user. For similar experiences, use search_experiences(city).";
+const EXPECTED_CATEGORY_ENUM = [
+  "theatre",
+  "musicals",
+  "tours",
+  "food",
+  "family",
+  "nightlife",
+  "sightseeing",
+  "concerts",
+  "comedy",
+  "shows",
+  "outdoor",
+  "workshops",
+  "cruises",
+  "sports",
+];
 
 function firstTextContent(result) {
   return result?.content?.find(item => item.type === "text")?.text ?? "";
@@ -135,6 +151,19 @@ export async function runE2ESmoke(client, options = {}) {
     );
   }
 
+  const searchTool = toolsResult.tools.find(tool => tool.name === "search_experiences");
+  const categorySchema = searchTool?.inputSchema?.properties?.category;
+  const categoryEnum = Array.isArray(categorySchema?.enum)
+    ? categorySchema.enum
+    : Array.isArray(categorySchema?.anyOf)
+      ? categorySchema.anyOf.find(option => Array.isArray(option?.enum))?.enum
+      : undefined;
+  requireCondition(Array.isArray(categoryEnum), `search_experiences tools/list schema is missing a category enum. Received: ${JSON.stringify(searchTool?.inputSchema)}`);
+  requireCondition(
+    JSON.stringify(categoryEnum) === JSON.stringify(EXPECTED_CATEGORY_ENUM),
+    `search_experiences category enum did not match the expected Gemini-facing list. Received: ${JSON.stringify(categoryEnum)}`,
+  );
+
   const resourcesResult = await client.listResources();
   const resourceUris = resourcesResult.resources.map(resource => resource.uri);
   if (!resourceUris.includes(REQUIRED_RESOURCE)) {
@@ -148,6 +177,7 @@ export async function runE2ESmoke(client, options = {}) {
   const searchText = firstTextContent(searchResult);
   requireIncludes(searchText, expectedSlug, `search_experiences(${searchCity})`);
   requireIncludes(searchText, "Showing top", `search_experiences(${searchCity})`);
+  requireIncludes(searchText, "🔖 Slug:", `search_experiences(${searchCity})`);
   requireExcludes(searchText, "provider_id=", `search_experiences(${searchCity})`);
   requireExcludes(searchText, "Details lookup", `search_experiences(${searchCity})`);
   const firstExperience = searchResult.structuredContent?.experiences?.[0];
@@ -321,20 +351,8 @@ export async function runE2ESmoke(client, options = {}) {
     arguments: { city: emptyCategorySearchCity, category: emptyCategorySearchValue, language: "en" },
   });
   const emptyCategoryText = firstTextContent(emptyCategoryResult);
-  requireIncludes(
-    emptyCategoryText,
-    `No ${emptyCategorySearchValue} experiences`,
-    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`,
-  );
-  requireIncludes(
-    emptyCategoryText,
-    "Available categories:",
-    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`,
-  );
-  requireCondition(
-    emptyCategoryResult?.isError !== true,
-    `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue}) unexpectedly returned isError=true.`,
-  );
+  requireIncludes(emptyCategoryText, "Invalid enum value", `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`);
+  requireErrorResult(emptyCategoryResult, `search_experiences(${emptyCategorySearchCity}, category=${emptyCategorySearchValue})`);
 
   const blankSearchResult = await client.callTool({
     name: "search_experiences",
@@ -354,7 +372,7 @@ export async function runE2ESmoke(client, options = {}) {
     name: "search_experiences",
     arguments: { city: searchCity, category: "   ", language: "en" },
   });
-  requireIncludes(firstTextContent(invalidSearchCategoryResult), "Invalid category", "search_experiences(category=blank)");
+  requireIncludes(firstTextContent(invalidSearchCategoryResult), "Invalid enum value", "search_experiences(category=blank)");
   requireErrorResult(invalidSearchCategoryResult, "search_experiences(category=blank)");
 
   const invalidSearchQueryResult = await client.callTool({

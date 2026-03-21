@@ -326,6 +326,7 @@ export function formatProduct(product: Product, bookingPath = product.slug, lang
   const description = summarizeProductDescription(product.description);
   const lines = [`🎭 ${product.title}`];
   if (description) lines.push(`   ${description}`);
+  if (product.slug) lines.push(`   🔖 Slug: ${product.slug}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
   if (product.averageRating != null && product.averageRating > 0) lines.push(`   ⭐ ${product.averageRating.toFixed(1)}/5`);
   if (product.address) lines.push(`   📍 ${product.address}`);

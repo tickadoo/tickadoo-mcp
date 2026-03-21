@@ -215,6 +215,7 @@ describe("product formatting", () => {
 
     expect(summary).toBeTruthy();
     expect(formatProduct(product, product.slug, "de")).toContain(`   ${summary}`);
+    expect(formatProduct(product, product.slug, "de")).toContain("   🔖 Slug: product-slug");
     expect(formatProduct(product, product.slug, "de")).toContain("https://www.tickadoo.com/de/product-slug");
     expect(formatProduct(product, product.slug, "de")).not.toContain(longDescription);
   });

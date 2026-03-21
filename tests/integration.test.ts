@@ -82,6 +82,22 @@ type ParsedExperienceCard = {
 const endpoint = new URL(process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp");
 const client = new Client({ name: "tickadoo-vitest-integration", version: "1.0.0" });
 const transport = new StreamableHTTPClientTransport(endpoint);
+const expectedCategoryEnum = [
+  "theatre",
+  "musicals",
+  "tours",
+  "food",
+  "family",
+  "nightlife",
+  "sightseeing",
+  "concerts",
+  "comedy",
+  "shows",
+  "outdoor",
+  "workshops",
+  "cruises",
+  "sports",
+];
 const expectedUtmParams = new URLSearchParams(
   process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
 );
@@ -178,6 +194,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     const text = firstTextContent(result);
     expect(text).toContain("Showing top");
     expect(text).toContain("in Las Vegas");
+    expect(text).toContain("🔖 Slug:");
     expect(text).toContain(SEARCH_NEXT_STEP_HINT);
 
     const cards = parseExperienceCards(text);
@@ -216,6 +233,25 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     const sortedTitles = [...cards].sort(compareCardsForDisplay).map(card => card.title);
     expect(cards.map(card => card.title)).toEqual(sortedTitles);
+  }, 30_000);
+
+  it("search_experiences exposes the canonical category enum in tools/list", async () => {
+    const toolsResult = await client.listTools();
+    const searchTool = toolsResult.tools.find(tool => tool.name === "search_experiences");
+    const categorySchema = (searchTool?.inputSchema as {
+      properties?: {
+        category?: {
+          enum?: string[];
+          anyOf?: Array<{ enum?: string[] }>;
+        };
+      };
+    } | undefined)?.properties?.category;
+
+    const categoryEnum = Array.isArray(categorySchema?.enum)
+      ? categorySchema.enum
+      : categorySchema?.anyOf?.find(option => Array.isArray(option.enum))?.enum;
+
+    expect(categoryEnum).toEqual(expectedCategoryEnum);
   }, 30_000);
 
   it("search_experiences supports min_price and max_price filtering", async () => {
@@ -414,16 +450,15 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(text).toContain("doesn't have experiences");
   }, 30_000);
 
-  it("search_experiences suggests available categories when the chosen category has no matches", async () => {
+  it("search_experiences rejects unsupported category values against the schema enum", async () => {
     const result = await client.callTool({
       name: "search_experiences",
       arguments: { city: "vegas", category: "snowboarding", language: "en" },
     });
 
-    expect(result.isError).not.toBe(true);
+    expect(result.isError).toBe(true);
     const text = firstTextContent(result);
-    expect(text).toContain("No snowboarding experiences");
-    expect(text).toContain("Available categories:");
+    expect(text).toContain("Invalid enum value");
   }, 30_000);
 
   it("search_experiences returns a helpful error for a blank category", async () => {
@@ -433,7 +468,7 @@ describe.sequential("tickadoo MCP live integration", () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(firstTextContent(result)).toContain("Invalid category");
+    expect(firstTextContent(result)).toContain("Invalid enum value");
   }, 30_000);
 
   it("search_experiences returns a helpful error for a blank query", async () => {

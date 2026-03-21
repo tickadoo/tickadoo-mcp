@@ -71,6 +71,10 @@ const AVAILABLE_SEARCH_CATEGORIES = [
   "concerts",
   "comedy",
   "shows",
+  "outdoor",
+  "workshops",
+  "cruises",
+  "sports",
 ] as const;
 const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
 const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
@@ -108,6 +112,18 @@ const SEARCH_CATEGORY_ALIASES: Record<string, SearchCategory> = {
   comedian: "comedy",
   show: "shows",
   shows: "shows",
+  outdoor: "outdoor",
+  outdoors: "outdoor",
+  workshop: "workshops",
+  workshops: "workshops",
+  class: "workshops",
+  classes: "workshops",
+  cruise: "cruises",
+  cruises: "cruises",
+  sport: "sports",
+  sports: "sports",
+  game: "sports",
+  games: "sports",
 };
 
 const SEARCH_CATEGORY_KEYWORDS: Record<SearchCategory, string[]> = {
@@ -121,6 +137,10 @@ const SEARCH_CATEGORY_KEYWORDS: Record<SearchCategory, string[]> = {
   concerts: ["concert", "concerts", "live music", "gig", "band", "orchestra", "symphony", "recital"],
   comedy: ["comedy", "comedian", "comic", "stand up", "stand-up", "improv", "laugh"],
   shows: ["show", "shows", "performance", "performances", "cabaret", "magic", "circus", "spectacular"],
+  outdoor: ["outdoor", "outdoors", "garden", "park", "nature", "hiking", "bike", "cycling", "kayak", "adventure"],
+  workshops: ["workshop", "workshops", "class", "classes", "masterclass", "lesson", "course", "learn", "making"],
+  cruises: ["cruise", "cruises", "boat", "river", "harbor", "harbour", "sailing", "catamaran", "yacht", "sunset cruise"],
+  sports: ["sport", "sports", "game", "games", "match", "stadium", "race", "racing", "football", "baseball", "basketball", "tennis"],
 };
 
 function getErrorMessage(error: unknown): string {
@@ -1034,7 +1054,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
       query: z.string().optional().describe("Optional free-text filter matched against experience title and description (e.g. 'ghost tour', 'pizza', 'harry potter')"),
-      category: z.string().optional().describe(`Optional category filter. Suggested values: ${formatAvailableSearchCategories()}`),
+      category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}. Matching is fuzzy, so singular forms like "tour" still map to "tours" internally.`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),

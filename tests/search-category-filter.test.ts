@@ -81,6 +81,44 @@ describe("filterProductsByCategory", () => {
     ]);
   });
 
+  it("matches the extended Gemini-facing category enum values", () => {
+    const products = [
+      makeProduct({
+        slug: "park-bike-adventure",
+        title: "Park Bike Adventure",
+        description: "An outdoor cycling route through gardens and scenic viewpoints.",
+      }),
+      makeProduct({
+        slug: "pasta-making-workshop",
+        title: "Pasta Workshop",
+        description: "Hands-on cooking class with a local chef.",
+      }),
+      makeProduct({
+        slug: "sunset-harbour-cruise",
+        title: "Sunset Harbour Cruise",
+        description: "Evening boat cruise with skyline views.",
+      }),
+      makeProduct({
+        slug: "stadium-sports-tour",
+        title: "Stadium Matchday Experience",
+        description: "Sports fans can explore the stadium and game-day highlights.",
+      }),
+    ];
+
+    expect(filterProductsByCategory(products, "outdoor").map(product => product.slug)).toEqual([
+      "park-bike-adventure",
+    ]);
+    expect(filterProductsByCategory(products, "workshops").map(product => product.slug)).toEqual([
+      "pasta-making-workshop",
+    ]);
+    expect(filterProductsByCategory(products, "cruises").map(product => product.slug)).toEqual([
+      "sunset-harbour-cruise",
+    ]);
+    expect(filterProductsByCategory(products, "sports").map(product => product.slug)).toEqual([
+      "stadium-sports-tour",
+    ]);
+  });
+
   it("does not throw when the API returns null string fields", () => {
     const products: UnsafeCategoryProduct[] = [
       {
