@@ -225,13 +225,20 @@ describe.sequential("tickadoo MCP live integration", () => {
     expectTrackedBookingUrl(firstExperience?.bookingUrl);
     expect(Object.keys(firstExperience ?? {}).sort()).toMatchInlineSnapshot(`
       [
+        "audience",
         "bookingUrl",
+        "cancellation",
         "description",
+        "duration",
         "imageUrl",
+        "indoorOutdoor",
+        "physicalLevel",
         "popular",
         "priceAmount",
         "priceCurrency",
+        "reviewCount",
         "slug",
+        "tags",
         "tickadooProductId",
         "title",
       ]
@@ -767,6 +774,7 @@ describe.sequential("tickadoo MCP live integration", () => {
         "dates",
         "desktopFeatureImageUrl",
         "locationWithAddress",
+        "mcpProduct",
         "mobileFeatureImageUrl",
       ]
     `);

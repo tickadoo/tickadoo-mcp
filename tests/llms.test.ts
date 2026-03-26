@@ -36,9 +36,9 @@ describe("llms docs", () => {
       "- No booking completion — the server provides discovery and links, not checkout",
       "- No real-time inventory — availability shown is indicative, users should check the booking page",
       "- Date filtering is not yet available — cannot filter by specific travel dates",
-      "- Not all experiences have duration, accessibility, or audience suitability data",
+      "- Not all experiences have duration, accessibility, audience suitability, or indoor/outdoor data",
       "- Prices shown are 'from' prices — final price may vary by date, party size, or variant",
-      "- Indoor/outdoor classification is not yet available for all experiences",
+      "- Indoor/outdoor classification and audience/accessibility data is available for all experiences but may contain inaccuracies from automated classification",
       "- Reviews and ratings may not be available for newer listings",
     ];
 
