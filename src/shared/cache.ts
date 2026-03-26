@@ -4,7 +4,8 @@ export type CacheToolName =
   | "search_experiences"
   | "find_nearby_experiences"
   | "list_cities"
-  | "get_experience_details";
+  | "get_experience_details"
+  | "mcp_products";
 
 type CacheEntry<T> = {
   value: T;

@@ -23,6 +23,35 @@ export interface Product {
   address: string | null;
   minPrice: number | null;
   featured?: boolean;
+  mcpProduct?: McpProduct;
+}
+
+export interface McpProductVariant {
+  niceId: number;
+  name: string;
+  duration: string | null;
+  ageMinimum: number | null;
+  groupSizeMin: number | null;
+  groupSizeMax: number | null;
+  cancellationPolicy: "Unknown" | "Never" | "BeforeTimeslot" | "BeforeDate";
+  cancellationPeriod: string | null;
+}
+
+export interface McpProduct {
+  niceId: number;
+  name: string;
+  url: string;
+  minPrice: number;
+  reviewRating: number | null;
+  reviewCount: number | null;
+  indoorOutdoor: "Indoor" | "Outdoor" | "Mixed" | null;
+  physicalLevel: "Easy" | "Moderate" | "Demanding" | null;
+  audience: string[];
+  tags: string[];
+  wheelchairAccessible: boolean | null;
+  strollerFriendly: boolean | null;
+  languageOptions: string[];
+  variants: McpProductVariant[];
 }
 
 export interface StructuredDataDatePrice {
@@ -43,6 +72,7 @@ export interface StructuredDataResponse {
     address: string | null;
   };
   dates: StructuredDataDatePrice[];
+  mcpProduct?: McpProduct;
 }
 
 export interface SearchPage {

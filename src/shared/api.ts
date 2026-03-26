@@ -2,21 +2,25 @@ import {
   API_BASE,
   DEFAULT_LANGUAGE,
   MAX_API_ATTEMPTS,
+  MCP_API_TOKEN,
+  MCP_PRODUCTS_ENDPOINT,
   REQUEST_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
   SERVER_VERSION,
   SITE,
   SUPPORTED_LANGUAGE_CODE_SET,
+  TICKADOO_LOG_LEVEL,
   TICKADOO_UTM_PARAMS,
 } from "./config.js";
 import { apiResponseCache, createCacheKey, type CacheToolName } from "./cache.js";
-import type { City, Product, ResolvedProduct, SearchPage, StructuredDataResponse } from "./types.js";
+import type { City, McpProduct, McpProductVariant, Product, ResolvedProduct, SearchPage, StructuredDataResponse } from "./types.js";
 
 const TOOL_CACHE_TTL_MS: Record<CacheToolName, number> = {
   search_experiences: 5 * 60_000,
   find_nearby_experiences: 5 * 60_000,
   list_cities: 15 * 60_000,
   get_experience_details: 10 * 60_000,
+  mcp_products: 15 * 60_000,
 };
 
 type CacheContext = {
@@ -41,6 +45,8 @@ type GeocodedCityResponse = Array<{
   };
   display_name?: string;
 }>;
+
+type McpProductsResponse = McpProduct[] | { products?: McpProduct[] };
 
 export type NearbyCoveredCity = {
   city: CityWithLocation;
@@ -81,6 +87,15 @@ function sleep(ms: number): Promise<void> {
 
 function retryDelayMs(attempt: number): number {
   return 150 * attempt + Math.floor(Math.random() * 200);
+}
+
+function logMcpEnrichmentWarning(message: string, error?: unknown) {
+  if (TICKADOO_LOG_LEVEL !== "debug") {
+    return;
+  }
+
+  const suffix = error instanceof Error ? ` ${error.message}` : error ? ` ${String(error)}` : "";
+  process.stderr.write(`[mcp enrichment] ${message}${suffix}\n`);
 }
 
 export class TickadooApiError extends Error {
@@ -175,6 +190,42 @@ async function fetchJsonFromUrl<T>(url: URL, headers?: Record<string, string>): 
   throw new Error("tickadoo API request failed");
 }
 
+export async function getMcpEnrichedProducts(): Promise<Map<string, McpProduct>> {
+  if (!MCP_API_TOKEN.trim()) {
+    return new Map();
+  }
+
+  return withToolCache(
+    {
+      toolName: "mcp_products",
+      args: { resource: "products" },
+    },
+    async () => {
+      try {
+        const url = new URL(MCP_PRODUCTS_ENDPOINT, API_BASE);
+        const response = await fetchJsonFromUrl<McpProductsResponse>(url, {
+          "x-api-token": MCP_API_TOKEN,
+        });
+        const products = extractMcpProducts(response).map(normalizeMcpProduct);
+        const productsBySlug = new Map<string, McpProduct>();
+
+        for (const product of products) {
+          const slug = extractSlugFromUrl(product.url);
+          if (slug) {
+            productsBySlug.set(slug, product);
+          }
+        }
+
+        return productsBySlug;
+      } catch (error) {
+        logMcpEnrichmentWarning("failed to fetch enriched MCP products;", error);
+        return new Map<string, McpProduct>();
+      }
+    },
+    value => value.size > 0,
+  );
+}
+
 export function normalizeSlugOrPath(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -188,6 +239,55 @@ export function normalizeSlugOrPath(value: string): string {
   }
 
   return trimmed.split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, "");
+}
+
+function extractSlugFromUrl(value: string | null | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalizedPath = normalizeSlugOrPath(value);
+  if (!normalizedPath) {
+    return undefined;
+  }
+
+  const segments = normalizedPath.split("/").filter(Boolean);
+  return segments[segments.length - 1] || undefined;
+}
+
+function normalizeMcpProductVariant(variant: McpProductVariant): McpProductVariant {
+  return {
+    ...variant,
+    duration: variant.duration ?? null,
+    ageMinimum: variant.ageMinimum ?? null,
+    groupSizeMin: variant.groupSizeMin ?? null,
+    groupSizeMax: variant.groupSizeMax ?? null,
+    cancellationPeriod: variant.cancellationPeriod ?? null,
+  };
+}
+
+function normalizeMcpProduct(product: McpProduct): McpProduct {
+  return {
+    ...product,
+    reviewRating: product.reviewRating ?? null,
+    reviewCount: product.reviewCount ?? null,
+    indoorOutdoor: product.indoorOutdoor ?? null,
+    physicalLevel: product.physicalLevel ?? null,
+    audience: Array.isArray(product.audience) ? product.audience.filter(Boolean) : [],
+    tags: Array.isArray(product.tags) ? product.tags.filter(Boolean) : [],
+    wheelchairAccessible: product.wheelchairAccessible ?? null,
+    strollerFriendly: product.strollerFriendly ?? null,
+    languageOptions: Array.isArray(product.languageOptions) ? product.languageOptions.filter(Boolean) : [],
+    variants: Array.isArray(product.variants) ? product.variants.map(normalizeMcpProductVariant) : [],
+  };
+}
+
+function extractMcpProducts(response: McpProductsResponse): McpProduct[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return Array.isArray(response.products) ? response.products : [];
 }
 
 function createCanonicalBookingUrl(pathOrSlug: string): URL {

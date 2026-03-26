@@ -5,6 +5,7 @@ import {
   geocodeCityQuery,
   getCities,
   getExperienceDetails,
+  getMcpEnrichedProducts,
   getNearestCoveredCities,
   getProductsByLocation,
   getProductsForCitySlug,
@@ -51,7 +52,7 @@ import {
   type SearchAppliedFilters,
   type SearchOmittedResults,
 } from "./format.js";
-import type { City, Product, ResolvedProduct } from "./types.js";
+import type { City, McpProduct, Product, ResolvedProduct, StructuredDataResponse } from "./types.js";
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
 const MAX_SEARCH_RESULT_LIMIT = 50;
@@ -234,6 +235,32 @@ function compareProductsForDisplay(a: Product, b: Product): number {
 
 function sortProductsForDisplay(products: Product[]): Product[] {
   return [...products].sort(compareProductsForDisplay);
+}
+
+function mergeEnrichedProduct(product: Product, enrichedProducts: Map<string, McpProduct>): Product {
+  const mcpProduct = enrichedProducts.get(product.slug);
+  return mcpProduct ? { ...product, mcpProduct } : product;
+}
+
+function mergeEnrichedProducts(products: Product[], enrichedProducts: Map<string, McpProduct>): Product[] {
+  if (!enrichedProducts.size) {
+    return products;
+  }
+
+  return products.map(product => mergeEnrichedProduct(product, enrichedProducts));
+}
+
+function mergeEnrichedDetails(
+  details: StructuredDataResponse,
+  slug: string | undefined,
+  enrichedProducts: Map<string, McpProduct>,
+): StructuredDataResponse {
+  if (!slug) {
+    return details;
+  }
+
+  const mcpProduct = enrichedProducts.get(slug);
+  return mcpProduct ? { ...details, mcpProduct } : details;
 }
 
 function productHasImage(product: Product): boolean {
@@ -1388,7 +1415,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           };
         }
 
-        const rankedProducts = sortProductsForSearch(matchingProducts, sort);
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
+        const rankedProducts = sortProductsForSearch(enrichedMatchingProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
@@ -1515,7 +1544,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           };
         }
 
-        const rankedProducts = sortProductsForDisplay(products);
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const rankedProducts = sortProductsForDisplay(mergeEnrichedProducts(products, enrichedProducts));
         const topProducts = rankedProducts.slice(0, DEFAULT_SEARCH_RESULT_LIMIT);
         return {
           response: createFormattedResponse(
@@ -1661,17 +1691,21 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           detailsProviderId = resolved.product.providerId;
         }
 
-        const details = await getExperienceDetails(providerName!, detailsProviderId!, days);
+        const [details, enrichedProducts] = await Promise.all([
+          getExperienceDetails(providerName!, detailsProviderId!, days),
+          resolved?.product.slug ? getMcpEnrichedProducts() : Promise.resolve(new Map<string, McpProduct>()),
+        ]);
+        const enrichedDetails = mergeEnrichedDetails(details, resolved?.product.slug, enrichedProducts);
         const bookingPath = resolved?.bookingPath;
         return {
           response: createFormattedResponse(
             format,
             appendNextStepHint([
               resolved ? `🎭 ${resolved.product.title}` : "",
-              formatExperienceDetails(days, details),
+              formatExperienceDetails(days, enrichedDetails),
               resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath, language)}` : "",
             ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
-            experienceDetailsJsonPayload(days, details, {
+            experienceDetailsJsonPayload(days, enrichedDetails, {
               title: resolved?.product.title,
               slug: resolved?.product.slug,
               bookingPath,
@@ -1684,7 +1718,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 tickadooProductId: resolved?.product.id,
                 bookingUrl: resolved ? buildBookingUrl(resolved.bookingPath, language) : undefined,
                 days,
-                details,
+                details: enrichedDetails,
               },
             },
           ),

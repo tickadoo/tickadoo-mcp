@@ -1,6 +1,6 @@
 import { DEFAULT_LANGUAGE, DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
 import { buildBookingUrl } from "./api.js";
-import type { Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
+import type { McpProduct, McpProductVariant, Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
 const MAX_RESULT_DESCRIPTION_LENGTH = 150;
 export const RESPONSE_FORMATS = ["text", "json"] as const;
@@ -300,10 +300,152 @@ export function summarizeProductDescription(description: string | null | undefin
   return `${truncated.slice(0, safeBoundary).trimEnd()}...`;
 }
 
+function parseTimespan(timespan: string | null | undefined) {
+  if (typeof timespan !== "string") {
+    return null;
+  }
+
+  const trimmed = timespan.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = trimmed.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    days: Number(match[1] ?? 0),
+    hours: Number(match[2]),
+    minutes: Number(match[3]),
+    seconds: Number(match[4]),
+  };
+}
+
+function formatJoinedValues(values: string[] | null | undefined, options?: { uppercase?: boolean; humanize?: boolean }): string | null {
+  if (!Array.isArray(values) || values.length === 0) {
+    return null;
+  }
+
+  const normalized = values
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value => {
+      if (options?.humanize) {
+        return value
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .replace(/[_-]+/g, " ")
+          .trim();
+      }
+
+      return options?.uppercase ? value.toUpperCase() : value;
+    });
+
+  return normalized.length ? normalized.join(" · ") : null;
+}
+
+function getPrimaryVariant(mcpProduct?: McpProduct | null): McpProductVariant | undefined {
+  return mcpProduct?.variants?.[0];
+}
+
+function formatReviewCount(reviewCount: number | null | undefined): string | null {
+  if (typeof reviewCount !== "number" || reviewCount <= 0) {
+    return null;
+  }
+
+  return `${reviewCount} review${reviewCount === 1 ? "" : "s"}`;
+}
+
+function formatGroupSize(variant?: McpProductVariant): string | null {
+  if (!variant) {
+    return null;
+  }
+
+  const min = variant.groupSizeMin;
+  const max = variant.groupSizeMax;
+
+  if (min != null && max != null) {
+    return min === max ? `${min}` : `${min}-${max}`;
+  }
+
+  if (min != null) {
+    return `${min}+`;
+  }
+
+  if (max != null) {
+    return `Up to ${max}`;
+  }
+
+  return null;
+}
+
+function groupSizeJson(variant?: McpProductVariant) {
+  if (!variant || (variant.groupSizeMin == null && variant.groupSizeMax == null)) {
+    return null;
+  }
+
+  return {
+    min: variant.groupSizeMin ?? null,
+    max: variant.groupSizeMax ?? null,
+  };
+}
+
+export function formatDuration(timespan: string | null): string | null {
+  const parsed = parseTimespan(timespan);
+  if (!parsed) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (parsed.days > 0) {
+    parts.push(`${parsed.days} day${parsed.days === 1 ? "" : "s"}`);
+  }
+  if (parsed.hours > 0) {
+    parts.push(`${parsed.hours}h`);
+  }
+  if (parsed.minutes > 0) {
+    parts.push(`${parsed.minutes}m`);
+  }
+  if (!parts.length && parsed.seconds > 0) {
+    parts.push(`${parsed.seconds}s`);
+  }
+
+  return parts.length ? parts.join(" ") : null;
+}
+
+export function formatCancellation(policy: string | null | undefined, period: string | null): string | null {
+  if (!policy || policy === "Unknown") {
+    return null;
+  }
+
+  if (policy === "Never") {
+    return "Non-refundable";
+  }
+
+  if (policy === "BeforeTimeslot" || policy === "BeforeDate") {
+    const formattedPeriod = formatDuration(period);
+    return formattedPeriod ? `Free cancellation up to ${formattedPeriod} before` : "Free cancellation available";
+  }
+
+  return null;
+}
+
+function formatBooleanLabel(value: boolean | null | undefined): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  return value ? "Yes" : "No";
+}
+
 export function productStructuredData(product: SearchDisplayProduct, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const priceAmount = product.minPrice ?? undefined;
   const priceCurrency = priceAmount != null ? product.currency : undefined;
+  const primaryVariant = getPrimaryVariant(product.mcpProduct);
+  const duration = formatDuration(primaryVariant?.duration ?? null);
+  const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
 
   return {
     tickadooProductId: product.id,
@@ -313,6 +455,17 @@ export function productStructuredData(product: SearchDisplayProduct, bookingPath
     priceAmount,
     priceCurrency,
     ...(product.popular != null ? { popular: product.popular } : {}),
+    ...(product.mcpProduct
+      ? {
+          duration: duration ?? null,
+          reviewCount: product.mcpProduct.reviewCount ?? null,
+          tags: product.mcpProduct.tags,
+          audience: product.mcpProduct.audience,
+          indoorOutdoor: product.mcpProduct.indoorOutdoor ?? null,
+          physicalLevel: product.mcpProduct.physicalLevel ?? null,
+          cancellation: cancellation ?? null,
+        }
+      : {}),
     bookingUrl: buildBookingUrl(bookingPath, language),
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };
@@ -321,6 +474,9 @@ export function productStructuredData(product: SearchDisplayProduct, bookingPath
 export function productJsonData(product: SearchDisplayProduct, bookingPath = product.slug, language = "en") {
   const description = summarizeProductDescription(product.description);
   const imageUrl = product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? null;
+  const primaryVariant = getPrimaryVariant(product.mcpProduct);
+  const duration = formatDuration(primaryVariant?.duration ?? null);
+  const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
 
   return {
     title: product.title,
@@ -335,6 +491,17 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
       : null,
     rating: product.averageRating ?? null,
     image_url: imageUrl,
+    ...(product.mcpProduct
+      ? {
+          duration,
+          review_count: product.mcpProduct.reviewCount ?? null,
+          tags: product.mcpProduct.tags,
+          audience: product.mcpProduct.audience,
+          indoor_outdoor: product.mcpProduct.indoorOutdoor ?? null,
+          physical_level: product.mcpProduct.physicalLevel ?? null,
+          cancellation,
+        }
+      : {}),
     booking_url: buildBookingUrl(bookingPath, language),
     location: {
       address: product.address ?? null,
@@ -408,11 +575,24 @@ export function cityDirectoryJsonPayload(
 
 export function formatProduct(product: Product, bookingPath = product.slug, language = "en"): string {
   const description = summarizeProductDescription(product.description);
+  const primaryVariant = getPrimaryVariant(product.mcpProduct);
+  const duration = formatDuration(primaryVariant?.duration ?? null);
+  const reviewCount = formatReviewCount(product.mcpProduct?.reviewCount);
+  const tags = formatJoinedValues(product.mcpProduct?.tags, { humanize: true });
+  const audience = formatJoinedValues(product.mcpProduct?.audience);
+  const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
   const lines = [`🎭 ${product.title}`];
   if (description) lines.push(`   ${description}`);
   if (product.slug) lines.push(`   🔖 Slug: ${product.slug}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
   if (product.averageRating != null && product.averageRating > 0) lines.push(`   ⭐ ${product.averageRating.toFixed(1)}/5`);
+  if (duration) lines.push(`   ⏱️ Duration: ${duration}`);
+  if (reviewCount) lines.push(`   🗳️ ${reviewCount}`);
+  if (tags) lines.push(`   🏷️ Tags: ${tags}`);
+  if (audience) lines.push(`   👥 Audience: ${audience}`);
+  if (product.mcpProduct?.indoorOutdoor) lines.push(`   🏛️ Setting: ${product.mcpProduct.indoorOutdoor}`);
+  if (product.mcpProduct?.physicalLevel) lines.push(`   💪 Physical level: ${product.mcpProduct.physicalLevel}`);
+  if (cancellation) lines.push(`   ↩️ Cancellation: ${cancellation}`);
   if (product.address) lines.push(`   📍 ${product.address}`);
   if (product.desktopFeatureImageUrl || product.verticalImageUrl) {
     lines.push(`   🖼️ ${product.desktopFeatureImageUrl || product.verticalImageUrl}`);
@@ -453,12 +633,34 @@ export function formatAvailabilitySummary(
 
 export function formatExperienceDetails(days: number, details: StructuredDataResponse): string {
   const uniqueDates = new Set(details.dates.map(item => item.date)).size;
+  const primaryVariant = getPrimaryVariant(details.mcpProduct);
+  const duration = formatDuration(primaryVariant?.duration ?? null);
+  const reviewCount = formatReviewCount(details.mcpProduct?.reviewCount);
+  const tags = formatJoinedValues(details.mcpProduct?.tags, { humanize: true });
+  const audience = formatJoinedValues(details.mcpProduct?.audience);
+  const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
+  const wheelchairAccessible = formatBooleanLabel(details.mcpProduct?.wheelchairAccessible);
+  const strollerFriendly = formatBooleanLabel(details.mcpProduct?.strollerFriendly);
+  const languageOptions = formatJoinedValues(details.mcpProduct?.languageOptions, { uppercase: true });
+  const groupSize = formatGroupSize(primaryVariant);
   const lines = [
     "🎟️ Experience details",
     "   🧾 Source: tickadoo",
     `   💱 Currency: ${details.currencyCode}`,
   ];
 
+  if (duration) lines.push(`   ⏱️ Duration: ${duration}`);
+  if (reviewCount) lines.push(`   🗳️ ${reviewCount}`);
+  if (tags) lines.push(`   🏷️ Tags: ${tags}`);
+  if (audience) lines.push(`   👥 Audience: ${audience}`);
+  if (details.mcpProduct?.indoorOutdoor) lines.push(`   🏛️ Setting: ${details.mcpProduct.indoorOutdoor}`);
+  if (details.mcpProduct?.physicalLevel) lines.push(`   💪 Physical level: ${details.mcpProduct.physicalLevel}`);
+  if (cancellation) lines.push(`   ↩️ Cancellation: ${cancellation}`);
+  if (wheelchairAccessible) lines.push(`   ♿ Wheelchair accessible: ${wheelchairAccessible}`);
+  if (strollerFriendly) lines.push(`   🍼 Stroller friendly: ${strollerFriendly}`);
+  if (languageOptions) lines.push(`   🗣️ Languages: ${languageOptions}`);
+  if (primaryVariant?.ageMinimum != null) lines.push(`   🔞 Minimum age: ${primaryVariant.ageMinimum}+`);
+  if (groupSize) lines.push(`   👥 Group size: ${groupSize}`);
   if (details.address) lines.push(`   📍 ${details.address}`);
   if (details.locationWithAddress.latitude != null && details.locationWithAddress.longitude != null) {
     lines.push(`   🧭 ${details.locationWithAddress.latitude.toFixed(6)}, ${details.locationWithAddress.longitude.toFixed(6)}`);
@@ -476,6 +678,21 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
     );
   }
 
+  if (details.mcpProduct?.variants?.length) {
+    lines.push("", "Variant details:");
+    for (const variant of details.mcpProduct.variants) {
+      const variantDuration = formatDuration(variant.duration);
+      const variantCancellation = formatCancellation(variant.cancellationPolicy, variant.cancellationPeriod ?? null);
+      const variantGroupSize = formatGroupSize(variant);
+
+      lines.push(`   • ${variant.name}`);
+      if (variantDuration) lines.push(`     ⏱️ Duration: ${variantDuration}`);
+      if (variantCancellation) lines.push(`     ↩️ Cancellation: ${variantCancellation}`);
+      if (variant.ageMinimum != null) lines.push(`     🔞 Minimum age: ${variant.ageMinimum}+`);
+      if (variantGroupSize) lines.push(`     👥 Group size: ${variantGroupSize}`);
+    }
+  }
+
   return lines.join("\n");
 }
 
@@ -490,6 +707,9 @@ export function experienceDetailsJsonPayload(
   },
 ) {
   const uniqueDates = new Set(details.dates.map(item => item.date)).size;
+  const primaryVariant = getPrimaryVariant(details.mcpProduct);
+  const duration = formatDuration(primaryVariant?.duration ?? null);
+  const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
 
   return {
     title: options?.title ?? null,
@@ -506,6 +726,29 @@ export function experienceDetailsJsonPayload(
       desktop_url: details.desktopFeatureImageUrl,
       mobile_url: details.mobileFeatureImageUrl,
     },
+    ...(details.mcpProduct
+      ? {
+          duration,
+          review_count: details.mcpProduct.reviewCount ?? null,
+          tags: details.mcpProduct.tags,
+          audience: details.mcpProduct.audience,
+          indoor_outdoor: details.mcpProduct.indoorOutdoor ?? null,
+          physical_level: details.mcpProduct.physicalLevel ?? null,
+          cancellation,
+          wheelchair_accessible: details.mcpProduct.wheelchairAccessible,
+          stroller_friendly: details.mcpProduct.strollerFriendly,
+          language_options: details.mcpProduct.languageOptions,
+          age_minimum: primaryVariant?.ageMinimum ?? null,
+          group_size: groupSizeJson(primaryVariant),
+          variants: details.mcpProduct.variants.map(variant => ({
+            name: variant.name,
+            duration: formatDuration(variant.duration),
+            cancellation: formatCancellation(variant.cancellationPolicy, variant.cancellationPeriod ?? null),
+            age_minimum: variant.ageMinimum,
+            group_size: groupSizeJson(variant),
+          })),
+        }
+      : {}),
     availability: {
       total_price_points: details.dates.length,
       total_dates: uniqueDates,
