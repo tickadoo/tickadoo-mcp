@@ -1,24 +1,24 @@
 # tickadoo® MCP Server
 
-tickadoo® MCP Server brings live experience discovery to AI assistants through the Model Context Protocol (MCP). It gives compatible clients access to bookable theatre, shows, tours, attractions, and events across 700+ cities worldwide.
+tickadoo® MCP Server brings live experience discovery to AI assistants through the Model Context Protocol (MCP). It gives compatible clients access to bookable theatre, shows, tours, attractions, and events across 680+ cities worldwide.
 
 🌐 Languages: Landing page available in: EN · JA · 中文 · 한국어 · DE · FR · ES · IT · PT · tlhIngan Hol 🖖
 
 ### 日本語
 
-tickadoo® MCPサーバーは、AIアシスタント（Claude、ChatGPT、Gemini等）から700以上の都市で7,700以上の体験（劇場、ツアー、アトラクション）を検索できます。APIキー不要、認証不要、即座に接続可能です。
+tickadoo® MCPサーバーは、AIアシスタント（Claude、ChatGPT、Gemini等）から680以上の都市で13,000以上の体験（劇場、ツアー、アトラクション）を検索できます。APIキー不要、認証不要、即座に接続可能です。
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
 ### 中文
 
-tickadoo® MCP服务器让AI助手（Claude、ChatGPT、Gemini等）可以搜索700+城市中7,700+体验活动（剧院、旅游、景点）。无需API密钥，无需认证，即时连接。
+tickadoo® MCP服务器让AI助手（Claude、ChatGPT、Gemini等）可以搜索680+城市中13,000+体验活动（剧院、旅游、景点）。无需API密钥，无需认证，即时连接。
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
 ### 한국어
 
-tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 700+ 도시의 7,700+ 체험(극장, 투어, 관광명소)을 검색할 수 있습니다.
+tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 680+ 도시의 13,000+ 체험(극장, 투어, 관광명소)을 검색할 수 있습니다.
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
@@ -105,6 +105,17 @@ Use Perplexity's custom remote connector:
 - Auth: `None`
 - Available to Perplexity paid subscribers
 
+### ChatGPT
+
+Available to ChatGPT Pro, Business, Enterprise, and Edu plans:
+
+1. Open **Settings → Apps & Connectors → Advanced → Developer Mode ON**
+2. Back in Apps & Connectors → **Create**
+3. Name: `tickadoo`
+4. URL: `https://mcp.tickadoo.com/mcp`
+5. Auth: `None`
+6. In a new chat: **+ → More → Developer Mode → Add sources → tickadoo**
+
 ### Android Studio / Firebase Studio
 
 The same `httpUrl` config works in:
@@ -164,6 +175,9 @@ Example stdio config:
 - Landing page: [https://mcp.tickadoo.com](https://mcp.tickadoo.com)
 - Remote MCP endpoint: [https://mcp.tickadoo.com/mcp](https://mcp.tickadoo.com/mcp)
 - Smithery: [https://smithery.ai/server/tickadoo/tickadoo-mcp](https://smithery.ai/server/tickadoo/tickadoo-mcp)
+- Glama: [https://glama.ai/mcp/servers/tickadoo/tickadoo-mcp](https://glama.ai/mcp/servers/tickadoo/tickadoo-mcp)
+- mcp.so: [https://mcp.so/server/tickadoo-mcp](https://mcp.so/server/tickadoo-mcp)
+- PulseMCP: [https://www.pulsemcp.com/servers/tickadoo](https://www.pulsemcp.com/servers/tickadoo)
 - tickadoo: [https://www.tickadoo.com](https://www.tickadoo.com)
 
 ## Development Commands
