@@ -35,6 +35,8 @@ export type SearchAppliedFilters = {
   query?: string;
   minPrice?: number;
   maxPrice?: number;
+  dateFrom?: string;
+  dateTo?: string;
   language?: string;
 };
 
@@ -72,6 +74,8 @@ function searchAppliedFiltersJson(filters?: SearchAppliedFilters) {
     ...(filters?.query ? { query: filters.query } : {}),
     ...(filters?.minPrice != null ? { min_price: filters.minPrice } : {}),
     ...(filters?.maxPrice != null ? { max_price: filters.maxPrice } : {}),
+    ...(filters?.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters?.dateTo ? { date_to: filters.dateTo } : {}),
     ...(filters?.language && filters.language !== DEFAULT_LANGUAGE ? { language: filters.language } : {}),
   };
 
@@ -544,11 +548,17 @@ export function nearbyJsonPayload(
   total: number,
   products: Product[],
   language = "en",
+  options?: {
+    dateFrom?: string;
+    dateTo?: string;
+  },
 ) {
   return {
     latitude,
     longitude,
     radius_km: radiusKm,
+    ...(options?.dateFrom ? { date_from: options.dateFrom } : {}),
+    ...(options?.dateTo ? { date_to: options.dateTo } : {}),
     total,
     showing: products.length,
     results: products.map(product => productJsonData(product, product.slug, language)),

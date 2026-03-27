@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] - 2026-03-27
+### Added
+- Optional `dateFrom` / `dateTo` filtering for `search_experiences`
+- Optional `dateFrom` / `dateTo` filtering for `find_nearby_experiences`
+- Date-filtered MCP routing through the private `/integrations-api/v1.0/mcp/products` endpoint
+- E2E and API regression coverage for dated searches and cached no-date behavior
+
+### Changed
+- `llms-full.txt` tool docs and capabilities now describe date filtering support
+
 ## [1.1.0] - 2026-03-21
 ### Added
 - Rotating hero words on landing page

@@ -66,7 +66,7 @@ export const TICKADOO_LOG_LEVEL: TickadooLogLevel = RAW_TICKADOO_LOG_LEVEL === "
   : "info";
 
 export const SERVER_NAME = "tickadoo";
-export const SERVER_VERSION = "1.1.0";
+export const SERVER_VERSION = "1.2.0";
 export const SERVER_DESCRIPTION = "tickadoo® — Discover and book theatre, events & experiences in 700+ cities worldwide.";
 
 export const REQUEST_TIMEOUT_MS = 10_000;

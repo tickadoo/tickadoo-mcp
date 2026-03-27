@@ -493,6 +493,8 @@ function buildAppliedSearchFilters(
     query?: string;
     minPrice?: number;
     maxPrice?: number;
+    dateFrom?: string;
+    dateTo?: string;
   },
 ): SearchAppliedFilters | undefined {
   const filters: SearchAppliedFilters = {
@@ -500,6 +502,8 @@ function buildAppliedSearchFilters(
     ...(options?.query ? { query: options.query } : {}),
     ...(options?.minPrice != null ? { minPrice: options.minPrice } : {}),
     ...(options?.maxPrice != null ? { maxPrice: options.maxPrice } : {}),
+    ...(options?.dateFrom ? { dateFrom: options.dateFrom } : {}),
+    ...(options?.dateTo ? { dateTo: options.dateTo } : {}),
     ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
   };
 
@@ -578,6 +582,8 @@ function buildNoResultsMessage(
     query?: string;
     minPrice?: number;
     maxPrice?: number;
+    dateFrom?: string;
+    dateTo?: string;
   },
 ): string {
   const filters: string[] = [];
@@ -592,8 +598,11 @@ function buildNoResultsMessage(
   const priceHint = options?.minPrice != null || options?.maxPrice != null
     ? " within the requested price range"
     : "";
+  const dateHint = options?.dateFrom && options?.dateTo
+    ? ` for ${options.dateFrom} to ${options.dateTo}`
+    : "";
 
-  return `No experiences found in "${cityName}"${withFilters}${priceHint}. Try a broader query, a different category, wider price filters, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`;
+  return `No experiences found in "${cityName}"${withFilters}${priceHint}${dateHint}. Try a broader query, a different category, wider price filters, different dates, a different city, or location-based discovery with find_nearby_experiences(lat, lng).`;
 }
 
 function createTextResponse(text: string, options?: { isError?: boolean; structuredContent?: unknown }) {
@@ -785,6 +794,75 @@ function normalizeLanguageInput(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+function isValidIsoDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validateOptionalDateRange(
+  format: ResponseFormat,
+  args: { dateFrom?: string; dateTo?: string },
+): ValidationResult<{ dateFrom?: string; dateTo?: string }> {
+  const dateFrom = args.dateFrom?.trim();
+  const dateTo = args.dateTo?.trim();
+
+  if (dateFrom == null && dateTo == null) {
+    return { ok: true, data: {} };
+  }
+
+  if (!dateFrom || !dateTo) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "Invalid date range. Provide both dateFrom and dateTo together using ISO date format YYYY-MM-DD.",
+      ),
+    };
+  }
+
+  if (!isValidIsoDateOnly(dateFrom)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid dateFrom. Use ISO date format YYYY-MM-DD (got: ${formatValue(args.dateFrom)}).`,
+      ),
+    };
+  }
+
+  if (!isValidIsoDateOnly(dateTo)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid dateTo. Use ISO date format YYYY-MM-DD (got: ${formatValue(args.dateTo)}).`,
+      ),
+    };
+  }
+
+  if (dateFrom > dateTo) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid date range. dateFrom must be on or before dateTo (got: dateFrom=${dateFrom}, dateTo=${dateTo}).`,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      dateFrom,
+      dateTo,
+    },
+  };
+}
+
 function validateLanguageArg(language: unknown, format: ResponseFormat): ValidationResult<string> {
   const normalized = normalizeLanguageInput(language);
   if (!normalized) {
@@ -962,6 +1040,8 @@ function validateSearchArgs(args: {
   max_results?: number;
   min_price?: number;
   max_price?: number;
+  dateFrom?: string;
+  dateTo?: string;
   category?: string;
   query?: string;
   sort?: string;
@@ -972,6 +1052,8 @@ function validateSearchArgs(args: {
   maxResults: number;
   minPrice?: number;
   maxPrice?: number;
+  dateFrom?: string;
+  dateTo?: string;
   category?: string;
   query?: string;
   sort: SearchSort;
@@ -988,6 +1070,11 @@ function validateSearchArgs(args: {
   const language = validateLanguageArg(args.language, format);
   if (!language.ok) {
     return language;
+  }
+
+  const dateRange = validateOptionalDateRange(format, args);
+  if (!dateRange.ok) {
+    return dateRange;
   }
 
   const city = args.city.trim();
@@ -1078,6 +1165,8 @@ function validateSearchArgs(args: {
       maxResults,
       minPrice: args.min_price,
       maxPrice: args.max_price,
+      dateFrom: dateRange.data.dateFrom,
+      dateTo: dateRange.data.dateTo,
       category: args.category?.trim(),
       query: args.query?.trim(),
       sort,
@@ -1090,12 +1179,16 @@ function validateNearbyArgs(args: {
   latitude: number;
   longitude: number;
   radius_km?: number;
+  dateFrom?: string;
+  dateTo?: string;
   language?: string;
   format?: string;
 }): ValidationResult<{
   latitude: number;
   longitude: number;
   radiusKm: number;
+  dateFrom?: string;
+  dateTo?: string;
   language: string;
   format: ResponseFormat;
 }> {
@@ -1110,6 +1203,11 @@ function validateNearbyArgs(args: {
   const language = validateLanguageArg(args.language, format);
   if (!language.ok) {
     return language;
+  }
+
+  const dateRange = validateOptionalDateRange(format, args);
+  if (!dateRange.ok) {
+    return dateRange;
   }
 
   if (!Number.isFinite(args.latitude) || args.latitude < -90 || args.latitude > 90) {
@@ -1149,6 +1247,8 @@ function validateNearbyArgs(args: {
       latitude: args.latitude,
       longitude: args.longitude,
       radiusKm,
+      dateFrom: dateRange.data.dateFrom,
+      dateTo: dateRange.data.dateTo,
       language: language.data,
       format,
     },
@@ -1276,7 +1376,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), optional min/max price filtering in the local currency, and optional sorting (${formatAvailableSearchSorts()}). ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), optional min/max price filtering in the local currency, optional date filtering with dateFrom/dateTo, and optional sorting (${formatAvailableSearchSorts()}). ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -1285,6 +1385,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}. Matching is fuzzy, so singular forms like "tour" still map to "tours" internally.`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
+      dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
+      dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1297,6 +1399,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           resultCount: 0,
           summary: {
             city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(unknown)",
+            date_from: typeof args.dateFrom === "string" ? args.dateFrom.trim() || undefined : undefined,
+            date_to: typeof args.dateTo === "string" ? args.dateTo.trim() || undefined : undefined,
             format: typeof args.format === "string" ? args.format : undefined,
           },
         };
@@ -1308,6 +1412,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         maxResults,
         minPrice,
         maxPrice,
+        dateFrom,
+        dateTo,
         category,
         query,
         sort,
@@ -1316,7 +1422,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
       try {
         let citySlug = normalizeCityInput(city);
-        let products = await getProductsForCitySlug(citySlug, language);
+        let products = await getProductsForCitySlug(citySlug, language, { dateFrom, dateTo });
         let cityName = city;
         let matchedKnownCity = Boolean(products.length);
 
@@ -1326,7 +1432,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           const bestMatch = candidates[0];
 
           if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
-            products = await getProductsForCitySlug(bestMatch.city.slug, language);
+            products = await getProductsForCitySlug(bestMatch.city.slug, language, { dateFrom, dateTo });
             cityName = bestMatch.city.name;
             citySlug = bestMatch.city.slug;
             matchedKnownCity = true;
@@ -1334,7 +1440,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             return {
               response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
               resultCount: 0,
-              summary: { city, query, sort, format },
+              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
             };
           }
         }
@@ -1344,7 +1450,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             return {
               response: await buildSearchMissResponse(format, city, language, []),
               resultCount: 0,
-              summary: { city, query, sort, format },
+              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
             };
           }
 
@@ -1355,7 +1461,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               noCoverageRecoveryJson(cityName),
             ),
             resultCount: 0,
-            summary: { city, query, sort, format },
+            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
           };
         }
 
@@ -1378,7 +1484,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               ),
             ),
             resultCount: 0,
-            summary: { city, query, sort, format },
+            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
           };
         }
 
@@ -1389,6 +1495,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           query,
           minPrice,
           maxPrice,
+          dateFrom,
+          dateTo,
         });
         if (!matchingProducts.length) {
           const message = buildNoResultsMessage(cityName, {
@@ -1396,6 +1504,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             query,
             minPrice,
             maxPrice,
+            dateFrom,
+            dateTo,
           });
           return {
             response: createFormattedResponse(
@@ -1411,7 +1521,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               },
             ),
             resultCount: 0,
-            summary: { city, query, sort, format },
+            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
           };
         }
 
@@ -1471,6 +1581,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 ...(query ? { query } : {}),
                 ...(minPrice != null ? { minPrice } : {}),
                 ...(maxPrice != null ? { maxPrice } : {}),
+                ...(dateFrom ? { dateFrom } : {}),
+                ...(dateTo ? { dateTo } : {}),
                 ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
                 ...(appliedFilters ? { filters: appliedFilters } : {}),
                 ...(omittedResults ? { omittedResults } : {}),
@@ -1479,13 +1591,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             },
           ),
           resultCount: topProducts.length,
-          summary: { city, query, sort, format },
+          summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
         };
       } catch (error) {
         return {
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { city, query, sort, format },
+          summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
         };
       }
     }),
@@ -1493,11 +1605,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "find_nearby_experiences",
-    `Find shows, events and experiences near a geographic location on tickadoo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
+    `Find shows, events and experiences near a geographic location on tickadoo. Supports optional date filtering with dateFrom/dateTo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
     {
       latitude: z.number().describe("Latitude"),
       longitude: z.number().describe("Longitude"),
       radius_km: z.number().optional().default(DEFAULT_RADIUS_KM).describe(`Search radius in km (default ${DEFAULT_RADIUS_KM})`),
+      dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
+      dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1511,15 +1625,17 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           summary: {
             lat: typeof args.latitude === "number" ? args.latitude : undefined,
             lng: typeof args.longitude === "number" ? args.longitude : undefined,
+            date_from: typeof args.dateFrom === "string" ? args.dateFrom.trim() || undefined : undefined,
+            date_to: typeof args.dateTo === "string" ? args.dateTo.trim() || undefined : undefined,
             format: typeof args.format === "string" ? args.format : undefined,
           },
         };
       }
 
-      const { latitude, longitude, radiusKm, language, format } = validated.data;
+      const { latitude, longitude, radiusKm, dateFrom, dateTo, language, format } = validated.data;
 
       try {
-        const products = await getProductsByLocation(latitude, longitude, radiusKm, language);
+        const products = await getProductsByLocation(latitude, longitude, radiusKm, language, { dateFrom, dateTo });
         if (!products.length) {
           const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
           const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
@@ -1540,7 +1656,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               ),
             ),
             resultCount: 0,
-            summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
+            summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
           };
         }
 
@@ -1554,25 +1670,27 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language),
+            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }),
             {
               structuredContent: {
                 latitude,
                 longitude,
                 radiusKm,
+                ...(dateFrom ? { dateFrom } : {}),
+                ...(dateTo ? { dateTo } : {}),
                 totalExperiences: products.length,
                 experiences: topProducts.map(product => productStructuredData(product, product.slug, language)),
               },
             },
           ),
           resultCount: topProducts.length,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
+          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
         };
       } catch (error) {
         return {
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, format },
+          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
         };
       }
     }),

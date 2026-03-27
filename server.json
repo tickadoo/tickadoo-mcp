@@ -6,11 +6,11 @@
       "tools": [
         {
           "name": "search_experiences",
-          "description": "Search for bookable experiences in a specific city with city fallback matching."
+          "description": "Search for bookable experiences in a specific city with city fallback matching and optional date filtering."
         },
         {
           "name": "find_nearby_experiences",
-          "description": "Find experiences near a geographic location using latitude, longitude, and radius."
+          "description": "Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering."
         },
         {
           "name": "list_cities",
@@ -31,7 +31,7 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "1.1.0",
+  "version": "1.2.0",
   "remotes": [
     {
       "type": "streamable-http",

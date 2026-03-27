@@ -28,6 +28,12 @@ type CacheContext = {
   args: Record<string, unknown>;
 };
 
+type ProductSearchOptions = {
+  dateFrom?: string;
+  dateTo?: string;
+  cacheContext?: CacheContext;
+};
+
 type CityWithSlug = City & { slug: string };
 type CityWithLocation = CityWithSlug & { location: { latitude: number; longitude: number } };
 
@@ -47,6 +53,15 @@ type GeocodedCityResponse = Array<{
 }>;
 
 type McpProductsResponse = McpProduct[] | { products?: McpProduct[] };
+
+type DateFilteredMcpProductsParams = {
+  from: string;
+  to: string;
+  citySlug?: string;
+  latitude?: string;
+  longitude?: string;
+  radiusKm?: string;
+};
 
 export type NearbyCoveredCity = {
   city: CityWithLocation;
@@ -206,17 +221,7 @@ export async function getMcpEnrichedProducts(): Promise<Map<string, McpProduct>>
         const response = await fetchJsonFromUrl<McpProductsResponse>(url, {
           "x-api-token": MCP_API_TOKEN,
         });
-        const products = extractMcpProducts(response).map(normalizeMcpProduct);
-        const productsBySlug = new Map<string, McpProduct>();
-
-        for (const product of products) {
-          const slug = extractSlugFromUrl(product.url);
-          if (slug) {
-            productsBySlug.set(slug, product);
-          }
-        }
-
-        return productsBySlug;
+        return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct));
       } catch (error) {
         logMcpEnrichmentWarning("failed to fetch enriched MCP products;", error);
         return new Map<string, McpProduct>();
@@ -288,6 +293,69 @@ function extractMcpProducts(response: McpProductsResponse): McpProduct[] {
   }
 
   return Array.isArray(response.products) ? response.products : [];
+}
+
+function createMcpProductMap(products: McpProduct[]): Map<string, McpProduct> {
+  const productsBySlug = new Map<string, McpProduct>();
+
+  for (const product of products) {
+    const slug = extractSlugFromUrl(product.url);
+    if (slug) {
+      productsBySlug.set(slug, product);
+    }
+  }
+
+  return productsBySlug;
+}
+
+function normalizeProductSearchOptions(optionsOrCacheContext?: CacheContext | ProductSearchOptions): ProductSearchOptions {
+  if (!optionsOrCacheContext) {
+    return {};
+  }
+
+  return "toolName" in optionsOrCacheContext
+    ? { cacheContext: optionsOrCacheContext }
+    : optionsOrCacheContext;
+}
+
+async function fetchDateFilteredMcpProducts(params: DateFilteredMcpProductsParams): Promise<Map<string, McpProduct>> {
+  if (!MCP_API_TOKEN.trim()) {
+    throw new Error("Date filtering is unavailable because TICKADOO_MCP_API_TOKEN is not configured.");
+  }
+
+  try {
+    const url = new URL(MCP_PRODUCTS_ENDPOINT, API_BASE);
+    url.searchParams.set("onlyOnSale", "true");
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value) {
+        url.searchParams.set(key, value);
+      }
+    }
+
+    const response = await fetchJsonFromUrl<McpProductsResponse>(url, {
+      "x-api-token": MCP_API_TOKEN,
+    });
+
+    return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct));
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return new Map<string, McpProduct>();
+    }
+
+    throw error;
+  }
+}
+
+function mergeDateFilteredProducts(products: Product[], filteredProducts: Map<string, McpProduct>): Product[] {
+  if (!filteredProducts.size) {
+    return [];
+  }
+
+  return products.flatMap(product => {
+    const mcpProduct = filteredProducts.get(product.slug);
+    return mcpProduct ? [{ ...product, mcpProduct }] : [];
+  });
 }
 
 function createCanonicalBookingUrl(pathOrSlug: string): URL {
@@ -414,7 +482,7 @@ export async function getCities(language: string): Promise<City[]> {
   );
 }
 
-export async function getProductsForCitySlug(
+async function getPublicProductsForCitySlug(
   citySlug: string,
   language: string,
   cacheContext: CacheContext = {
@@ -435,7 +503,42 @@ export async function getProductsForCitySlug(
   }
 }
 
-export async function getProductsByLocation(
+export async function getProductsForCitySlug(
+  citySlug: string,
+  language: string,
+  optionsOrCacheContext?: CacheContext | ProductSearchOptions,
+): Promise<Product[]> {
+  const { dateFrom, dateTo, cacheContext } = normalizeProductSearchOptions(optionsOrCacheContext);
+  if (!dateFrom || !dateTo) {
+    return getPublicProductsForCitySlug(citySlug, language, cacheContext);
+  }
+
+  try {
+    return await withToolCache(
+      cacheContext ?? {
+        toolName: "search_experiences",
+        args: { citySlug, language, dateFrom, dateTo },
+      },
+      async () => {
+        const [products, filteredProducts] = await Promise.all([
+          getPublicProductsForCitySlug(citySlug, language),
+          fetchDateFilteredMcpProducts({
+            from: dateFrom,
+            to: dateTo,
+            citySlug,
+          }),
+        ]);
+
+        return mergeDateFilteredProducts(products, filteredProducts);
+      },
+    );
+  } catch (error) {
+    if (isNotFoundError(error)) return [];
+    throw error;
+  }
+}
+
+async function getPublicProductsByLocation(
   latitude: number,
   longitude: number,
   radiusKm: number,
@@ -454,6 +557,40 @@ export async function getProductsByLocation(
     }))
       .products
       .map(normalizeProductCurrency),
+  );
+}
+
+export async function getProductsByLocation(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  language: string,
+  options?: ProductSearchOptions,
+): Promise<Product[]> {
+  const { dateFrom, dateTo, cacheContext } = options ?? {};
+  if (!dateFrom || !dateTo) {
+    return getPublicProductsByLocation(latitude, longitude, radiusKm, language);
+  }
+
+  return withToolCache(
+    cacheContext ?? {
+      toolName: "find_nearby_experiences",
+      args: { latitude, longitude, radiusKm, language, dateFrom, dateTo },
+    },
+    async () => {
+      const [products, filteredProducts] = await Promise.all([
+        getPublicProductsByLocation(latitude, longitude, radiusKm, language),
+        fetchDateFilteredMcpProducts({
+          from: dateFrom,
+          to: dateTo,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          radiusKm: radiusKm.toString(),
+        }),
+      ]);
+
+      return mergeDateFilteredProducts(products, filteredProducts);
+    },
   );
 }
 

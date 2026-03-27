@@ -15,6 +15,8 @@ type SearchStructuredContent = {
   city?: string;
   citySlug?: string;
   sort?: string;
+  dateFrom?: string;
+  dateTo?: string;
   totalExperiences?: number;
   experiences?: Array<{
     tickadooProductId: string;
@@ -33,6 +35,8 @@ type NearbyStructuredContent = {
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
+  dateFrom?: string;
+  dateTo?: string;
   totalExperiences?: number;
   experiences?: Array<{
     tickadooProductId: string;
@@ -82,6 +86,8 @@ type ParsedExperienceCard = {
 };
 
 const endpoint = new URL(process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp");
+const runDateFilteringTests = Boolean(process.env.MCP_URL?.trim());
+const itWhenDateFiltering = runDateFilteringTests ? it : it.skip;
 const client = new Client({ name: "tickadoo-vitest-integration", version: "1.0.0" });
 const transport = new StreamableHTTPClientTransport(endpoint);
 const expectedCategoryEnum = [
@@ -251,15 +257,32 @@ describe.sequential("tickadoo MCP live integration", () => {
   it("search_experiences exposes the canonical category and sort enums in tools/list", async () => {
     const toolsResult = await client.listTools();
     const searchTool = toolsResult.tools.find(tool => tool.name === "search_experiences");
+    const nearbyTool = toolsResult.tools.find(tool => tool.name === "find_nearby_experiences");
     const searchSchema = (searchTool?.inputSchema as {
       properties?: {
         category?: {
           enum?: string[];
           anyOf?: Array<{ enum?: string[] }>;
         };
+        dateFrom?: {
+          type?: string;
+        };
+        dateTo?: {
+          type?: string;
+        };
         sort?: {
           enum?: string[];
           anyOf?: Array<{ enum?: string[] }>;
+        };
+      };
+    } | undefined)?.properties;
+    const nearbySchema = (nearbyTool?.inputSchema as {
+      properties?: {
+        dateFrom?: {
+          type?: string;
+        };
+        dateTo?: {
+          type?: string;
         };
       };
     } | undefined)?.properties;
@@ -276,6 +299,12 @@ describe.sequential("tickadoo MCP live integration", () => {
 
     expect(categoryEnum).toEqual(expectedCategoryEnum);
     expect(sortEnum).toEqual(expectedSortEnum);
+    if (runDateFilteringTests) {
+      expect(searchSchema?.dateFrom?.type).toBe("string");
+      expect(searchSchema?.dateTo?.type).toBe("string");
+      expect(nearbySchema?.dateFrom?.type).toBe("string");
+      expect(nearbySchema?.dateTo?.type).toBe("string");
+    }
   }, 30_000);
 
   it("search_experiences supports popular sorting", async () => {
@@ -381,6 +410,54 @@ describe.sequential("tickadoo MCP live integration", () => {
       expect(haystack).toContain("walking");
       expectTrackedBookingUrl(entry.booking_url);
     }
+  }, 30_000);
+
+  itWhenDateFiltering("search_experiences supports date filtering", async () => {
+    const [datedResult, unfilteredResult] = await Promise.all([
+      client.callTool({
+        name: "search_experiences",
+        arguments: {
+          city: "london",
+          dateFrom: "2026-03-27",
+          dateTo: "2026-03-28",
+          language: "en",
+          max_results: 5,
+          format: "json",
+        },
+      }),
+      client.callTool({
+        name: "search_experiences",
+        arguments: {
+          city: "london",
+          language: "en",
+          max_results: 5,
+          format: "json",
+        },
+      }),
+    ]);
+
+    expect(datedResult.isError).not.toBe(true);
+    expect(unfilteredResult.isError).not.toBe(true);
+
+    const datedJson = parseJsonText<{
+      filters?: { date_from?: string; date_to?: string };
+      total?: number;
+      showing?: number;
+      results?: Array<{ booking_url?: string }>;
+    }>(firstTextContent(datedResult), "search_experiences(dateFrom/dateTo, format=json)");
+    const unfilteredJson = parseJsonText<{
+      total?: number;
+    }>(firstTextContent(unfilteredResult), "search_experiences(no dates, format=json)");
+    const datedStructured = getStructuredContent<SearchStructuredContent>(datedResult);
+
+    expect(datedJson.filters?.date_from).toBe("2026-03-27");
+    expect(datedJson.filters?.date_to).toBe("2026-03-28");
+    expect(datedJson.showing).toBeGreaterThan(0);
+    expect(datedJson.total).toBeGreaterThan(0);
+    expect(datedJson.total).toBeLessThan(unfilteredJson.total ?? Number.POSITIVE_INFINITY);
+    expect(datedStructured.dateFrom).toBe("2026-03-27");
+    expect(datedStructured.dateTo).toBe("2026-03-28");
+    expectTrackedBookingUrl(datedJson.results?.[0]?.booking_url);
   }, 30_000);
 
   it("search_experiences echoes applied filters and explains significant omissions", async () => {
@@ -684,6 +761,39 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(json.radius_km).toBe(5);
     expect(json.total).toBeGreaterThan(0);
     expect(json.showing).toBeGreaterThan(0);
+    expectTrackedBookingUrl(json.results?.[0]?.booking_url);
+  }, 30_000);
+
+  itWhenDateFiltering("find_nearby_experiences supports date filtering", async () => {
+    const result = await client.callTool({
+      name: "find_nearby_experiences",
+      arguments: {
+        latitude: 40.758,
+        longitude: -73.985,
+        radius_km: 10,
+        dateFrom: "2026-03-28",
+        dateTo: "2026-03-29",
+        language: "en",
+        format: "json",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+    const json = parseJsonText<{
+      date_from?: string;
+      date_to?: string;
+      total?: number;
+      showing?: number;
+      results?: Array<{ booking_url?: string }>;
+    }>(firstTextContent(result), "find_nearby_experiences(dateFrom/dateTo, format=json)");
+    const structured = getStructuredContent<NearbyStructuredContent>(result);
+
+    expect(json.date_from).toBe("2026-03-28");
+    expect(json.date_to).toBe("2026-03-29");
+    expect(json.total).toBeGreaterThan(0);
+    expect(json.showing).toBeGreaterThan(0);
+    expect(structured.dateFrom).toBe("2026-03-28");
+    expect(structured.dateTo).toBe("2026-03-29");
     expectTrackedBookingUrl(json.results?.[0]?.booking_url);
   }, 30_000);
 

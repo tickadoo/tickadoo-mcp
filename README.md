@@ -22,7 +22,7 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
-Current release: `v1.1.0`
+Current release: `v1.2.0`
 
 - 4 read-only MCP tools
 - 1 machine-readable product feed resource
@@ -33,8 +33,8 @@ Current release: `v1.1.0`
 
 | Tool | Description |
 |------|-------------|
-| `search_experiences` | Search for bookable experiences in a specific city with city fallback matching |
-| `find_nearby_experiences` | Find experiences near a geographic location using latitude, longitude, and radius |
+| `search_experiences` | Search for bookable experiences in a specific city with city fallback matching and optional date filtering |
+| `find_nearby_experiences` | Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering |
 | `list_cities` | Browse supported cities with optional filtering and result limits |
 | `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
 
