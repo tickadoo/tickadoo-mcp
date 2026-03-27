@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>tickadoo® MCP Server — AI-Powered Experience Discovery</title>
-  <meta name="description" content="Model Context Protocol server for tickadoo® — enabling any AI assistant to discover, recommend, and link to bookable experiences in 700+ cities worldwide.">
+  <meta name="description" content="Model Context Protocol server for tickadoo® — enabling any AI assistant to discover, recommend, and link to bookable experiences in 680+ cities worldwide.">
   <meta property="og:title" content="tickadoo® MCP Server — AI-Powered Experience Discovery">
-  <meta property="og:description" content="Let any AI assistant discover and recommend bookable theatre, shows, events, tours & attractions from tickadoo® — across 700+ cities worldwide.">
+  <meta property="og:description" content="Let any AI assistant discover and recommend bookable theatre, shows, events, tours & attractions from tickadoo® — across 680+ cities worldwide.">
   <meta property="og:url" content="https://mcp.tickadoo.com">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://framerusercontent.com/images/yu4KWp0UxPbM1vkpzoi4JCxBUx0.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="tickadoo® MCP Server">
-  <meta name="twitter:description" content="Every AI can now sell experiences — 700+ cities, 7,700+ bookable events.">
+  <meta name="twitter:description" content="Every AI can now sell experiences — 680+ cities, 13,000+ bookable events.">
   <link rel="canonical" href="https://mcp.tickadoo.com">
   <link rel="alternate" hreflang="en" href="https://mcp.tickadoo.com">
   <link rel="alternate" hreflang="ja" href="https://mcp.tickadoo.com?lang=ja">
@@ -26,7 +26,7 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "tickadoo MCP Server",
-      "description": "Model Context Protocol server for discovering and booking experiences in 700+ cities",
+      "description": "Model Context Protocol server for discovering and booking experiences in 680+ cities",
       "url": "https://mcp.tickadoo.com",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any",
@@ -197,13 +197,13 @@
       <p class="tagline" id="tagline-text">
         A standalone MCP server that lets Claude, ChatGPT, Gemini, Perplexity, Cursor, and any AI assistant
         discover and recommend bookable theatre, shows, events, tours &amp; attractions from
-        tickadoo® — across 700+ cities worldwide. No server dependency. Just connect.
+        tickadoo® — across 680+ cities worldwide. No server dependency. Just connect.
       </p>
     </div>
 
     <div class="stats">
       <div class="stat"><div class="stat-val accent">700+</div><div class="stat-lbl" id="stat-label-cities">Cities</div></div>
-      <div class="stat"><div class="stat-val">7,700+</div><div class="stat-lbl" id="stat-label-experiences">Experiences</div></div>
+      <div class="stat"><div class="stat-val">13,000+</div><div class="stat-lbl" id="stat-label-experiences">Experiences</div></div>
       <div class="stat"><div class="stat-val accent">1.8M</div><div class="stat-lbl" id="stat-label-feed">Feed Rows</div></div>
       <div class="stat"><div class="stat-val accent">50</div><div class="stat-lbl" id="stat-label-languages">Languages</div></div>
       <div class="stat"><div class="stat-val">4</div><div class="stat-lbl" id="stat-label-tools">MCP Tools</div></div>
@@ -233,7 +233,7 @@
         </div>
         <div class="tool">
           <div class="tool-head"><div class="tool-icon cities">🌍</div><div class="tool-name">list_cities</div></div>
-          <div class="tool-desc" id="tool-desc-cities">Browse all 700+ cities with available experiences. Helps AI assistants guide users through destination exploration and trip planning.</div>
+          <div class="tool-desc" id="tool-desc-cities">Browse all 680+ cities with available experiences. Helps AI assistants guide users through destination exploration and trip planning.</div>
         </div>
         <div class="tool">
           <div class="tool-head"><div class="tool-icon details">🎟️</div><div class="tool-name">get_experience_details</div></div>
@@ -341,7 +341,7 @@ Note: Available to Perplexity paid subscribers</textarea>
       <h2 id="section-product-feed-title">Product Feed</h2>
       <div class="code-block">
         <div class="code-header"><span>OpenAI Commerce Product Feed spec</span></div>
-        <pre><span class="c"># ~1.8M rows · 7,700+ products · daily updated availability</span>
+        <pre><span class="c"># ~1.8M rows · 13,000+ products · daily updated availability</span>
 curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.gz"</span> | gunzip | head -1 | python3 -m json.tool</pre>
       </div>
     </section>
@@ -351,7 +351,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
       <div class="credits">
         <p id="how-it-works-body">
           Connect your AI application to tickadoo's live inventory of theatre, shows,
-          events, tours and experiences across 700+ cities. The server speaks the open
+          events, tours and experiences across 680+ cities. The server speaks the open
           <a href="https://modelcontextprotocol.io" style="color:#6366f1">Model Context Protocol</a>
           standard — search by city or coordinates, get real-time pricing and availability,
           and link users directly to booking pages on tickadoo.com. Pair with the
@@ -391,7 +391,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
             line1: "Every AI can now",
             prefix: "sell ",
             words: ["experiences", "the West End", "Broadway", "city tours", "attractions", "live shows", "hidden gems"],
-            tagline: "A standalone MCP server that lets Claude, ChatGPT, Gemini, Perplexity, Cursor, and any AI assistant discover and recommend bookable theatre, shows, events, tours & attractions from tickadoo® — across 700+ cities worldwide. No server dependency. Just connect.",
+            tagline: "A standalone MCP server that lets Claude, ChatGPT, Gemini, Perplexity, Cursor, and any AI assistant discover and recommend bookable theatre, shows, events, tours & attractions from tickadoo® — across 680+ cities worldwide. No server dependency. Just connect.",
           },
           stats: {
             cities: "Cities",
@@ -416,7 +416,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
           tools: {
             search: "Search for shows, events & attractions in any city. Fuzzy city matching with fallback, real-time pricing, ratings, and direct booking links to tickadoo.com.",
             nearby: "Location-based discovery — find bookable experiences near any lat/lng coordinates within a configurable radius. Perfect for \"things to do near me\" queries.",
-            cities: "Browse all 700+ cities with available experiences. Helps AI assistants guide users through destination exploration and trip planning.",
+            cities: "Browse all 680+ cities with available experiences. Helps AI assistants guide users through destination exploration and trip planning.",
             details: "Deep dive into a specific experience — available dates, variant pricing, venue location with coordinates, and feature images. Accepts a tickadoo slug for seamless chaining from search results.",
           },
           connect: {
@@ -429,7 +429,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
             copy: "Copy",
             copied: "Copied",
           },
-          howItWorksHtml: "Connect your AI application to tickadoo's live inventory of theatre, shows, events, tours and experiences across 700+ cities. The server speaks the open <a href=\"https://modelcontextprotocol.io\" style=\"color:#6366f1\">Model Context Protocol</a> standard — search by city or coordinates, get real-time pricing and availability, and link users directly to booking pages on tickadoo.com. Pair with the <strong>product feed</strong> (1.8M+ rows, OpenAI Commerce spec) for deeper catalogue integration. No API keys required. Stateless, fast, and ready to go. For crawler-friendly discovery, see <a href=\"https://mcp.tickadoo.com/llms.txt\" style=\"color:#6366f1\">llms.txt</a>.",
+          howItWorksHtml: "Connect your AI application to tickadoo's live inventory of theatre, shows, events, tours and experiences across 680+ cities. The server speaks the open <a href=\"https://modelcontextprotocol.io\" style=\"color:#6366f1\">Model Context Protocol</a> standard — search by city or coordinates, get real-time pricing and availability, and link users directly to booking pages on tickadoo.com. Pair with the <strong>product feed</strong> (1.8M+ rows, OpenAI Commerce spec) for deeper catalogue integration. No API keys required. Stateless, fast, and ready to go. For crawler-friendly discovery, see <a href=\"https://mcp.tickadoo.com/llms.txt\" style=\"color:#6366f1\">llms.txt</a>.",
           brandHtml: "Write <strong>tickadoo®</strong> on first mention, then <strong>tickadoo</strong> thereafter. Keep the brand lowercase in documentation, integrations, and AI-generated responses. Tagline: <strong><em>What Do You Wanna Doo?®</em></strong>",
         },
         ja: {
@@ -832,7 +832,7 @@ curl -sL <span class="s">"https://content.tickadoo.com/openai/ProductFeed.jsonl.
             line1: "DaH Hoch AI",
             prefix: "ngevlaH ",
             words: ["yInIbmey", "West End", "Broadway", "veng lengmey", "Daqmey", "muchmey", "Dochmey pegh"],
-            tagline: "MCP janvam lets Claude, ChatGPT, Gemini, Perplexity, Cursor, je Hoch AI assistants discover je recommend bookable theatre, shows, events, tours, je attractions on tickadoo® across 700+ cities. backend junbe'. yIchel neH. Qapla'.",
+            tagline: "MCP janvam lets Claude, ChatGPT, Gemini, Perplexity, Cursor, je Hoch AI assistants discover je recommend bookable theatre, shows, events, tours, je attractions on tickadoo® across 680+ cities. backend junbe'. yIchel neH. Qapla'.",
           },
           stats: {
             cities: "vengmey",
