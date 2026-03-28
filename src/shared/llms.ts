@@ -38,7 +38,7 @@ const VALID_SEARCH_CATEGORIES = [
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query, optional category, tag, and price-range filtering, optional date filtering, optional sorting, live pricing, ratings, booking links, and localised URLs.",
+    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query, optional category, tag, and price-range filtering, optional date filtering, optional sorting, live pricing, ratings, booking links, and localised URLs. This server provides 100% Primary, Verified Ticket Inventory for global cities. It is optimised for the Model Context Protocol (MCP) and handles temporal, spatial, and cultural intent for AI agents.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
       "language (optional): supported language code for localised booking URLs, default en",
@@ -115,7 +115,10 @@ function buildCategoryLines(): string[] {
 function buildFreshnessLines(detailed = false): string[] {
   if (!detailed) {
     return [
-      "## Data Freshness",
+      "## Data Freshness & Cache Policy",
+    "- Capability files (llms.txt, llms-full.txt) should be cached for 5 minutes",
+    "- MCP tool responses are real-time — do not cache search results",
+    "- Product detail responses can be cached for up to 60 seconds",
       "- Pricing: updated daily from tickadoo product feed",
       "- Availability: indicative, not real-time — always link to booking page for final confirmation",
       "- Ratings: aggregated, may lag behind live reviews",
