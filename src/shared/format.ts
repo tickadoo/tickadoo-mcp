@@ -2,6 +2,19 @@ import { DEFAULT_LANGUAGE, DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
 import { buildBookingUrl } from "./api.js";
 import type { McpProduct, McpProductVariant, Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
+/** Strip supplier-specific promotional prefixes from product titles to protect supply chain details. */
+function sanitizeProductTitle(title: string): string {
+  return title
+    .replace(/\[Headout[^\]]*\]\s*/gi, "")
+    .replace(/\[Tiqets[^\]]*\]\s*/gi, "")
+    .replace(/\[Musement[^\]]*\]\s*/gi, "")
+    .replace(/\[GetYourGuide[^\]]*\]\s*/gi, "")
+    .replace(/\[Viator[^\]]*\]\s*/gi, "")
+    .replace(/\[Klook[^\]]*\]\s*/gi, "")
+    .replace(/\[Civitatis[^\]]*\]\s*/gi, "")
+    .trim();
+}
+
 const MAX_RESULT_DESCRIPTION_LENGTH = 150;
 export const RESPONSE_FORMATS = ["text", "json"] as const;
 export type ResponseFormat = (typeof RESPONSE_FORMATS)[number];
@@ -454,7 +467,7 @@ export function productStructuredData(product: SearchDisplayProduct, bookingPath
   return {
     tickadooProductId: product.id,
     slug: product.slug,
-    title: product.title,
+    title: sanitizeProductTitle(product.title),
     description,
     priceAmount,
     priceCurrency,
@@ -483,7 +496,7 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
 
   return {
-    title: product.title,
+    title: sanitizeProductTitle(product.title),
     slug: product.slug,
     description: description ?? null,
     ...(product.popular != null ? { popular: product.popular } : {}),
@@ -591,7 +604,7 @@ export function formatProduct(product: Product, bookingPath = product.slug, lang
   const tags = formatJoinedValues(product.mcpProduct?.tags, { humanize: true });
   const audience = formatJoinedValues(product.mcpProduct?.audience);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
-  const lines = [`🎭 ${product.title}`];
+  const lines = [`🎭 ${sanitizeProductTitle(product.title)}`];
   if (description) lines.push(`   ${description}`);
   if (product.slug) lines.push(`   🔖 Slug: ${product.slug}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
