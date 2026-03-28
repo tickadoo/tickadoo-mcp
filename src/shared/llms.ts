@@ -262,7 +262,7 @@ export function buildLlmsFullTxt(): string {
     "The following structured metadata is available on search results and experience details.",
     "",
     "### Tags (per product)",
-    "Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Evening, Morning, Seasonal, Bestseller, Cruise, DayTrip, SkipTheLine, HopOnHopOff, WaterSport, Spa, BikeTour, Adventure",
+    "Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Evening, Morning, Seasonal, Bestseller, Cruise, DayTrip, SkipTheLine, HopOnHopOff, WaterSport, Spa, BikeTour, Adventure, GuidedTour, Attraction, Transfer, SelfGuided, KidsAttraction, TravelUtility, CityPass, Show, Concert, Broadway, Helicopter, WhaleWatching, Dining, Workshop, NightLife, Safari, Cinema, Festival, Sports",
     "",
     "### Audience (per product)",
     "Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo",
