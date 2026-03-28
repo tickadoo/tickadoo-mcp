@@ -19,6 +19,23 @@
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS, DELETE" },
         { "key": "Access-Control-Allow-Headers", "value": "*" }
       ]
+    },
+    {
+      "source": "/api/llms(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=300" },
+        { "key": "X-MCP-Version", "value": "1.2.0" }
+      ]
+    },
+    {
+      "source": "/api/(index|health|well-known-mcp)",
+      "headers": [
+        { "key": "X-MCP-Version", "value": "1.2.0" },
+        { "key": "X-MCP-Tags", "value": "39" },
+        { "key": "X-MCP-Products", "value": "13090" },
+        { "key": "X-MCP-Cities", "value": "681" },
+        { "key": "X-MCP-DateFiltering", "value": "true" }
+      ]
     }
   ]
 }
