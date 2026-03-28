@@ -483,7 +483,24 @@ export function filterProductsByQuery(products: Product[], query?: string): Prod
     return products;
   }
 
-  return products.filter(product => productMatchesQuery(product, query));
+  // Try strict AND matching first
+  const strictMatches = products.filter(product => productMatchesQuery(product, query));
+  if (strictMatches.length > 0) {
+    return strictMatches;
+  }
+
+  // Fall back to OR matching: any query term matches title or description
+  const terms = buildQueryTerms(query);
+  if (terms.normalized.length <= 1) {
+    return strictMatches; // Single term already tried
+  }
+
+  return products.filter(product => {
+    const safeTitle = typeof product.title === "string" ? product.title : "";
+    const safeDescription = typeof product.description === "string" ? product.description : "";
+    const haystack = normalizeCategoryText(`${safeTitle} ${safeDescription}`);
+    return terms.normalized.some(term => haystack.includes(term));
+  });
 }
 
 function buildShownResultsLabel(shown: number, total: number, context: string): string {
