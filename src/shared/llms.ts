@@ -38,7 +38,7 @@ const VALID_SEARCH_CATEGORIES = [
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query matching, optional category and price-range filtering, optional date filtering, optional sorting, live pricing, ratings, booking links, and localised URLs.",
+    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query, optional category, tag, and price-range filtering, optional date filtering, optional sorting, live pricing, ratings, booking links, and localised URLs.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
       "language (optional): supported language code for localised booking URLs, default en",
