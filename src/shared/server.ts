@@ -325,16 +325,25 @@ function compareProductsByPriceHigh(a: Product, b: Product): number {
   return a.title.localeCompare(b.title);
 }
 
-function compareProductsByPopularity(a: Product, b: Product): number {
-  const popularDelta = Number(isPopularSearchProduct(b)) - Number(isPopularSearchProduct(a));
-  if (popularDelta !== 0) return popularDelta;
+function popularityScore(product: Product): number {
+  const rating = product.averageRating ?? 0;
+  const reviewCount = product.mcpProduct?.reviewCount ?? 0;
+  const hasImage = productHasImage(product) ? 1 : 0;
+  const hasPrice = product.minPrice != null ? 1 : 0;
+  // Weighted score: rating * 10 + log2(reviewCount + 1) + image/price bonuses
+  return (rating * 10) + Math.log2(reviewCount + 1) + (hasImage * 3) + (hasPrice * 2);
+}
 
-  return compareProductsByRating(a, b);
+function compareProductsByPopularity(a: Product, b: Product): number {
+  const scoreDelta = popularityScore(b) - popularityScore(a);
+  if (Math.abs(scoreDelta) > 0.1) return scoreDelta > 0 ? 1 : -1;
+
+  return a.title.localeCompare(b.title);
 }
 
 export function sortProductsForSearch(products: Product[], sort: SearchSort = "relevance"): Product[] {
   const comparator = {
-    relevance: compareProductsByPopularity,
+    relevance: compareProductsForDisplay,
     popular: compareProductsByPopularity,
     price_low: compareProductsByPriceLow,
     price_high: compareProductsByPriceHigh,
