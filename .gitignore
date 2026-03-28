@@ -18,3 +18,4 @@ CODEX_TASK.md
 .mcpregistry_*
 mcp-publisher
 .env*.local
+.env.production
