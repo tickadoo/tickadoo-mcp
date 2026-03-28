@@ -334,7 +334,7 @@ function compareProductsByPopularity(a: Product, b: Product): number {
 
 export function sortProductsForSearch(products: Product[], sort: SearchSort = "relevance"): Product[] {
   const comparator = {
-    relevance: compareProductsForDisplay,
+    relevance: compareProductsByPopularity,
     popular: compareProductsByPopularity,
     price_low: compareProductsByPriceLow,
     price_high: compareProductsByPriceHigh,
