@@ -153,7 +153,7 @@ function buildLimitationsLines(detailed = false): string[] {
     "- No real-time inventory — availability shown is indicative, and users should confirm the final sellable state on the booking page",
     "- Not all experiences have duration data — some suppliers do not provide it",
     "- Prices shown are 'from' prices — the final price may vary by date, party size, selected option, or supplier variant",
-    "- Indoor/outdoor classification, audience, and accessibility data is available for all 13,000+ experiences but may contain inaccuracies from automated classification — treat as a strong signal, not a guarantee",
+    "- Indoor/outdoor classification, audience, accessibility, and tag data is available for 100% of on-sale experiences (7,624/7,624 tagged) but may contain inaccuracies from automated classification — treat as a strong signal, not a guarantee",
     "- Reviews and ratings may not be available for newer listings or recently launched experiences",
   ];
 }
