@@ -1520,6 +1520,43 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           dateTo,
         });
         if (!matchingProducts.length) {
+          // Smart Substitution: instead of returning empty, suggest alternatives
+          // Try broader search: drop query but keep city, or drop price filter
+          let fallbackProducts: Product[] = [];
+          let fallbackNote = "";
+
+          if (query && categoryFilteredProducts.length > 0) {
+            // Query too specific — show popular results in same city/category
+            fallbackProducts = categoryFilteredProducts.slice(0, 5);
+            fallbackNote = `No experiences matching "${query}" in ${cityName}. Here are the most popular alternatives:`;
+          } else if ((minPrice != null || maxPrice != null) && products.length > 0) {
+            // Price filter too restrictive — show popular regardless of price
+            fallbackProducts = products.slice(0, 5);
+            fallbackNote = `No experiences in ${cityName} within that price range. Here are popular options at other price points:`;
+          }
+
+          if (fallbackProducts.length > 0) {
+            const enrichedProducts = await getMcpEnrichedProducts();
+            const enrichedFallback = mergeEnrichedProducts(fallbackProducts, enrichedProducts);
+            const rankedFallback = sortProductsForSearch(enrichedFallback, "popular");
+            const topFallback = rankedFallback.slice(0, 5).map(product => ({
+              ...product,
+              popular: isPopularSearchProduct(product),
+            }));
+            const fallbackFormatted = formatSearchResults(topFallback, cityName, language, format, {
+              filters: appliedFilters, sort: "popular",
+            });
+            return {
+              response: createFormattedResponse(
+                format,
+                fallbackNote + "\n\n" + fallbackFormatted.text,
+                fallbackFormatted.json,
+              ),
+              resultCount: topFallback.length,
+              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format, fallback: true },
+            };
+          }
+
           const message = buildNoResultsMessage(cityName, {
             category,
             query,
