@@ -478,29 +478,23 @@ export function productMatchesQuery(product: Product, query: string): boolean {
   );
 }
 
+/** Filter products by enriched tag metadata. Matches if product has at least one of the requested tags. */
+export function filterProductsByTags(products: Product[], tags?: string): Product[] {
+  if (!tags) return products;
+  const requestedTags = tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean);
+  if (!requestedTags.length) return products;
+  return products.filter(product => {
+    const productTags = (product.mcpProduct?.tags || []).map(t => t.toLowerCase());
+    return requestedTags.some(rt => productTags.includes(rt));
+  });
+}
+
 export function filterProductsByQuery(products: Product[], query?: string): Product[] {
   if (!query) {
     return products;
   }
 
-  // Try strict AND matching first
-  const strictMatches = products.filter(product => productMatchesQuery(product, query));
-  if (strictMatches.length > 0) {
-    return strictMatches;
-  }
-
-  // Fall back to OR matching: any query term matches title or description
-  const terms = buildQueryTerms(query);
-  if (terms.normalized.length <= 1) {
-    return strictMatches; // Single term already tried
-  }
-
-  return products.filter(product => {
-    const safeTitle = typeof product.title === "string" ? product.title : "";
-    const safeDescription = typeof product.description === "string" ? product.description : "";
-    const haystack = normalizeCategoryText(`${safeTitle} ${safeDescription}`);
-    return terms.normalized.some(term => haystack.includes(term));
-  });
+  return products.filter(product => productMatchesQuery(product, query));
 }
 
 function buildShownResultsLabel(shown: number, total: number, context: string): string {
@@ -1413,6 +1407,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       max_price: z.number().optional().describe("Optional maximum price in the experience's local currency"),
       dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
+      tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, HopOnHopOff, WaterSport, Spa, BikeTour, Adventure, GuidedTour, Attraction, Transfer, SelfGuided, KidsAttraction, Show, Concert, Helicopter, WhaleWatching, Dining, Workshop, NightLife, Safari, Evening, Morning"),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1553,7 +1548,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
         const enrichedProducts = await getMcpEnrichedProducts();
         const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
-        const rankedProducts = sortProductsForSearch(enrichedMatchingProducts, sort);
+        const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
+        const rankedProducts = sortProductsForSearch(tagFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
