@@ -4,7 +4,12 @@ import { buildLlmsTxt } from "../src/shared/llms.js";
 function writePlainText(req: IncomingMessage, res: ServerResponse, body: string): void {
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("X-MCP-Version", "1.2.0");
+  res.setHeader("X-MCP-Tags", "39");
+  res.setHeader("X-MCP-Products", "13090");
+  res.setHeader("X-MCP-Cities", "681");
+  res.setHeader("X-MCP-DateFiltering", "true");
   if (req.method === "HEAD") {
     res.end();
     return;
