@@ -1670,7 +1670,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         }
 
         const enrichedProducts = await getMcpEnrichedProducts();
-        const rankedProducts = sortProductsForDisplay(mergeEnrichedProducts(products, enrichedProducts));
+        const rankedProducts = sortProductsForSearch(mergeEnrichedProducts(products, enrichedProducts));
         const topProducts = rankedProducts.slice(0, DEFAULT_SEARCH_RESULT_LIMIT);
         return {
           response: createFormattedResponse(

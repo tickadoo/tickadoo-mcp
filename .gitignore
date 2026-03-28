@@ -17,3 +17,4 @@ CODEX_TASK.md
 # Local tooling / secrets
 .mcpregistry_*
 mcp-publisher
+.env*.local
