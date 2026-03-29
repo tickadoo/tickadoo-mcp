@@ -513,6 +513,7 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
     ...(product.mcpProduct
       ? {
           duration,
+          review_rating: product.mcpProduct.reviewRating ?? null,
           review_count: product.mcpProduct.reviewCount ?? null,
           tags: product.mcpProduct.tags,
           audience: product.mcpProduct.audience,
@@ -692,7 +693,14 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   ];
 
   if (duration) lines.push(`   ⏱️ Duration: ${duration}`);
-  if (reviewCount) lines.push(`   🗳️ ${reviewCount}`);
+  if (details.mcpProduct?.reviewRating != null && details.mcpProduct.reviewRating > 0) {
+    const ratingLine = reviewCount
+      ? `   ⭐ ${details.mcpProduct.reviewRating.toFixed(1)}/5 (${reviewCount})`
+      : `   ⭐ ${details.mcpProduct.reviewRating.toFixed(1)}/5`;
+    lines.push(ratingLine);
+  } else if (reviewCount) {
+    lines.push(`   🗳️ ${reviewCount}`);
+  }
   if (tags) lines.push(`   🏷️ Tags: ${tags}`);
   if (audience) lines.push(`   👥 Audience: ${audience}`);
   if (details.mcpProduct?.indoorOutdoor) lines.push(`   🏛️ Setting: ${details.mcpProduct.indoorOutdoor}`);
@@ -709,12 +717,17 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   }
   lines.push(`   🖼️ Desktop image: ${details.desktopFeatureImageUrl}`);
   lines.push(`   📱 Mobile image: ${details.mobileFeatureImageUrl}`);
+  lines.push(`   ✅ Booking available: yes (external checkout redirect)`);
 
   if (!details.dates.length) {
     lines.push("", `No availability returned for the next ${days} days.`);
   } else {
+    // Next available date + price summary (Gemini's request)
+    const nextDate = details.dates[0];
+    const nextDateFormatted = new Date(nextDate.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
     lines.push(
       "",
+      `📅 Next available: ${nextDateFormatted} from ${details.currencyCode} ${nextDate.minPrice.toFixed(2)} (${nextDate.variantName})`,
       `Availability: ${details.dates.length} price points across ${uniqueDates} dates in the next ${days} days.`,
       ...formatAvailabilitySummary(details.dates, details.currencyCode),
     );
@@ -771,6 +784,7 @@ export function experienceDetailsJsonPayload(
     ...(details.mcpProduct
       ? {
           duration,
+          review_rating: details.mcpProduct.reviewRating ?? null,
           review_count: details.mcpProduct.reviewCount ?? null,
           tags: details.mcpProduct.tags,
           audience: details.mcpProduct.audience,
