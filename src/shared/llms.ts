@@ -61,6 +61,7 @@ const TOOL_DOCS: ToolDoc[] = [
       "radius_km (optional): search radius in km, default 25",
       "dateFrom (optional): ISO start date YYYY-MM-DD; must be provided together with dateTo",
       "dateTo (optional): ISO end date YYYY-MM-DD; must be provided together with dateFrom",
+      "tags (optional): comma-separated tag filter (e.g. Museum,Outdoor,Evening)",
       "language (optional): supported language code for localised booking URLs, default en",
       "format (optional): response format, text (default) or json",
     ],

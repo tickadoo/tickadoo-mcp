@@ -1672,6 +1672,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       radius_km: z.number().optional().default(DEFAULT_RADIUS_KM).describe(`Search radius in km (default ${DEFAULT_RADIUS_KM})`),
       dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
+      tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, Adventure, GuidedTour, Attraction, KidsAttraction, Show, Concert, Dining, Workshop, NightLife, Evening, Morning"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1693,9 +1694,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       }
 
       const { latitude, longitude, radiusKm, dateFrom, dateTo, language, format } = validated.data;
+      const tagsArg = typeof args.tags === "string" ? args.tags : undefined;
 
       try {
-        const products = await getProductsByLocation(latitude, longitude, radiusKm, language, { dateFrom, dateTo });
+        let products = await getProductsByLocation(latitude, longitude, radiusKm, language, { dateFrom, dateTo });
+        if (tagsArg) {
+          products = filterProductsByTags(products, tagsArg);
+        }
         if (!products.length) {
           const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
           const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
