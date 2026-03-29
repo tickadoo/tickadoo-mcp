@@ -50,7 +50,6 @@ const TOOL_DOCS: ToolDoc[] = [
       "dateTo (optional): ISO end date YYYY-MM-DD; must be provided together with dateFrom",
       "sort (optional): relevance (default), popular, price_low, price_high, rating",
       "audience (optional): comma-separated audience filter. Valid: Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo",
-      "setting (optional): Indoor, Outdoor, or Mixed. Indoor includes Mixed results. Use for rainy day or outdoor queries",
       "format (optional): response format, text (default) or json",
     ],
   },
