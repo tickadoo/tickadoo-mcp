@@ -484,6 +484,8 @@ export function productStructuredData(product: SearchDisplayProduct, bookingPath
         }
       : {}),
     bookingUrl: buildBookingUrl(bookingPath, language),
+    bookingAvailable: true,
+    bookingScope: "external_checkout_redirect",
     imageUrl: product.desktopFeatureImageUrl ?? product.verticalImageUrl ?? undefined,
   };
 }
@@ -520,6 +522,12 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
         }
       : {}),
     booking_url: buildBookingUrl(bookingPath, language),
+    booking_available: true,
+    booking_scope: "external_checkout_redirect",
+    reserve_action: {
+      type: "ReserveAction",
+      url_template: buildBookingUrl(bookingPath, language) + "?date={date}&time={time}&adults={adults}&lang={language}",
+    },
     location: {
       address: product.address ?? null,
     },
