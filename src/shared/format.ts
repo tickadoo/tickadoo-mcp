@@ -519,6 +519,10 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
           indoor_outdoor: product.mcpProduct.indoorOutdoor ?? null,
           physical_level: product.mcpProduct.physicalLevel ?? null,
           cancellation,
+          wheelchair_accessible: product.mcpProduct.wheelchairAccessible ?? null,
+          stroller_friendly: product.mcpProduct.strollerFriendly ?? null,
+          language_options: product.mcpProduct.languageOptions?.length ? product.mcpProduct.languageOptions : null,
+          age_minimum: primaryVariant?.ageMinimum ?? null,
         }
       : {}),
     booking_url: buildBookingUrl(bookingPath, language),
@@ -559,6 +563,7 @@ export function searchJsonPayload(
     ...(omittedResults ? { omitted_results: omittedResults } : {}),
     results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`, options?.language)),
     view_all_url: buildBookingUrl(citySlug, options?.language),
+    _next_step: "Use get_experience_details with a product slug to get availability.slots with specific dates, prices, and booking URLs for that experience.",
   };
 }
 
@@ -583,6 +588,7 @@ export function nearbyJsonPayload(
     total,
     showing: products.length,
     results: products.map(product => productJsonData(product, product.slug, language)),
+    _next_step: "Use get_experience_details with a product slug to get availability.slots with specific dates, prices, and booking URLs for that experience.",
   };
 }
 
@@ -807,5 +813,12 @@ export function experienceDetailsJsonPayload(
         },
       })),
     },
+    ...(details.mcpProduct?.tags?.length ? {
+      _cross_sell: {
+        hint: "To find similar experiences, search with these tags or the same city.",
+        related_tags: details.mcpProduct.tags.slice(0, 5),
+        suggested_query: `Use search_experiences with city and tags="${details.mcpProduct.tags.slice(0, 3).join(",")}" to find related experiences.`,
+      },
+    } : {}),
   };
 }
