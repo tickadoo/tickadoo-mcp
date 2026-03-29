@@ -526,7 +526,7 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
     booking_scope: "external_checkout_redirect",
     reserve_action: {
       type: "ReserveAction",
-      url_template: buildBookingUrl(bookingPath, language) + "?date={date}&time={time}&adults={adults}&lang={language}",
+      url_template: buildBookingUrl(bookingPath, language) + "&date={date}&time={time}&adults={adults}&lang={language}",
     },
     location: {
       address: product.address ?? null,
@@ -784,7 +784,7 @@ export function experienceDetailsJsonPayload(
     booking_scope: "external_checkout_redirect",
     reserve_action: options?.bookingPath ? {
       type: "ReserveAction",
-      url_template: buildBookingUrl(options.bookingPath, options.language) + "?date={date}&time={time}&adults={adults}&lang={language}",
+      url_template: buildBookingUrl(options.bookingPath, options.language) + "&date={date}&time={time}&adults={adults}&lang={language}",
     } : null,
     availability: {
       total_price_points: details.dates.length,
