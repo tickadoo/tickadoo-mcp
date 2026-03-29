@@ -630,6 +630,11 @@ export function formatProduct(product: Product, bookingPath = product.slug, lang
   if (product.mcpProduct?.indoorOutdoor) lines.push(`   🏛️ Setting: ${product.mcpProduct.indoorOutdoor}`);
   if (product.mcpProduct?.physicalLevel) lines.push(`   💪 Physical level: ${product.mcpProduct.physicalLevel}`);
   if (cancellation) lines.push(`   ↩️ Cancellation: ${cancellation}`);
+  if (product.mcpProduct?.wheelchairAccessible === true) lines.push(`   ♿ Wheelchair accessible`);
+  if (product.mcpProduct?.strollerFriendly === true) lines.push(`   👶 Stroller friendly`);
+  if (product.mcpProduct?.languageOptions?.length && product.mcpProduct.languageOptions.length > 1) {
+    lines.push(`   🌐 Languages: ${product.mcpProduct.languageOptions.slice(0, 6).join(", ")}${product.mcpProduct.languageOptions.length > 6 ? ` +${product.mcpProduct.languageOptions.length - 6} more` : ""}`);
+  }
   if (product.address) lines.push(`   📍 ${product.address}`);
   if (product.desktopFeatureImageUrl || product.verticalImageUrl) {
     lines.push(`   🖼️ ${product.desktopFeatureImageUrl || product.verticalImageUrl}`);
