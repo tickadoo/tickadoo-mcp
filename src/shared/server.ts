@@ -1673,6 +1673,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, Adventure, GuidedTour, Attraction, KidsAttraction, Show, Concert, Dining, Workshop, NightLife, Evening, Morning"),
+      sort: z.enum(["relevance", "popular", "price_low", "price_high", "rating"]).optional().default("relevance").describe("Sort order: relevance (default), popular, price_low, price_high, or rating"),
+      max_results: z.number().optional().default(10).describe("Maximum number of experiences to return (default 10, max 50)"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1726,8 +1728,10 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         }
 
         const enrichedProducts = await getMcpEnrichedProducts();
-        const rankedProducts = sortProductsForSearch(mergeEnrichedProducts(products, enrichedProducts));
-        const topProducts = rankedProducts.slice(0, DEFAULT_SEARCH_RESULT_LIMIT);
+        const nearbySort = (typeof args.sort === "string" ? args.sort : "relevance") as SearchSort;
+        const nearbyMax = Math.min(Math.max(typeof args.max_results === "number" ? args.max_results : DEFAULT_SEARCH_RESULT_LIMIT, 1), 50);
+        const rankedProducts = sortProductsForSearch(mergeEnrichedProducts(products, enrichedProducts), nearbySort);
+        const topProducts = rankedProducts.slice(0, nearbyMax);
         return {
           response: createFormattedResponse(
             format,
