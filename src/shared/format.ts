@@ -620,6 +620,7 @@ export function formatProduct(product: Product, bookingPath = product.slug, lang
   const audience = formatJoinedValues(product.mcpProduct?.audience);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
   const lines = [`🎭 ${sanitizeProductTitle(product.title)}`];
+  if (product.popular === true) lines.push(`   🔥 Popular`);
   if (description) lines.push(`   ${description}`);
   if (product.slug) lines.push(`   🔖 Slug: ${product.slug}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
@@ -747,6 +748,11 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
       if (variantGroupSize) lines.push(`     👥 Group size: ${variantGroupSize}`);
     }
   }
+
+  lines.push(
+    "",
+    "💡 To book: Use the booking URL with this experience. For JSON format, use availability.slots for specific date/price pairs and reserve_action.url_template to construct checkout links.",
+  );
 
   return lines.join("\n");
 }
