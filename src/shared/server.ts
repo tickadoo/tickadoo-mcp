@@ -88,6 +88,7 @@ export const SEARCH_SORT_OPTIONS = [
   "price_low",
   "price_high",
   "rating",
+  "best_value",
 ] as const;
 const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
 const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
@@ -341,6 +342,20 @@ function compareProductsByPopularity(a: Product, b: Product): number {
   return a.title.localeCompare(b.title);
 }
 
+/** Sort by best value: highest rating/price ratio (great experiences at good prices). */
+function compareProductsByBestValue(a: Product, b: Product): number {
+  const aRating = a.averageRating ?? 0;
+  const bRating = b.averageRating ?? 0;
+  const aPrice = a.minPrice ?? 999;
+  const bPrice = b.minPrice ?? 999;
+  // Value score: rating / (price / 10) — higher is better
+  const aValue = aPrice > 0 ? (aRating / (aPrice / 10)) : 0;
+  const bValue = bPrice > 0 ? (bRating / (bPrice / 10)) : 0;
+  if (bValue !== aValue) return bValue - aValue;
+  // Tiebreak by rating
+  return bRating - aRating;
+}
+
 export function sortProductsForSearch(products: Product[], sort: SearchSort = "relevance"): Product[] {
   const comparator = {
     relevance: compareProductsByPopularity,
@@ -348,6 +363,7 @@ export function sortProductsForSearch(products: Product[], sort: SearchSort = "r
     price_low: compareProductsByPriceLow,
     price_high: compareProductsByPriceHigh,
     rating: compareProductsByRating,
+    best_value: compareProductsByBestValue,
   } satisfies Record<SearchSort, (left: Product, right: Product) => number>;
 
   return [...products].sort(comparator[sort]);
@@ -1600,9 +1616,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
         const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
         const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, args.audience as string | undefined);
-        const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
-        const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, args.wheelchair_accessible as boolean | undefined);
-        const rankedProducts = sortProductsForSearch(accessibilityFilteredProducts, sort);
+        const rankedProducts = sortProductsForSearch(audienceFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
