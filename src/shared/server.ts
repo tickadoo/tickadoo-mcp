@@ -1543,14 +1543,15 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               ...product,
               popular: isPopularSearchProduct(product),
             }));
-            const fallbackFormatted = formatSearchResults(topFallback, cityName, language, format, {
-              filters: appliedFilters, sort: "popular",
-            });
             return {
               response: createFormattedResponse(
                 format,
-                fallbackNote + "\n\n" + fallbackFormatted.text,
-                fallbackFormatted.json,
+                fallbackNote,
+                searchJsonPayload(citySlug, cityName, topFallback.length, [], {
+                  filters: appliedFilters,
+                  language,
+                  sort: "popular",
+                }),
               ),
               resultCount: topFallback.length,
               summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format, fallback: true },
