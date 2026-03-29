@@ -120,7 +120,7 @@ function buildFreshnessLines(detailed = false): string[] {
     "- MCP tool responses are real-time — do not cache search results",
     "- Product detail responses can be cached for up to 60 seconds",
       "- Pricing: updated daily from tickadoo product feed",
-      "- Availability: indicative, not real-time — always link to booking page for final confirmation",
+      "- Availability: based on daily-refreshed inventory with urgency signals (inventoryLevel) — link to booking page for final seat selection and payment",
       "- Ratings: aggregated, may lag behind live reviews",
       "- City coverage: updated with each server release",
       "- Results are cached for up to 5 minutes on the server",
@@ -130,7 +130,7 @@ function buildFreshnessLines(detailed = false): string[] {
   return [
     "## Data Freshness",
     "- Pricing: updated daily from the tickadoo product feed used by the MCP server",
-    "- Availability: indicative, not real-time — always send the user to the booking page for final confirmation",
+    "- Availability: based on daily-refreshed inventory with urgency signals — send the user to the booking page for final seat selection and payment",
     "- Ratings: aggregated snapshots that may lag behind live review counts or score changes",
     "- City coverage: updated with each server release, so newly launched cities may not appear until the next rollout",
     "- Results are cached for up to 5 minutes on the server, so repeated queries may briefly return the same snapshot",
@@ -141,8 +141,8 @@ function buildLimitationsLines(detailed = false): string[] {
   if (!detailed) {
     return [
       "## Limitations",
-      "- No booking completion — the server provides discovery and links, not checkout",
-      "- No real-time inventory — availability shown is indicative, users should check the booking page",
+      "- Booking handoff: the server provides discovery, recommendations, and direct booking deep links with ReserveAction — final payment is completed on tickadoo.com",
+      "- Inventory freshness: availability is refreshed daily with inventoryLevel urgency signals — users confirm final seat selection on the booking page",
       "- Not all experiences have duration, accessibility, audience suitability, or indoor/outdoor data",
       "- Prices shown are 'from' prices — final price may vary by date, party size, or variant",
       "- Indoor/outdoor classification and audience/accessibility data is available for all experiences but may contain inaccuracies from automated classification",
@@ -152,8 +152,8 @@ function buildLimitationsLines(detailed = false): string[] {
 
   return [
     "## Limitations",
-    "- No booking completion — the server provides discovery and outbound links, not checkout or payment",
-    "- No real-time inventory — availability shown is indicative, and users should confirm the final sellable state on the booking page",
+    "- Booking handoff: the server provides discovery, recommendations, and direct booking deep links with ReserveAction — final payment is completed on tickadoo.com",
+    "- Inventory freshness: availability is refreshed daily with inventoryLevel urgency signals — users confirm final seat selection on the booking page",
     "- Not all experiences have duration data — some suppliers do not provide it",
     "- Prices shown are 'from' prices — the final price may vary by date, party size, selected option, or supplier variant",
     "- Indoor/outdoor classification, audience, accessibility, and tag data is available for 100% of on-sale experiences (7,624/7,624 tagged) but may contain inaccuracies from automated classification — treat as a strong signal, not a guarantee",
