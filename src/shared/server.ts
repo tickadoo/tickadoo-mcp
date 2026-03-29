@@ -500,6 +500,19 @@ export function filterProductsByAudience(products: Product[], audience?: string)
   });
 }
 
+/** Filter products by indoor/outdoor setting. */
+export function filterProductsBySetting(products: Product[], setting?: string): Product[] {
+  if (!setting) return products;
+  const s = setting.trim().toLowerCase();
+  if (!["indoor", "outdoor", "mixed"].includes(s)) return products;
+  return products.filter(product => {
+    const ps = (product.mcpProduct?.indoorOutdoor || "").toLowerCase();
+    if (s === "indoor") return ps === "indoor" || ps === "mixed";
+    if (s === "outdoor") return ps === "outdoor" || ps === "mixed";
+    return ps === s;
+  });
+}
+
 export function filterProductsByQuery(products: Product[], query?: string): Product[] {
   if (!query) {
     return products;
@@ -1420,6 +1433,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, HopOnHopOff, WaterSport, Spa, BikeTour, Adventure, GuidedTour, Attraction, Transfer, SelfGuided, KidsAttraction, Show, Concert, Helicopter, WhaleWatching, Dining, Workshop, NightLife, Safari, Evening, Morning"),
       audience: z.string().optional().describe("Optional comma-separated audience filter. Valid values: Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo"),
+      setting: z.enum(["Indoor", "Outdoor", "Mixed"]).optional().describe("Optional indoor/outdoor filter. Use Indoor for rainy days, Outdoor for nice weather."),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1600,7 +1614,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
         const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
         const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, args.audience as string | undefined);
-        const rankedProducts = sortProductsForSearch(audienceFilteredProducts, sort);
+        const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
+        const rankedProducts = sortProductsForSearch(settingFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
