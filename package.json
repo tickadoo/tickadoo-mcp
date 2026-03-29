@@ -1,7 +1,7 @@
 {
   "name": "@tickadoo/mcp-server",
-  "version": "1.2.0",
-  "description": "MCP server for tickadoo® — discover and book theatre, events & experiences in 700+ cities worldwide",
+  "version": "1.3.0",
+  "description": "tickadoo MCP Server \u2014 Discover and book theatre, events & experiences in 681+ cities. Booking-ready with availability slots, checkout deep links, and accessibility data.",
   "type": "module",
   "main": "dist/index.js",
   "bin": "./dist/index.js",
