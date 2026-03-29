@@ -780,9 +780,23 @@ export function experienceDetailsJsonPayload(
           })),
         }
       : {}),
+    booking_available: true,
+    booking_scope: "external_checkout_redirect",
+    reserve_action: options?.bookingPath ? {
+      type: "ReserveAction",
+      url_template: buildBookingUrl(options.bookingPath, options.language) + "?date={date}&time={time}&adults={adults}&lang={language}",
+    } : null,
     availability: {
       total_price_points: details.dates.length,
       total_dates: uniqueDates,
+      slots: details.dates.slice(0, 30).map(item => ({
+        date: item.date,
+        end_date: item.endDate,
+        variant_name: item.variantName,
+        price: item.minPrice,
+        currency: details.currencyCode,
+        availability_status: "InStock",
+      })),
       results: details.dates.map(item => ({
         date: item.date,
         end_date: item.endDate,
