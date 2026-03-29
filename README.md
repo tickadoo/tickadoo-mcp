@@ -215,3 +215,4 @@ Please preserve lowercase in all integrations and documentation.
 ## License
 
 MIT — tickadoo Inc.
+
