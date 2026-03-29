@@ -489,6 +489,17 @@ export function filterProductsByTags(products: Product[], tags?: string): Produc
   });
 }
 
+/** Filter products by audience suitability. Matches if product has at least one of the requested audiences. */
+export function filterProductsByAudience(products: Product[], audience?: string): Product[] {
+  if (!audience) return products;
+  const requested = audience.split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
+  if (!requested.length) return products;
+  return products.filter(product => {
+    const productAudience = (product.mcpProduct?.audience || []).map(a => a.toLowerCase());
+    return requested.some(a => productAudience.includes(a));
+  });
+}
+
 export function filterProductsByQuery(products: Product[], query?: string): Product[] {
   if (!query) {
     return products;
@@ -1408,6 +1419,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, HopOnHopOff, WaterSport, Spa, BikeTour, Adventure, GuidedTour, Attraction, Transfer, SelfGuided, KidsAttraction, Show, Concert, Helicopter, WhaleWatching, Dining, Workshop, NightLife, Safari, Evening, Morning"),
+      audience: z.string().optional().describe("Optional comma-separated audience filter. Valid values: Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo"),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1587,7 +1599,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const enrichedProducts = await getMcpEnrichedProducts();
         const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
         const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
-        const rankedProducts = sortProductsForSearch(tagFilteredProducts, sort);
+        const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, args.audience as string | undefined);
+        const rankedProducts = sortProductsForSearch(audienceFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
