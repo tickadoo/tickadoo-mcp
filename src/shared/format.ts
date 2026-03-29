@@ -509,6 +509,13 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
         }
       : null,
     rating: product.averageRating ?? null,
+    ...(product.mcpProduct?.reviewRating != null && product.mcpProduct.reviewRating > 0
+      ? {
+          social_proof: product.mcpProduct.reviewCount
+            ? `${product.mcpProduct.reviewRating.toFixed(1)}/5 (${product.mcpProduct.reviewCount.toLocaleString()} reviews)`
+            : `${product.mcpProduct.reviewRating.toFixed(1)}/5`,
+        }
+      : {}),
     image_url: imageUrl,
     ...(product.mcpProduct
       ? {
@@ -792,6 +799,13 @@ export function experienceDetailsJsonPayload(
           duration,
           review_rating: details.mcpProduct.reviewRating ?? null,
           review_count: details.mcpProduct.reviewCount ?? null,
+          ...(details.mcpProduct.reviewRating != null && details.mcpProduct.reviewRating > 0
+            ? {
+                social_proof: details.mcpProduct.reviewCount
+                  ? `${details.mcpProduct.reviewRating.toFixed(1)}/5 (${details.mcpProduct.reviewCount.toLocaleString()} reviews)`
+                  : `${details.mcpProduct.reviewRating.toFixed(1)}/5`,
+              }
+            : {}),
           tags: details.mcpProduct.tags,
           audience: details.mcpProduct.audience,
           indoor_outdoor: details.mcpProduct.indoorOutdoor ?? null,
@@ -845,5 +859,9 @@ export function experienceDetailsJsonPayload(
         suggested_query: `Use search_experiences with city and tags="${details.mcpProduct.tags.slice(0, 3).join(",")}" to find related experiences.`,
       },
     } : {}),
+    _intent_token: {
+      hint: "For 1-click AI checkout, POST to /api/intent-token with productSlug, date, partySize to get a pre-filled checkout URL.",
+      endpoint: "https://howard-api.francis-348.workers.dev/api/intent-token",
+    },
   };
 }
