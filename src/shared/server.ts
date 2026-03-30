@@ -1769,18 +1769,21 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
         ].filter(Boolean).join("\n");
-        const jsonPayload = searchJsonPayload(
-          citySlug,
-          cityName,
-          matchingProducts.length,
-          topProducts,
-          {
-            filters: appliedFilters,
-            language,
-            omittedResults,
-            sort,
-          },
-        );
+        const jsonPayload = {
+          ...searchJsonPayload(
+            citySlug,
+            cityName,
+            matchingProducts.length,
+            topProducts,
+            {
+              filters: appliedFilters,
+              language,
+              omittedResults,
+              sort,
+            },
+          ),
+          _available_filters: buildAvailableFilters(topProducts),
+        };
         return {
           response: createFormattedResponse(
             format,
