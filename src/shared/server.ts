@@ -516,6 +516,38 @@ export function filterProductsByAudience(products: Product[], audience?: string)
   });
 }
 
+/** Filter products by indoor/outdoor setting. */
+export function filterProductsBySetting(products: Product[], setting?: string): Product[] {
+  if (!setting) return products;
+  const s = setting.trim().toLowerCase();
+  if (!["indoor", "outdoor", "mixed"].includes(s)) return products;
+  return products.filter(product => {
+    const ps = (product.mcpProduct?.indoorOutdoor || "").toLowerCase();
+    if (s === "indoor") return ps === "indoor" || ps === "mixed";
+    if (s === "outdoor") return ps === "outdoor" || ps === "mixed";
+    return ps === s;
+  });
+}
+
+/** Filter products by wheelchair accessibility. */
+export function filterProductsByAccessibility(products: Product[], wheelchair?: boolean): Product[] {
+  if (wheelchair == null) return products;
+  return products.filter(product => {
+    return wheelchair ? product.mcpProduct?.wheelchairAccessible === true : product.mcpProduct?.wheelchairAccessible !== true;
+  });
+}
+
+/** Filter products by physical difficulty level. */
+export function filterProductsByPhysicalLevel(products: Product[], level?: string): Product[] {
+  if (!level) return products;
+  const l = level.trim().toLowerCase();
+  if (!["easy", "moderate", "demanding"].includes(l)) return products;
+  return products.filter(product => {
+    const pl = (product.mcpProduct?.physicalLevel || "").toLowerCase();
+    return pl === l;
+  });
+}
+
 export function filterProductsByQuery(products: Product[], query?: string): Product[] {
   if (!query) {
     return products;
