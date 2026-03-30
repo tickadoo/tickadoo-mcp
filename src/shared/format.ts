@@ -577,6 +577,20 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
   };
 }
 
+/** Format available filters as a text hint for agents. */
+export function formatAvailableFiltersHint(products: SearchDisplayProduct[]): string {
+  const f = buildAvailableFilters(products);
+  const parts: string[] = [];
+  if (f.audience.length > 0) parts.push(`audience: ${f.audience.join(", ")}`);
+  if (f.setting.length > 0) parts.push(`setting: ${f.setting.join(", ")}`);
+  if (f.physical_level.length > 0) parts.push(`physical: ${f.physical_level.join(", ")}`);
+  if (f.languages.length > 1) parts.push(`languages: ${f.languages.join(", ")}`);
+  if (f.wheelchair_accessible) parts.push("wheelchair_accessible");
+  if (f.free_cancellation_available) parts.push("free_cancellation");
+  if (!parts.length) return "";
+  return `\n🔍 Narrow with: ${parts.join(" · ")}`;
+}
+
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
