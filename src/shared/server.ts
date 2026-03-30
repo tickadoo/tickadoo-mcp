@@ -10,6 +10,7 @@ import {
   getProductsByLocation,
   getProductsForCitySlug,
   resolveProductBySlug,
+  heuristicEnrich,
 } from "./api.js";
 import {
   DEFAULT_LANGUAGE,
@@ -242,7 +243,28 @@ function sortProductsForDisplay(products: Product[]): Product[] {
 
 function mergeEnrichedProduct(product: Product, enrichedProducts: Map<string, McpProduct>): Product {
   const mcpProduct = enrichedProducts.get(product.slug);
-  return mcpProduct ? { ...product, mcpProduct } : product;
+  if (mcpProduct) {
+    return { ...product, mcpProduct };
+  }
+  // Fallback: create synthetic McpProduct from API data and run heuristic enrichment
+  // This catches products not in the MCP feed (e.g., Broadway musicals)
+  const synthetic: McpProduct = {
+    niceId: 0,
+    name: product.title,
+    url: product.slug,
+    minPrice: product.minPrice ?? 0,
+    reviewRating: product.averageRating,
+    reviewCount: null,
+    indoorOutdoor: null,
+    physicalLevel: null,
+    audience: [],
+    tags: [],
+    wheelchairAccessible: null,
+    strollerFriendly: null,
+    languageOptions: [],
+    variants: [],
+  };
+  return { ...product, mcpProduct: heuristicEnrich(synthetic) };
 }
 
 function mergeEnrichedProducts(products: Product[], enrichedProducts: Map<string, McpProduct>): Product[] {
