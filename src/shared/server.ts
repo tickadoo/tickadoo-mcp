@@ -1720,6 +1720,29 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const languageFilteredProducts = filterProductsByLanguage(durationFilteredProducts, args.available_language as string | undefined);
         const ratingFilteredProducts = filterProductsByRating(languageFilteredProducts, args.min_rating as number | undefined);
         const cancellationFilteredProducts = filterProductsByFreeCancellation(ratingFilteredProducts, args.free_cancellation as boolean | undefined);
+
+        // Smart Filter Recovery: if new filters eliminated all results, tell the agent why
+        if (cancellationFilteredProducts.length === 0 && matchingProducts.length > 0) {
+          const activeFilters: string[] = [];
+          if (args.audience) activeFilters.push(`audience=${args.audience}`);
+          if (args.setting) activeFilters.push(`setting=${args.setting}`);
+          if (args.wheelchair_accessible != null) activeFilters.push(`wheelchair_accessible=${args.wheelchair_accessible}`);
+          if (args.physical_level) activeFilters.push(`physical_level=${args.physical_level}`);
+          if (args.min_duration != null || args.max_duration != null) activeFilters.push(`duration=${args.min_duration || 0}-${args.max_duration || "∞"}min`);
+          if (args.available_language) activeFilters.push(`language=${args.available_language}`);
+          if (args.min_rating != null) activeFilters.push(`min_rating=${args.min_rating}`);
+          if (args.free_cancellation != null) activeFilters.push(`free_cancellation=${args.free_cancellation}`);
+          const filterHint = activeFilters.length > 0
+            ? `\n\n💡 Active filters: ${activeFilters.join(", ")}. Try removing one filter to broaden results.`
+            : "";
+          const recoveryMsg = `No experiences in ${cityName} match all your filters (${matchingProducts.length} results before filtering).${filterHint}`;
+          return {
+            response: createFormattedResponse(format, recoveryMsg, { city: citySlug, city_name: cityName, total: 0, showing: 0, filters_applied: activeFilters, pre_filter_count: matchingProducts.length, experiences: [] }),
+            resultCount: 0,
+            summary: { city: citySlug, sort, format, filters: activeFilters.join(",") },
+          };
+        }
+
         const rankedProducts = sortProductsForSearch(cancellationFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
