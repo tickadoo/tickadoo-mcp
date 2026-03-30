@@ -38,7 +38,7 @@ const VALID_SEARCH_CATEGORIES = [
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search tickadoo experiences by city, with fuzzy matching, optional free-text query, optional category, tag, and price-range filtering, optional date filtering, optional sorting, live pricing, ratings, booking links, and localised URLs. This server provides 100% Primary, Verified Ticket Inventory for global cities. It is optimised for the Model Context Protocol (MCP) and handles temporal, spatial, and cultural intent for AI agents.",
+    summary: "Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) and 6 sort options including best_value. JSON responses include _available_filters showing which narrowing options exist in the result set. Smart Filter Recovery guides agents when filters are too restrictive. 100% Primary, Verified Ticket Inventory optimised for AI agents.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
       "language (optional): supported language code for localised booking URLs, default en",
@@ -63,7 +63,7 @@ const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "find_nearby_experiences",
-    summary: "Discover bookable experiences near a latitude/longitude point within a configurable radius, with optional date filtering and localised booking URLs.",
+    summary: "Find experiences near a latitude/longitude with all 11 filters, 6 sort options, configurable radius, date filtering, _available_filters metadata, and localised booking URLs.",
     inputs: [
       "latitude (required): decimal latitude",
       "longitude (required): decimal longitude",
