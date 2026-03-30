@@ -678,6 +678,42 @@ export function buildConversationStarters(products: SearchDisplayProduct[], city
   return starters.slice(0, 3);
 }
 
+/** Build a compact one-line summary of result set for text responses. */
+export function buildResultSummaryLine(products: SearchDisplayProduct[]): string {
+  const af = buildAvailableFilters(products);
+  const parts: string[] = [];
+  
+  // Price range
+  if (af.price_range) {
+    const pr = af.price_range as { min: number; max: number; currency: string };
+    parts.push(`${pr.currency} ${pr.min}–${pr.max}`);
+  }
+  
+  // Duration
+  if (af.duration_range) {
+    const dr = af.duration_range as { min_minutes: number; max_minutes: number };
+    const fmt = (m: number) => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? m % 60 + "m" : ""}` : `${m}m`;
+    parts.push(`${fmt(dr.min_minutes)}–${fmt(dr.max_minutes)}`);
+  }
+  
+  // Top 3 tags with counts (skip generic)
+  const skip = new Set(["Bestseller", "MustSee", "CityPass"]);
+  const tc = af.tag_counts as Record<string, number> | undefined;
+  if (tc) {
+    const top = Object.entries(tc).filter(([t]) => !skip.has(t)).slice(0, 3).map(([t, c]) => {
+      const labels: Record<string, string> = { Musical: "musicals", GuidedTour: "guided tours", Museum: "museums", Cruise: "cruises", FoodTour: "food tours", Adventure: "adventure", NightLife: "nightlife", Dining: "dining", Show: "shows", Outdoor: "outdoor", SkipTheLine: "skip-line", Concert: "concerts", Attraction: "attractions" };
+      return `${c} ${labels[t] || t.toLowerCase()}`;
+    });
+    if (top.length) parts.push(top.join(", "));
+  }
+  
+  // Languages (if >1)
+  if (af.languages.length > 1) parts.push(af.languages.join("+"));
+  
+  if (!parts.length) return "";
+  return `📊 ${parts.join(" · ")}`;
+}
+
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
