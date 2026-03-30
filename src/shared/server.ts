@@ -53,6 +53,7 @@ import {
   buildAvailableFilters,
   buildRelatedSearches,
   buildConversationStarters,
+  buildResultSummaryLine,
   formatAvailableFiltersHint,
   type SearchAppliedFilters,
   type SearchOmittedResults,
@@ -1792,7 +1793,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           formatSearchSortLine(sort),
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
-        ].filter(Boolean).join("\n");
+        , buildResultSummaryLine(topProducts)].filter(Boolean).join("\n");
         const jsonPayload = {
           ...searchJsonPayload(
             citySlug,
