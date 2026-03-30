@@ -463,6 +463,25 @@ export function heuristicEnrich(product: McpProduct): McpProduct {
     tags.add("Outdoor");
   }
 
+  // Helicopter
+  if (!tags.has("Helicopter") && (name.includes("helicopter") || name.includes("aerial"))) tags.add("Helicopter");
+  // Safari
+  if (!tags.has("Safari") && (name.includes("safari") || name.includes("game drive"))) tags.add("Safari");
+  // WhaleWatching
+  if (!tags.has("WhaleWatching") && (name.includes("whale") || name.includes("dolphin watch"))) tags.add("WhaleWatching");
+  // SelfGuided
+  if (!tags.has("SelfGuided") && (name.includes("self-guided") || name.includes("self guided") || name.includes("audio guide"))) tags.add("SelfGuided");
+  // HopOnHopOff
+  if (!tags.has("HopOnHopOff") && (name.includes("hop on hop off") || name.includes("hop-on hop-off"))) tags.add("HopOnHopOff");
+  // Cooking
+  if (!tags.has("Cooking") && (name.includes("cooking class") || name.includes("culinary workshop") || name.includes("cooking experience"))) tags.add("Cooking");
+  // Sunset
+  if (!tags.has("Sunset") && name.includes("sunset")) tags.add("Sunset");
+  // VIP
+  if (!tags.has("VIP") && (name.includes("vip") || name.includes("private tour") || name.includes("exclusive access"))) tags.add("VIP");
+  // Rooftop
+  if (!tags.has("Rooftop") && (name.includes("rooftop") || name.includes("observation deck") || name.includes("skyline"))) tags.add("Rooftop");
+
   return { ...product, tags: [...tags], audience: [...audience] };
 }
 
