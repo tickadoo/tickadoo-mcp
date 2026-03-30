@@ -600,6 +600,7 @@ export function formatAvailableFiltersHint(products: SearchDisplayProduct[]): st
   if (f.languages.length > 1) parts.push(`languages: ${f.languages.join(", ")}`);
   if (f.wheelchair_accessible) parts.push("wheelchair_accessible");
   if (f.free_cancellation_available) parts.push("free_cancellation");
+  if (f.tags && f.tags.length > 0) parts.push(`tags: ${f.tags.slice(0, 6).join(", ")}`);
   if (!parts.length) return "";
   return `\n🔍 Narrow with: ${parts.join(" · ")}`;
 }
