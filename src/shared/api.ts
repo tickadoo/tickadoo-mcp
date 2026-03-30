@@ -366,6 +366,42 @@ function heuristicEnrich(product: McpProduct): McpProduct {
     tags.add("KidsAttraction");
   }
 
+  // Spa: spa, massage, wellness, thermal, hammam, hot spring
+  const spaKeywords = ["spa", "massage", "wellness", "thermal", "hammam", "hot spring", "sauna", "steam room", "relaxation", "body treatment", "facial"];
+  if (!tags.has("Spa") && spaKeywords.some(k => name.includes(k))) {
+    tags.add("Spa");
+  }
+
+  // WaterSport: kayak, paddle, surf, snorkel, dive, jet ski, sailing
+  const waterKeywords = ["kayak", "paddle", "paddleboard", "surf", "snorkel", "diving", "scuba", "jet ski", "jetski", "sailing", "sail", "canoe", "windsur", "kitesur", "stand up paddle", "sup "];
+  if (!tags.has("WaterSport") && waterKeywords.some(k => name.includes(k))) {
+    tags.add("WaterSport");
+  }
+
+  // Dining: restaurant, dinner, lunch, tasting, food experience (beyond FoodTour)
+  const diningKeywords = ["dinner", "lunch", "restaurant", "dining", "tasting menu", "food experience", "brunch", "afternoon tea", "supper", "feast", "banquet"];
+  if (!tags.has("Dining") && diningKeywords.some(k => name.includes(k))) {
+    tags.add("Dining");
+  }
+
+  // Cruise: boat, ferry, sail, river, canal, yacht (if not already tagged)
+  const cruiseKeywords = ["boat", "ferry", "yacht", "canal", "river cruise", "boat tour", "boat trip", "catamaran", "speedboat"];
+  if (!tags.has("Cruise") && cruiseKeywords.some(k => name.includes(k))) {
+    tags.add("Cruise");
+  }
+
+  // HiddenGem: secret, hidden, underground, off beaten path, unusual
+  const hiddenKeywords = ["secret", "hidden", "underground", "off the beaten", "unusual", "quirky", "alternative", "lesser known", "local favourite", "insider"];
+  if (!tags.has("HiddenGem") && hiddenKeywords.some(k => name.includes(k))) {
+    tags.add("HiddenGem");
+  }
+
+  // Seasonal: Christmas, Halloween, Easter, Valentine, New Year
+  const seasonalKeywords = ["christmas", "halloween", "easter", "valentine", "new year", "festive", "winter wonderland", "summer", "spring"];
+  if (!tags.has("Seasonal") && seasonalKeywords.some(k => name.includes(k))) {
+    tags.add("Seasonal");
+  }
+
   return { ...product, tags: [...tags], audience: [...audience] };
 }
 
