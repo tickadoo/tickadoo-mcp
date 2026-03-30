@@ -480,7 +480,14 @@ export function heuristicEnrich(product: McpProduct): McpProduct {
   // VIP
   if (!tags.has("VIP") && (name.includes("vip") || name.includes("private tour") || name.includes("exclusive access"))) tags.add("VIP");
   // Rooftop
-  if (!tags.has("Rooftop") && (name.includes("rooftop") || name.includes("observation deck") || name.includes("skyline"))) tags.add("Rooftop");
+  if (!tags.has("Rooftop") && (name.includes("rooftop") || name.includes("observation deck") || name.includes("rooftop bar"))) tags.add("Rooftop");
+
+  // ThemePark: theme park, amusement, LEGOLAND, JOYPOLIS, Disneyland
+  if (!tags.has("ThemePark") && (name.includes("theme park") || name.includes("amusement") || name.includes("legoland") || name.includes("joypolis") || name.includes("disneyland") || name.includes("disney"))) tags.add("ThemePark");
+  // Aquarium: aquarium, sea life, ocean park
+  if (!tags.has("Aquarium") && (name.includes("aquarium") || name.includes("sea life") || name.includes("oceanarium"))) tags.add("Aquarium");
+  // Observatory: observation, observatory, sky deck, viewing platform, tower tickets
+  if (!tags.has("Observatory") && (name.includes("observatory") || name.includes("observation") || name.includes("sky deck") || name.includes("viewing platform") || name.includes("skytree"))) tags.add("Observatory");
 
   return { ...product, tags: [...tags], audience: [...audience] };
 }
