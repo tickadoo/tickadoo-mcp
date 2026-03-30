@@ -1616,7 +1616,10 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
         const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
         const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, args.audience as string | undefined);
-        const rankedProducts = sortProductsForSearch(audienceFilteredProducts, sort);
+        const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
+        const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, args.wheelchair_accessible as boolean | undefined);
+        const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, args.physical_level as string | undefined);
+        const rankedProducts = sortProductsForSearch(physicalFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
