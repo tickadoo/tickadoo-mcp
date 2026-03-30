@@ -49,6 +49,7 @@ import {
   type ResponseFormat,
   SEARCH_NEXT_STEP_HINT,
   searchJsonPayload,
+  buildAvailableFilters,
   type SearchAppliedFilters,
   type SearchOmittedResults,
 } from "./format.js";
@@ -1767,21 +1768,18 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
         ].filter(Boolean).join("\n");
-        const jsonPayload = {
-          ...searchJsonPayload(
-            citySlug,
-            cityName,
-            matchingProducts.length,
-            topProducts,
-            {
-              filters: appliedFilters,
-              language,
-              omittedResults,
-              sort,
-            },
-          ),
-          _available_filters: buildAvailableFilters(topProducts),
-        };
+        const jsonPayload = searchJsonPayload(
+          citySlug,
+          cityName,
+          matchingProducts.length,
+          topProducts,
+          {
+            filters: appliedFilters,
+            language,
+            omittedResults,
+            sort,
+          },
+        );
         return {
           response: createFormattedResponse(
             format,
