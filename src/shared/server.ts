@@ -1769,18 +1769,21 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
         ].filter(Boolean).join("\n");
-        const jsonPayload = searchJsonPayload(
-          citySlug,
-          cityName,
-          matchingProducts.length,
-          topProducts,
-          {
-            filters: appliedFilters,
-            language,
-            omittedResults,
-            sort,
-          },
-        );
+        const jsonPayload = {
+          ...searchJsonPayload(
+            citySlug,
+            cityName,
+            matchingProducts.length,
+            topProducts,
+            {
+              filters: appliedFilters,
+              language,
+              omittedResults,
+              sort,
+            },
+          ),
+          _available_filters: buildAvailableFilters(topProducts),
+        };
         return {
           response: createFormattedResponse(
             format,
@@ -1912,10 +1915,10 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts)}`,
+              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts) },
+            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }),
             {
               structuredContent: {
                 latitude,
