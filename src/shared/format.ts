@@ -555,7 +555,10 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
   let hasWheelchair = false;
   let hasFreeCancellation = false;
 
+  const tagSet = new Set<string>();
+
   for (const p of products) {
+    for (const t of p.mcpProduct?.tags || []) tagSet.add(t);
     for (const a of p.mcpProduct?.audience || []) audiences.add(a);
     const s = p.mcpProduct?.indoorOutdoor;
     if (s) settings.add(s);
@@ -583,6 +586,7 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     wheelchair_accessible: hasWheelchair,
     free_cancellation_available: hasFreeCancellation,
     ...(priceRange ? { price_range: priceRange } : {}),
+    tags: [...tagSet].sort().slice(0, 15),
   };
 }
 
