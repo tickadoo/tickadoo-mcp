@@ -50,6 +50,7 @@ import {
   SEARCH_NEXT_STEP_HINT,
   searchJsonPayload,
   buildAvailableFilters,
+  formatAvailableFiltersHint,
   type SearchAppliedFilters,
   type SearchOmittedResults,
 } from "./format.js";
@@ -1768,26 +1769,23 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           formatSearchFiltersLine(appliedFilters),
           formatOmittedResultsHint(omittedResults),
         ].filter(Boolean).join("\n");
-        const jsonPayload = {
-          ...searchJsonPayload(
-            citySlug,
-            cityName,
-            matchingProducts.length,
-            topProducts,
-            {
-              filters: appliedFilters,
-              language,
-              omittedResults,
-              sort,
-            },
-          ),
-          _available_filters: buildAvailableFilters(topProducts),
-        };
+        const jsonPayload = searchJsonPayload(
+          citySlug,
+          cityName,
+          matchingProducts.length,
+          topProducts,
+          {
+            filters: appliedFilters,
+            language,
+            omittedResults,
+            sort,
+          },
+        );
         return {
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${resultIntro}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}`,
+              `${resultIntro}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}${formatAvailableFiltersHint(topProducts)}`,
               SEARCH_NEXT_STEP_HINT,
             ),
             jsonPayload,
