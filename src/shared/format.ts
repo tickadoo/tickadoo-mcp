@@ -852,6 +852,14 @@ export function experienceDetailsJsonPayload(
         },
       })),
     },
+    ...(details.mcpProduct?.wheelchairAccessible != null || details.mcpProduct?.strollerFriendly != null ? {
+      _accessibility: {
+        wheelchair_accessible: details.mcpProduct.wheelchairAccessible ?? null,
+        stroller_friendly: details.mcpProduct.strollerFriendly ?? null,
+        hint: "For full venue accessibility data (hearing loop, captioned performances, companion seats, step-free access), query the accessibility API.",
+        api: "https://howard-api.francis-348.workers.dev/api/accessibility/{venue-slug}",
+      },
+    } : {}),
     ...(details.mcpProduct?.tags?.length ? {
       _cross_sell: {
         hint: "To find similar experiences, search with these tags or the same city.",
