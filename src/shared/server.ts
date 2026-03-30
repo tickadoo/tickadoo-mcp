@@ -1912,10 +1912,10 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}`,
+              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts)}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }),
+            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts) },
             {
               structuredContent: {
                 latitude,
