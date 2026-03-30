@@ -26,8 +26,24 @@ describe("llms docs", () => {
       "optional date filtering",
       "dateFrom (optional): ISO start date YYYY-MM-DD; must be provided together with dateTo",
       "dateTo (optional): ISO end date YYYY-MM-DD; must be provided together with dateFrom",
-      "City-based search with fuzzy matching, optional category/query/price filters, and optional date filtering",
+      "City-based search with fuzzy matching, optional category/query/price/tags filters, and optional date filtering",
       "Nearby search from latitude/longitude coordinates with configurable radius and optional date filtering",
+    ];
+
+    const fullDoc = buildLlmsFullTxt();
+
+    for (const snippet of expectedSnippets) {
+      expect(fullDoc).toContain(snippet);
+    }
+  });
+
+  it("documents the check_availability tool and its date-specific payload", () => {
+    const expectedSnippets = [
+      "check_availability",
+      "Fast date-specific availability check for one experience.",
+      "date (required): ISO date YYYY-MM-DD to check, such as 2026-04-05",
+      "party_size (optional): integer guest count for total pricing, default 2",
+      "available, slots, total_for_party, booking_url, and _intent_token payload metadata",
     ];
 
     const fullDoc = buildLlmsFullTxt();
@@ -39,9 +55,9 @@ describe("llms docs", () => {
 
   it("documents data freshness and limitations honestly", () => {
     const shortFreshnessSnippet = [
-      "## Data Freshness",
+      "## Data Freshness & Cache Policy",
       "- Pricing: updated daily from tickadoo product feed",
-      "- Availability: indicative, not real-time — always link to booking page for final confirmation",
+      "- Availability: based on daily-refreshed inventory with urgency signals (inventoryLevel) — link to booking page for final seat selection and payment",
       "- Ratings: aggregated, may lag behind live reviews",
       "- City coverage: updated with each server release",
       "- Results are cached for up to 5 minutes on the server",
@@ -49,8 +65,8 @@ describe("llms docs", () => {
 
     const shortLimitationsSnippet = [
       "## Limitations",
-      "- No booking completion — the server provides discovery and links, not checkout",
-      "- No real-time inventory — availability shown is indicative, users should check the booking page",
+      "- Booking handoff: the server provides discovery, recommendations, and direct booking deep links with ReserveAction — final payment is completed on tickadoo.com",
+      "- Inventory freshness: availability is refreshed daily with inventoryLevel urgency signals — users confirm final seat selection on the booking page",
       "- Not all experiences have duration, accessibility, audience suitability, or indoor/outdoor data",
       "- Prices shown are 'from' prices — final price may vary by date, party size, or variant",
       "- Indoor/outdoor classification and audience/accessibility data is available for all experiences but may contain inaccuracies from automated classification",
@@ -67,8 +83,8 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("## Data Freshness");
     expect(fullDoc).toContain("Results are cached for up to 5 minutes on the server");
     expect(fullDoc).toContain("## Limitations");
-    expect(fullDoc).toContain("No booking completion");
-    expect(fullDoc).toContain("No real-time inventory");
+    expect(fullDoc).toContain("Booking handoff");
+    expect(fullDoc).toContain("Inventory freshness");
     expect(fullDoc).not.toContain("Date filtering is not yet available");
     expect(fullDoc).toContain("Prices shown are 'from' prices");
   });

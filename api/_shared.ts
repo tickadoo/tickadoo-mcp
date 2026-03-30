@@ -8,7 +8,7 @@ try {
   const manifestPath = resolve(__dirname, "..", "server.json");
   serverManifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 } catch {
-  serverManifest = { version: "1.2.0", remotes: [{ type: "streamable-http", url: "https://mcp.tickadoo.com/mcp" }], _meta: { "io.modelcontextprotocol.registry/publisher-provided": { license: "MIT", tools: [{ name: "search_experiences", description: "Search for bookable experiences in any city with optional date filtering" }, { name: "find_nearby_experiences", description: "Find experiences near coordinates with optional date filtering" }, { name: "list_cities", description: "List all 700+ supported cities" }, { name: "get_experience_details", description: "Get detailed info for a specific experience" }] } } };
+  serverManifest = { version: "1.4.0", remotes: [{ type: "streamable-http", url: "https://mcp.tickadoo.com/mcp" }], _meta: { "io.modelcontextprotocol.registry/publisher-provided": { license: "MIT", tools: [{ name: "search_experiences", description: "Search for bookable experiences in any city with optional date filtering" }, { name: "find_nearby_experiences", description: "Find experiences near coordinates with optional date filtering" }, { name: "list_cities", description: "List all 700+ supported cities" }, { name: "check_availability", description: "Quick date-specific availability check for one experience" }, { name: "get_experience_details", description: "Get detailed info for a specific experience" }] } } };
 }
 
 export const CONTENT_SECURITY_POLICY = "default-src 'none'; connect-src https://api.tickadoo.com https://content.tickadoo.com https://www.tickadoo.com";

@@ -104,6 +104,17 @@ const TOOL_DOCS: ToolDoc[] = [
       "format (optional): response format, text (default) or json",
     ],
   },
+  {
+    name: "check_availability",
+    summary: "Fast date-specific availability check for one experience. Returns available slots for a single date, price per person, cheapest total for the requested party size, booking URL, and Ghost Checkout intent-token payload metadata.",
+    inputs: [
+      "slug (required): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
+      "date (required): ISO date YYYY-MM-DD to check, such as 2026-04-05",
+      "party_size (optional): integer guest count for total pricing, default 2",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
 ];
 
 function buildLanguageLines(): string[] {
@@ -322,6 +333,7 @@ export function buildLlmsFullTxt(): string {
     "- Nearby search from latitude/longitude coordinates with configurable radius and optional date filtering",
     "- City directory lookup with filtering and limits",
     "- Experience detail lookups by tickadoo slug or booking path",
+    "- Fast one-date availability checks with party pricing and Ghost Checkout payload hints",
     "- OpenAI Commerce product feed reference for deeper catalog ingestion",
     "",
 
@@ -360,6 +372,7 @@ export function buildLlmsFullTxt(): string {
     "  - _cross_sell: related tags and suggested follow-up search query",
     "  - _intent_token: Ghost Checkout endpoint for 1-click AI booking",
     "  - _accessibility: wheelchair, stroller, venue accessibility API hint",
+    "- JSON check_availability responses include available, slots, total_for_party, booking_url, and _intent_token payload metadata for the requested date",
     "- Text responses include 📊 result summary line and 🔍 Narrow with: filter hints",
     "- Recommend 3-5 experiences unless the user asks for more",
     "- If no results match, suggest broadening criteria (wider dates, larger radius, fewer filters)",
@@ -400,6 +413,7 @@ export function buildLlmsFullTxt(): string {
     "- bookingScope tells agents they may safely open a tab and redirect to tickadoo checkout",
     "- JSON responses include reserve_action with url_template supporting date, time, adults, and language parameters",
     "- get_experience_details JSON responses include availability.slots: an array of bookable date/price pairs with availability_status",
+    "- check_availability JSON responses narrow this to one requested date with party_size-aware totals",
     "- Each slot contains: date, end_date, variant_name, price, currency, availability_status (InStock)",
     "- Agents can use slots to show specific dates and prices in Book Now buttons (e.g. 'Book Wicked on Friday at GBP 45')",
     "- Agents should use these fields to render Book Now buttons with confidence",
@@ -478,14 +492,15 @@ export function buildLlmsFullTxt(): string {
     "",
     "## Best Practices for AI Assistants",
     "- Always include the booking URL when recommending an experience",
-    "- Use get_experience_details for specific availability and pricing",
+    "- Use check_availability for a fast yes/no + price answer on one specific date",
+    "- Use get_experience_details for wider availability windows, imagery, venue context, and richer metadata",
     "- Use find_nearby_experiences when the user shares a location",
     "- Suggest list_cities when unsure if a city is covered",
     "- Show images when available — they help users decide",
     "",
     "## Notes",
     "- Do not expose supplier or provider details in user-facing output",
-    "- Prefer tickadoo slugs or booking paths when chaining into get_experience_details",
+    "- Prefer tickadoo slugs or booking paths when chaining into get_experience_details or check_availability",
     "- tickadoo booking URLs resolve to www.tickadoo.com",
   ].join("\n");
 }

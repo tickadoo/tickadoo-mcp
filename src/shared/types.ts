@@ -59,6 +59,15 @@ export interface StructuredDataDatePrice {
   endDate: string;
   minPrice: number;
   variantName: string;
+  time?: string | null;
+  startTime?: string | null;
+  start_time?: string | null;
+  ticketsRemaining?: number | null;
+  tickets_remaining?: number | null;
+  inventoryLevel?: number | null;
+  inventory_level?: number | null;
+  availabilityStatus?: string | null;
+  availability_status?: string | null;
 }
 
 export interface StructuredDataResponse {

@@ -17,6 +17,10 @@
           "description": "Browse supported cities with optional filtering and result limits."
         },
         {
+          "name": "check_availability",
+          "description": "Quick date-specific availability check for one experience, including party pricing, booking URL, and Ghost Checkout payload metadata."
+        },
+        {
           "name": "get_experience_details",
           "description": "Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path."
         }
@@ -31,7 +35,7 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "1.2.0",
+  "version": "1.4.0",
   "remotes": [
     {
       "type": "streamable-http",

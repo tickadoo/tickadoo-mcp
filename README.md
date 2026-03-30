@@ -22,9 +22,9 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
-Current release: `v1.3.0`
+Current release: `v1.4.0`
 
-- 4 read-only MCP tools with 11 search filters + 6 sort options
+- 5 read-only MCP tools with 11 search filters + 6 sort options
 - 13,090 products across 681 cities in 40+ languages
 - Rule-based audience + tag enrichment (100% coverage)
 - Availability slots with real dates and prices
@@ -50,6 +50,7 @@ Current release: `v1.3.0`
 | `search_experiences` | Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) + 6 sort options (incl. best_value) |
 | `find_nearby_experiences` | Find experiences near lat/lng with same 11 filters, configurable radius, and date filtering |
 | `list_cities` | Browse supported cities with optional filtering and result limits |
+| `check_availability` | Fast date-specific availability check for a single experience. Returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
 | `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
 
 All tools expose MCP tool annotations for `readOnlyHint`, `destructiveHint`, and `openWorldHint`.
@@ -229,4 +230,3 @@ Please preserve lowercase in all integrations and documentation.
 ## License
 
 MIT — tickadoo Inc.
-

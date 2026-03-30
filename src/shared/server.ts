@@ -1,6 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  buildAvailabilityCheckPayload,
+  calculateAvailabilityWindowDays,
+  CHECK_AVAILABILITY_NEXT_STEP_HINT,
+  DEFAULT_PARTY_SIZE,
+  formatAvailabilityCheck,
+  MAX_PARTY_SIZE,
+} from "./availability.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -1469,6 +1477,83 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
   };
 }
 
+function validateCheckAvailabilityArgs(args: {
+  slug?: string;
+  date?: string;
+  party_size?: number;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  slug: string;
+  date: string;
+  partySize: number;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const slug = args.slug?.trim();
+  if (!slug) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "Slug is required. Provide a non-empty tickadoo slug or path, like \"london-dungeon-tickets\" or \"/london/london-dungeon-tickets\".",
+      ),
+    };
+  }
+
+  const date = args.date?.trim();
+  if (!date) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "Date is required. Use ISO format YYYY-MM-DD, for example \"2026-04-05\"."),
+    };
+  }
+
+  try {
+    calculateAvailabilityWindowDays(date);
+  } catch (error) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, getErrorMessage(error)),
+    };
+  }
+
+  const partySize = args.party_size ?? DEFAULT_PARTY_SIZE;
+  if (!Number.isInteger(partySize) || partySize < 1 || partySize > MAX_PARTY_SIZE) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid party_size. It must be an integer between 1 and ${MAX_PARTY_SIZE} (got: ${formatValue(args.party_size)}).`,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      slug,
+      date,
+      partySize,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 function validateExperienceDetailsArgs(args: {
   slug?: string;
   provider?: string;
@@ -2043,6 +2128,86 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { query: query ?? "all", format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "check_availability",
+    `Quick date-specific availability check for a specific tickadoo experience. Returns availability for one date only, plus party total, booking URL, and Ghost Checkout intent-token payload metadata. ${LANGUAGE_SUPPORT_NOTE} Use when the user asks "is this available on Saturday?" or wants a fast price check without the full experience detail payload.`,
+    {
+      slug: z.string().describe("Tickadoo slug or booking path, e.g. 'london-dungeon-tickets' or '/london/london-dungeon-tickets'"),
+      date: z.string().describe("Date to check in ISO format YYYY-MM-DD (e.g. '2026-04-05')"),
+      party_size: z.number().int().optional().default(DEFAULT_PARTY_SIZE).describe(`Number of guests or tickets to price (default ${DEFAULT_PARTY_SIZE}, max ${MAX_PARTY_SIZE})`),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("check_availability", logWriter, async args => {
+      const validated = validateCheckAvailabilityArgs(args);
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            slug: typeof args.slug === "string" ? args.slug.trim() || "(empty)" : "(missing)",
+            date: typeof args.date === "string" ? args.date.trim() || "(empty)" : "(missing)",
+            party_size: typeof args.party_size === "number" ? args.party_size : DEFAULT_PARTY_SIZE,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const {
+        slug,
+        date,
+        partySize,
+        language,
+        format,
+      } = validated.data;
+
+      try {
+        const resolved = await resolveProductBySlug(slug, language);
+        const days = calculateAvailabilityWindowDays(date);
+        const details = await getExperienceDetails(resolved.product.provider, resolved.product.providerId, days);
+        const payload = buildAvailabilityCheckPayload(date, partySize, details, {
+          title: resolved.product.title,
+          slug: resolved.product.slug,
+          bookingPath: resolved.bookingPath,
+          language,
+        });
+
+        return {
+          response: createFormattedResponse(
+            format,
+            appendNextStepHint(
+              formatAvailabilityCheck(payload),
+              CHECK_AVAILABILITY_NEXT_STEP_HINT,
+            ),
+            payload,
+            {
+              structuredContent: {
+                source: "tickadoo",
+                tickadooProductId: resolved.product.id,
+                ...payload,
+              },
+            },
+          ),
+          resultCount: payload.slots.length,
+          summary: {
+            slug: resolved.product.slug,
+            date,
+            party_size: partySize,
+            available: payload.available,
+            format,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: { slug, date, party_size: partySize, format },
         };
       }
     }),

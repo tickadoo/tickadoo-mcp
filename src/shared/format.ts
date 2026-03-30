@@ -1,4 +1,8 @@
-import { DEFAULT_LANGUAGE, DETAIL_DATE_PREVIEW_LIMIT } from "./config.js";
+import {
+  DEFAULT_LANGUAGE,
+  DETAIL_DATE_PREVIEW_LIMIT,
+  GHOST_CHECKOUT_INTENT_ENDPOINT,
+} from "./config.js";
 import { buildBookingUrl } from "./api.js";
 import type { McpProduct, McpProductVariant, Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
 
@@ -1060,7 +1064,7 @@ export function experienceDetailsJsonPayload(
     } : {}),
     _intent_token: {
       hint: "For 1-click AI checkout, POST to /api/intent-token with productSlug, date, partySize to get a pre-filled checkout URL.",
-      endpoint: "https://howard-api.francis-348.workers.dev/api/intent-token",
+      endpoint: GHOST_CHECKOUT_INTENT_ENDPOINT,
     },
     _booking_urgency: (() => {
       const signals: string[] = [];

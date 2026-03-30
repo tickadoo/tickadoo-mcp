@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0] - 2026-03-30
+### Added
+- `check_availability` MCP tool for fast date-specific availability checks by slug + date + party size
+- Date-specific booking payload with slot pricing, cheapest party total, prefilled booking URL, and Ghost Checkout intent-token metadata
+- Unit tests for availability payload generation, party-total calculation, and llms documentation updates
+
 ## [1.2.0] - 2026-03-27
 ### Added
 - Optional `dateFrom` / `dateTo` filtering for `search_experiences`
