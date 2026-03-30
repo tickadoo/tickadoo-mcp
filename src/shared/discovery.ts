@@ -52,6 +52,19 @@ export const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
+    name: "get_last_minute",
+    summary: "Find experiences starting within the next few hours, sorted by soonest start time. Results include countdown text like starts in 47 minutes plus urgency signals when the start is imminent or inventory is low.",
+    registryDescription: "Find experiences starting within the next few hours, sorted by soonest start with countdown text and urgency signals.",
+    inputs: [
+      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
+      "hours (optional): number of hours ahead to search, default 3, max 12",
+      "latitude (optional): latitude for blending nearby experiences close to the user's exact location",
+      "longitude (optional): longitude for blending nearby experiences close to the user's exact location",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
+  {
     name: "find_nearby_experiences",
     summary: "Find experiences near coordinates with configurable radius, optional date filtering, the same enrichment filters as city search, and localised booking URLs.",
     registryDescription: "Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering.",

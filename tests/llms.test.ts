@@ -89,6 +89,17 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("grouped into morning, afternoon, and evening");
   });
 
+  it("documents get_last_minute countdown behavior and inputs", () => {
+    const fullDoc = buildLlmsFullTxt();
+
+    expect(fullDoc).toContain("get_last_minute");
+    expect(fullDoc).toContain("starting within the next few hours");
+    expect(fullDoc).toContain("starts in 47 minutes");
+    expect(fullDoc).toContain("hours (optional): number of hours ahead to search, default 3, max 12");
+    expect(fullDoc).toContain("latitude (optional): latitude for blending nearby experiences close to the user's exact location");
+    expect(fullDoc).toContain("prefer get_last_minute(city, hours=3)");
+  });
+
   it("documents get_family_day planning behavior", () => {
     const fullDoc = buildLlmsFullTxt();
 

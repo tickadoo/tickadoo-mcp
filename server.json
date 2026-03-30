@@ -13,6 +13,10 @@
           "description": "Search by emotional intent, mapping moods like romantic, relaxing, foodie, or rainy_day to optimized filters before running a city search."
         },
         {
+          "name": "get_last_minute",
+          "description": "Find experiences starting within the next few hours, sorted by soonest start with countdown text and urgency signals."
+        },
+        {
           "name": "find_nearby_experiences",
           "description": "Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering."
         },

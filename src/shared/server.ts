@@ -19,6 +19,12 @@ import {
   formatWhatsOnThisWeekText,
 } from "../whats-on-this-week.js";
 import {
+  DEFAULT_LAST_MINUTE_HOURS,
+  MAX_LAST_MINUTE_HOURS,
+  buildLastMinuteResult,
+  formatLastMinuteText,
+} from "../last-minute.js";
+import {
   buildFamilyDayPayload,
   deriveFamilyDayProfile,
   formatFamilyDayText,
@@ -118,6 +124,7 @@ const MAX_WHATS_ON_TONIGHT_LIMIT = 25;
 const TONIGHT_DETAIL_BATCH_SIZE = 8;
 const TONIGHT_MIN_CANDIDATES = 18;
 const TONIGHT_MAX_CANDIDATES = 40;
+const LAST_MINUTE_PRODUCT_LIMIT = 24;
 const DEFAULT_CITY_DIRECTORY_LIMIT = 50;
 const MAX_CITY_DIRECTORY_LIMIT = 200;
 const DEFAULT_RADIUS_KM = 25;
@@ -2153,6 +2160,101 @@ function validateWhatsOnThisWeekArgs(args: {
   };
 }
 
+function validateLastMinuteArgs(args: {
+  city?: string;
+  hours?: number;
+  latitude?: number;
+  longitude?: number;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  hours: number;
+  latitude?: number;
+  longitude?: number;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city?.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "City is required. Provide a city name or slug like \"london\", \"paris\", or \"new-york\".",
+      ),
+    };
+  }
+
+  const hours = args.hours ?? DEFAULT_LAST_MINUTE_HOURS;
+  if (!Number.isFinite(hours) || hours <= 0 || hours > MAX_LAST_MINUTE_HOURS) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid hours. It must be a positive number up to ${MAX_LAST_MINUTE_HOURS} (got: ${formatValue(args.hours)}).`,
+      ),
+    };
+  }
+
+  const hasLatitude = typeof args.latitude === "number";
+  const hasLongitude = typeof args.longitude === "number";
+  if (hasLatitude !== hasLongitude) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "Latitude and longitude must be provided together when using location-aware last-minute search.",
+      ),
+    };
+  }
+
+  if (hasLatitude && (!Number.isFinite(args.latitude) || args.latitude! < -90 || args.latitude! > 90)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid latitude. It must be between -90 and 90 (got: ${formatValue(args.latitude)}).`,
+      ),
+    };
+  }
+
+  if (hasLongitude && (!Number.isFinite(args.longitude) || args.longitude! < -180 || args.longitude! > 180)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid longitude. It must be between -180 and 180 (got: ${formatValue(args.longitude)}).`,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      city,
+      hours,
+      latitude: hasLatitude ? args.latitude : undefined,
+      longitude: hasLongitude ? args.longitude : undefined,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 function validateWhatsOnTonightArgs(args: {
   city: string;
   category?: string;
@@ -2853,6 +2955,178 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { city, date_from: startDate, date_to: endDate, format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "get_last_minute",
+    `Find tickadoo experiences starting within the next few hours in a city. Sorts by soonest start time, adds countdown text like "starts in 47 minutes", and flags high urgency when a start is imminent or inventory is low. ${LANGUAGE_SUPPORT_NOTE}`,
+    {
+      city: z.string().describe("City name or slug, such as 'london', 'new-york', or 'paris'."),
+      hours: z.number().optional().default(DEFAULT_LAST_MINUTE_HOURS).describe(`How many hours ahead to search for imminent starts (default ${DEFAULT_LAST_MINUTE_HOURS}, max ${MAX_LAST_MINUTE_HOURS}).`),
+      latitude: z.number().optional().describe("Optional latitude to blend in nearby experiences close to the user's exact location."),
+      longitude: z.number().optional().describe("Optional longitude to blend in nearby experiences close to the user's exact location."),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_last_minute", logWriter, async args => {
+      const validated = validateLastMinuteArgs({
+        city: typeof args.city === "string" ? args.city : undefined,
+        hours: typeof args.hours === "number" ? args.hours : undefined,
+        latitude: typeof args.latitude === "number" ? args.latitude : undefined,
+        longitude: typeof args.longitude === "number" ? args.longitude : undefined,
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(missing)",
+            hours: typeof args.hours === "number" ? args.hours : DEFAULT_LAST_MINUTE_HOURS,
+            lat: typeof args.latitude === "number" ? args.latitude : undefined,
+            lng: typeof args.longitude === "number" ? args.longitude : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const {
+        city,
+        hours,
+        latitude,
+        longitude,
+        language,
+        format,
+      } = validated.data;
+
+      const now = new Date();
+      const windowEnd = new Date(now.getTime() + (hours * 60 * 60_000));
+      const startDate = now.toISOString().slice(0, 10);
+      const endDate = windowEnd.toISOString().slice(0, 10);
+
+      try {
+        const cities = await getCities(language);
+        const cityById = new Map(
+          cities
+            .filter((entry): entry is City & { slug: string } => Boolean(entry.slug))
+            .map(entry => [entry.id, entry]),
+        );
+        const initialCityMatch = findCityCandidates(city, cities)[0];
+
+        let citySlug = initialCityMatch?.score >= AUTO_MATCH_CONFIDENCE
+          ? initialCityMatch.city.slug
+          : normalizeCityInput(city);
+        let cityName = initialCityMatch?.score >= AUTO_MATCH_CONFIDENCE
+          ? initialCityMatch.city.name
+          : city;
+        let products = await getProductsForCitySlug(citySlug, language, { dateFrom: startDate, dateTo: endDate });
+
+        if (!products.length) {
+          const candidates = initialCityMatch
+            ? [initialCityMatch, ...findCityCandidates(city, cities).slice(1)]
+            : findCityCandidates(city, cities);
+          const bestMatch = candidates[0];
+
+          if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
+            citySlug = bestMatch.city.slug;
+            cityName = bestMatch.city.name;
+            products = await getProductsForCitySlug(citySlug, language, { dateFrom: startDate, dateTo: endDate });
+          } else {
+            return {
+              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+              resultCount: 0,
+              summary: { city, hours, lat: latitude, lng: longitude, format },
+            };
+          }
+        }
+
+        let combinedProducts = products;
+        if (latitude != null && longitude != null) {
+          const nearbyProducts = await getProductsByLocation(
+            latitude,
+            longitude,
+            DEFAULT_RADIUS_KM,
+            language,
+            { dateFrom: startDate, dateTo: endDate },
+          );
+          const bySlug = new Map<string, Product>();
+          for (const product of [...products, ...nearbyProducts]) {
+            if (!bySlug.has(product.slug)) {
+              bySlug.set(product.slug, product);
+            }
+          }
+          combinedProducts = [...bySlug.values()];
+        }
+
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const enriched = mergeEnrichedProducts(combinedProducts, enrichedProducts);
+        const shortlisted = sortProductsForSearch(enriched, "popular").slice(0, LAST_MINUTE_PRODUCT_LIMIT);
+        const detailWindowDays = calculateAvailabilityWindowDays(endDate, now);
+        const detailResults = await Promise.allSettled(
+          shortlisted.map(async product => {
+            const details = await getExperienceDetails(product.provider, product.providerId, detailWindowDays);
+            const bookingCitySlug = cityById.get(product.cityId)?.slug ?? citySlug;
+            return {
+              product,
+              details: mergeEnrichedDetails(details, product.slug, enrichedProducts),
+              bookingPath: `${bookingCitySlug}/${product.slug}`,
+              language,
+              popular: isPopularSearchProduct(product),
+            };
+          }),
+        );
+
+        const successfulDetails = detailResults.flatMap(result => result.status === "fulfilled" ? [result.value] : []);
+        const payload = buildLastMinuteResult(successfulDetails, {
+          city: cityName,
+          citySlug,
+          hours,
+          now,
+        });
+        const nextStepHint = payload.results.length
+          ? "💡 Tip: Use get_experience_details(slug) for venue context or widen the hours window if you want more options."
+          : "💡 Tip: Widen the hours window, try nearby coordinates, or use get_whats_on_this_week for a broader plan.";
+
+        return {
+          response: createFormattedResponse(
+            format,
+            appendNextStepHint(formatLastMinuteText(payload), nextStepHint),
+            payload,
+            {
+              structuredContent: payload,
+            },
+          ),
+          resultCount: payload.results.length,
+          summary: {
+            city: citySlug,
+            hours,
+            lat: latitude,
+            lng: longitude,
+            date_from: startDate,
+            date_to: endDate,
+            format,
+            language,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            city,
+            hours,
+            lat: latitude,
+            lng: longitude,
+            date_from: startDate,
+            date_to: endDate,
+            format,
+            language,
+          },
         };
       }
     }),
