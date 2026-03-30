@@ -575,6 +575,26 @@ export function filterProductsByDuration(products: Product[], minDur?: number, m
 }
 
 /** Filter products by available language (ISO 639-1 code). */
+/** Filter products by minimum rating. */
+export function filterProductsByRating(products: Product[], minRating?: number): Product[] {
+  if (minRating == null) return products;
+  return products.filter(product => {
+    const rating = product.averageRating ?? product.mcpProduct?.reviewRating ?? null;
+    if (rating == null) return false;
+    return rating >= minRating;
+  });
+}
+
+/** Filter products by free cancellation policy. */
+export function filterProductsByFreeCancellation(products: Product[], freeCancellation?: boolean): Product[] {
+  if (freeCancellation == null) return products;
+  return products.filter(product => {
+    const policy = product.mcpProduct?.variants?.[0]?.cancellationPolicy;
+    const isFree = policy === "BeforeTimeslot" || policy === "BeforeDate";
+    return freeCancellation ? isFree : !isFree;
+  });
+}
+
 export function filterProductsByLanguage(products: Product[], lang?: string): Product[] {
   if (!lang) return products;
   const l = lang.trim().toLowerCase();
@@ -1511,6 +1531,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       min_duration: z.number().optional().describe("Minimum duration in minutes (e.g. 60 for at least 1 hour)"),
       max_duration: z.number().optional().describe("Maximum duration in minutes (e.g. 120 for under 2 hours)"),
       available_language: z.string().optional().describe("Filter by language availability. ISO 639-1 code: en, es, fr, de, ja, zh, pt, it, ko, etc."),
+      min_rating: z.number().optional().describe("Minimum rating (e.g. 4.5 for top-rated experiences only)"),
+      free_cancellation: z.boolean().optional().describe("Filter for experiences with free cancellation (true) or non-refundable (false)"),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1696,7 +1718,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, args.physical_level as string | undefined);
         const durationFilteredProducts = filterProductsByDuration(physicalFilteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
         const languageFilteredProducts = filterProductsByLanguage(durationFilteredProducts, args.available_language as string | undefined);
-        const rankedProducts = sortProductsForSearch(languageFilteredProducts, sort);
+        const ratingFilteredProducts = filterProductsByRating(languageFilteredProducts, args.min_rating as number | undefined);
+        const cancellationFilteredProducts = filterProductsByFreeCancellation(ratingFilteredProducts, args.free_cancellation as boolean | undefined);
+        const rankedProducts = sortProductsForSearch(cancellationFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
