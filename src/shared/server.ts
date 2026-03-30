@@ -300,11 +300,15 @@ function productHasDescription(product: Product): boolean {
 }
 
 export function isPopularSearchProduct(product: Product): boolean {
+  const rating = product.averageRating ?? 0;
+  const reviewCount = product.mcpProduct?.reviewCount ?? 0;
+  // Popular = genuinely high-rated with social proof, not just "has data"
   return (
     product.minPrice != null
     && productHasImage(product)
-    && (product.averageRating ?? 0) >= 4.0
     && productHasDescription(product)
+    && rating >= 4.5
+    && reviewCount >= 100
   );
 }
 
@@ -1943,7 +1947,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: (() => { const bp = (topProducts[0] as any)?.bookingPath ?? ""; const citySlug = bp.split("/").filter(Boolean)[0] || "nearby"; return buildRelatedSearches(citySlug, topProducts as any); })(), _conversation_starters: buildConversationStarters(topProducts as any, "nearby") },
+            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(topProducts[0]?.slug ? (topProducts[0] as any).cityId ?? "nearby" : "nearby", topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby") },
             {
               structuredContent: {
                 latitude,
