@@ -549,21 +549,25 @@ export function filterProductsByPhysicalLevel(products: Product[], level?: strin
 }
 
 /** Parse ISO 8601 duration (PT2H30M) to minutes. */
+/** Parse .NET TimeSpan format (DD.HH:MM:SS or HH:MM:SS) to minutes. */
 function parseDurationToMinutes(dur: string | null): number | null {
   if (!dur) return null;
-  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  const trimmed = dur.trim();
+  // Match DD.HH:MM:SS or HH:MM:SS format
+  const m = trimmed.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})$/);
   if (!m) return null;
-  return (parseInt(m[1] || "0", 10) * 60) + parseInt(m[2] || "0", 10);
+  const days = parseInt(m[1] || "0", 10);
+  const hours = parseInt(m[2], 10);
+  const minutes = parseInt(m[3], 10);
+  return (days * 24 * 60) + (hours * 60) + minutes;
 }
 
 /** Filter products by duration range in minutes. */
 export function filterProductsByDuration(products: Product[], minDur?: number, maxDur?: number): Product[] {
   if (minDur == null && maxDur == null) return products;
   return products.filter(product => {
-    // Try variant duration first, then fall back to product.duration
-    const rawDur = product.mcpProduct?.variants?.[0]?.duration ?? (product as any).duration ?? null;
-    const mins = parseDurationToMinutes(rawDur);
-    if (mins == null) return false; // Exclude products with unknown duration when filtering
+    const mins = parseDurationToMinutes(product.mcpProduct?.variants?.[0]?.duration ?? null);
+    if (mins == null) return minDur == null;
     if (minDur != null && mins < minDur) return false;
     if (maxDur != null && mins > maxDur) return false;
     return true;
