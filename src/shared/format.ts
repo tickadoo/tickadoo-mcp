@@ -567,6 +567,14 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     if (policy === "BeforeTimeslot" || policy === "BeforeDate") hasFreeCancellation = true;
   }
 
+  // Collect price range
+  const prices = products
+    .map(p => p.minPrice)
+    .filter((p): p is number => p != null && p > 0);
+  const priceRange = prices.length > 0
+    ? { min: Math.min(...prices), max: Math.max(...prices), currency: products[0]?.currency || "GBP" }
+    : null;
+
   return {
     audience: [...audiences].sort(),
     setting: [...settings].sort(),
@@ -574,6 +582,7 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     languages: [...languages].sort().slice(0, 10),
     wheelchair_accessible: hasWheelchair,
     free_cancellation_available: hasFreeCancellation,
+    ...(priceRange ? { price_range: priceRange } : {}),
   };
 }
 
