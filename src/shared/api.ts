@@ -311,7 +311,7 @@ function heuristicEnrich(product: McpProduct): McpProduct {
   }
 
   // AdultsOnly: wine, cocktail, pub, burlesque, cabaret, comedy club, nightlife
-  const adultsKeywords = ["wine tasting", "cocktail", "pub crawl", "burlesque", "cabaret", "comedy club", "beer tasting", "gin", "whisky", "whiskey", "speakeasy", "adults only", "18+", "strip"];
+  const adultsKeywords = ["wine tasting", "cocktail", "pub crawl", "burlesque", "cabaret", "comedy club", "beer tasting", "gin", "whisky", "whiskey", "speakeasy", "adults only", "18+", "strip", "stand up comedy", "comedy night", "late night", "escape room", "murder mystery", "drag", "immersive", "jazz club", "rooftop bar", "supper club", "tasting experience"];
   if (!audience.has("AdultsOnly") && adultsKeywords.some(k => name.includes(k))) {
     audience.add("AdultsOnly");
   }
