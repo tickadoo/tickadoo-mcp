@@ -570,6 +570,25 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     if (policy === "BeforeTimeslot" || policy === "BeforeDate") hasFreeCancellation = true;
   }
 
+  // Collect duration range (from variants)
+  const durations: number[] = [];
+  for (const p of products) {
+    const variant = p.mcpProduct?.variants?.[0];
+    if (variant?.duration) {
+      // Parse .NET TimeSpan format HH:MM:SS
+      const parts = variant.duration.split(":");
+      if (parts.length >= 2) {
+        const hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+        const totalMinutes = hours * 60 + minutes;
+        if (totalMinutes > 0) durations.push(totalMinutes);
+      }
+    }
+  }
+  const durationRange = durations.length > 0
+    ? { min_minutes: Math.min(...durations), max_minutes: Math.max(...durations) }
+    : null;
+
   // Collect price range
   const prices = products
     .map(p => p.minPrice)
@@ -586,6 +605,7 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     wheelchair_accessible: hasWheelchair,
     free_cancellation_available: hasFreeCancellation,
     ...(priceRange ? { price_range: priceRange } : {}),
+    ...(durationRange ? { duration_range: durationRange } : {}),
     tags: [...tagSet].sort().slice(0, 15),
   };
 }
