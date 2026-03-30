@@ -288,7 +288,7 @@ function normalizeMcpProduct(product: McpProduct): McpProduct {
 }
 
 /** Heuristic enrichment: fills audience/tag gaps based on product attributes. */
-function heuristicEnrich(product: McpProduct): McpProduct {
+export function heuristicEnrich(product: McpProduct): McpProduct {
   const name = (product.name || "").toLowerCase();
   const tags = new Set(product.tags || []);
   const audience = new Set(product.audience || []);
