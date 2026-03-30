@@ -607,6 +607,7 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     ...(priceRange ? { price_range: priceRange } : {}),
     ...(durationRange ? { duration_range: durationRange } : {}),
     tags: [...tagSet].sort().slice(0, 15),
+    tag_counts: Object.fromEntries([...tagSet].map(t => [t, products.filter(p => (p.mcpProduct?.tags || []).includes(t)).length]).sort((a, b) => (b as any)[1] - (a as any)[1]).slice(0, 10)),
   };
 }
 
