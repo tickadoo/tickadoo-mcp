@@ -560,8 +560,10 @@ function parseDurationToMinutes(dur: string | null): number | null {
 export function filterProductsByDuration(products: Product[], minDur?: number, maxDur?: number): Product[] {
   if (minDur == null && maxDur == null) return products;
   return products.filter(product => {
-    const mins = parseDurationToMinutes(product.mcpProduct?.variants?.[0]?.duration ?? null);
-    if (mins == null) return minDur == null;
+    // Try variant duration first, then fall back to product.duration
+    const rawDur = product.mcpProduct?.variants?.[0]?.duration ?? (product as any).duration ?? null;
+    const mins = parseDurationToMinutes(rawDur);
+    if (mins == null) return false; // Exclude products with unknown duration when filtering
     if (minDur != null && mins < minDur) return false;
     if (maxDur != null && mins > maxDur) return false;
     return true;
