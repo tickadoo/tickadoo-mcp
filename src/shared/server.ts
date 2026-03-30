@@ -51,6 +51,7 @@ import {
   SEARCH_NEXT_STEP_HINT,
   searchJsonPayload,
   buildAvailableFilters,
+  buildRelatedSearches,
   formatAvailableFiltersHint,
   type SearchAppliedFilters,
   type SearchOmittedResults,
@@ -1940,7 +1941,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any) },
+            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches("nearby", topProducts as any) },
             {
               structuredContent: {
                 latitude,
