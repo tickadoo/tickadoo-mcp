@@ -1,5 +1,6 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { SERVER_VERSION } from "../src/shared/config.js";
 import { buildHealthPayload, CONTENT_SECURITY_POLICY, RESPONSE_CACHE_CONTROL, writeJson } from "./_shared.js";
 import { createTickadooServer } from "../src/shared/server.js";
 
@@ -36,6 +37,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader("Access-Control-Allow-Headers", "*");
   res.setHeader("Content-Security-Policy", CONTENT_SECURITY_POLICY);
   res.setHeader("Cache-Control", RESPONSE_CACHE_CONTROL);
+  res.setHeader("X-MCP-Server-Version", SERVER_VERSION);
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();

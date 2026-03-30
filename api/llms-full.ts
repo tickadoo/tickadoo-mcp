@@ -1,10 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { SERVER_VERSION } from "../src/shared/config.js";
 import { buildLlmsFullTxt } from "../src/shared/llms.js";
 
 function writePlainText(req: IncomingMessage, res: ServerResponse, body: string): void {
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("X-MCP-Server-Version", SERVER_VERSION);
   if (req.method === "HEAD") {
     res.end();
     return;

@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  MCP_CAPABILITY_CATEGORIES,
+  MCP_PUBLIC_TOOL_COUNT,
+} from "../src/shared/discovery.js";
 import { buildLlmsFullTxt, buildLlmsTxt } from "../src/shared/llms.js";
 
 describe("llms docs", () => {
+  it("advertises the v1.4 catalog size and capabilities", () => {
+    const shortDoc = buildLlmsTxt();
+    const fullDoc = buildLlmsFullTxt();
+
+    for (const snippet of [
+      "Version: 1.4.0",
+      `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
+      `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
+    ]) {
+      expect(shortDoc).toContain(snippet);
+      expect(fullDoc).toContain(snippet);
+    }
+  });
+
   it("documents the valid category enum for search_experiences", () => {
     const expectedSnippet = [
       "## Valid Categories",
@@ -79,6 +97,34 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("kids_ages (optional): array of child ages");
     expect(fullDoc).toContain("Under 3 triggers wheelchair-accessible filtering");
     expect(fullDoc).toContain("clusters picks geographically to reduce travel");
+  });
+
+  it("documents the expanded v1.4 tool catalog", () => {
+    const shortDoc = buildLlmsTxt();
+    const fullDoc = buildLlmsFullTxt();
+
+    for (const snippet of [
+      "recommend_experiences",
+      "get_categories",
+      "whats_on_tonight",
+      "get_whats_on_this_week",
+      "get_city_guide",
+      "get_transfer_info",
+      "plan_itinerary",
+      "query (required): natural-language preference prompt such as romantic evening in Paris under EUR 100",
+      "days (required): number of days to plan, from 1 to 7",
+    ]) {
+      expect(fullDoc).toContain(snippet);
+    }
+
+    for (const snippet of [
+      "- recommend_experiences:",
+      "- plan_itinerary:",
+      "- whats_on_tonight:",
+      "- get_city_guide:",
+    ]) {
+      expect(shortDoc).toContain(snippet);
+    }
   });
 
   it("documents data freshness and limitations honestly", () => {

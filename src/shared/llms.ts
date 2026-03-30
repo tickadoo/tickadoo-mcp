@@ -7,17 +7,16 @@ import {
   SERVER_VERSION,
   SUPPORTED_LANGUAGE_CODES,
 } from "./config.js";
+import {
+  MCP_CAPABILITY_CATEGORIES,
+  MCP_PUBLIC_TOOL_COUNT,
+  TOOL_DOCS,
+} from "./discovery.js";
 import { SEARCH_MOOD_OPTIONS } from "./server.js";
 
 export const LLMS_URL = `${MCP_BASE_URL}/llms.txt`;
 export const LLMS_FULL_URL = `${MCP_BASE_URL}/llms-full.txt`;
 export const COMPANY_LLMS_URL = "https://www.tickadoo.com/llms.txt";
-
-type ToolDoc = {
-  name: string;
-  summary: string;
-  inputs: string[];
-};
 
 const VALID_SEARCH_CATEGORIES = [
   "theatre",
@@ -35,150 +34,6 @@ const VALID_SEARCH_CATEGORIES = [
   "cruises",
   "sports",
 ] as const;
-
-const TOOL_DOCS: ToolDoc[] = [
-  {
-    name: "search_experiences",
-    summary: "Search 13,090+ experiences across 681 cities with 11 filters and 6 sort options. JSON responses include _available_filters (10 fields incl. tag_counts, price_range, duration_range), _conversation_starters, _related_searches, and Smart Filter Recovery. Text includes 📊 result summary and 🔍 filter hints. 100% Primary, Verified Ticket Inventory.",
-    inputs: [
-      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "query (optional): free-text filter matched against experience title and description, such as ghost tour, pizza, or harry potter",
-      `category (optional): valid enum ${VALID_SEARCH_CATEGORIES.join(", ")}`,
-      "min_price (optional): minimum price in the experience's local currency",
-      "max_price (optional): maximum price in the experience's local currency",
-      "dateFrom (optional): ISO start date YYYY-MM-DD; must be provided together with dateTo",
-      "dateTo (optional): ISO end date YYYY-MM-DD; must be provided together with dateFrom",
-      "sort (optional): relevance (default), popular, price_low, price_high, rating, best_value",
-      "audience (optional): comma-separated. Valid: Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo",
-      "setting (optional): Indoor, Outdoor, or Mixed. Indoor includes Mixed results",
-      "wheelchair_accessible (optional): boolean. Filter for wheelchair-accessible experiences",
-      "physical_level (optional): Easy, Moderate, or Demanding",
-      "min_duration (optional): minimum duration in minutes (e.g. 60 for 1+ hour)",
-      "max_duration (optional): maximum duration in minutes (e.g. 120 for under 2 hours)",
-      "available_language (optional): ISO 639-1 code (en, es, fr, de, ja, zh, pt, it, ko)",
-      "min_rating (optional): minimum rating (e.g. 4.5 for top-rated only)",
-      "free_cancellation (optional): boolean. True for refundable bookings only",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "search_by_mood",
-    summary: "Search experiences by emotional intent instead of category. Maps moods to search filters, then returns the same booking-ready results as search_experiences.",
-    inputs: [
-      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
-      `mood (required): valid enum ${SEARCH_MOOD_OPTIONS.join(", ")}`,
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "get_whats_on_this_week",
-    summary: "Build a 7-day city planner with a day-by-day breakdown of top experiences grouped into morning, afternoon, and evening, plus weekly highlight callouts.",
-    inputs: [
-      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "get_city_guide",
-    summary: "Return a curated city overview for trip planning. Includes top 5 highlights, category counts, price range, best_for suggestions, seasonal guidance, insider tips, top tags, and audience breakdown.",
-    inputs: [
-      "city (required): city name or slug such as london, prague, rome, or tokyo",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "find_nearby_experiences",
-    summary: "Find experiences near coordinates with all 11 filters, 6 sorts, configurable radius. Full parity: _available_filters, _conversation_starters, _related_searches, filter hints, and localised booking URLs.",
-    inputs: [
-      "latitude (required): decimal latitude",
-      "longitude (required): decimal longitude",
-      "radius_km (optional): search radius in km, default 25",
-      "dateFrom (optional): ISO start date YYYY-MM-DD; must be provided together with dateTo",
-      "dateTo (optional): ISO end date YYYY-MM-DD; must be provided together with dateFrom",
-      "tags (optional): comma-separated tag filter (e.g. Museum,Outdoor,Evening)",
-      "audience (optional): Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo",
-      "setting (optional): Indoor, Outdoor, or Mixed",
-      "wheelchair_accessible (optional): boolean",
-      "physical_level (optional): Easy, Moderate, or Demanding",
-      "min_duration / max_duration (optional): duration in minutes",
-      "available_language (optional): ISO 639-1 code (en, es, fr, de, ja)",
-      "min_rating (optional): minimum rating (e.g. 4.5)",
-      "free_cancellation (optional): boolean",
-      "sort (optional): relevance, popular, price_low, price_high, rating, best_value",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "list_cities",
-    summary: "List tickadoo cities with bookable inventory, sorted alphabetically with optional filtering and localised URLs.",
-    inputs: [
-      "language (optional): supported language code for localised city URLs, default en",
-      "query (optional): city name or slug filter",
-      "limit (optional): max cities to return, default 50, max 200",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "get_experience_details",
-    summary: "Fetch venue, imagery, availability slots, and booking data. JSON includes _booking_urgency (TODAY availability, cancellation, rating), _cross_sell, _intent_token (Ghost Checkout), _accessibility. Text includes 🔥 urgency signals.",
-    inputs: [
-      "slug (preferred): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
-      "days (optional): availability horizon in days, default 30, max 180",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "check_availability",
-    summary: "Fast date-specific availability check for one experience. Returns available slots for a single date, price per person, cheapest total for the requested party size, booking URL, and Ghost Checkout intent-token payload metadata.",
-    inputs: [
-      "slug (required): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
-      "date (required): ISO date YYYY-MM-DD to check, such as 2026-04-05",
-      "party_size (optional): integer guest count for total pricing, default 2",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "compare_experiences",
-    summary: "Compare 2-5 experiences side-by-side. JSON includes comparison rows, winner callouts (best_value, highest_rated, most_popular, best_for_families), key differences, and per-slug booking URLs. Text returns a comparison table with the same winner callouts.",
-    inputs: [
-      "slugs (required): array of 2-5 tickadoo slugs or booking paths to compare",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "get_transfer_info",
-    summary: "Estimate airport, station, or port transfers from a city's default arrival hub to hotel coordinates. Returns taxi, tube/metro, bus, and train options with duration, estimated cost, currency, and practical directions.",
-    inputs: [
-      "city (required): supported city such as London, Paris, New York, Amsterdam, Barcelona, Rome, or Tokyo",
-      "from_type (required): airport, station, or port. Uses the city's default hub for that type (for example London airport => Heathrow)",
-      "to_latitude (required): hotel latitude",
-      "to_longitude (required): hotel longitude",
-      "language (optional): supported language code used for localized text/currency formatting, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "get_family_day",
-    summary: "Build a full family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop. Uses kids_ages for age-aware filtering, applies wheelchair-accessible filtering when toddlers make stroller access likely, and clusters picks geographically to reduce travel.",
-    inputs: [
-      "city (required): city name or slug such as london, paris, new-york, or tokyo",
-      "kids_ages (optional): array of child ages. Under 3 triggers wheelchair-accessible filtering; under 6 prefers easy, shorter stops; ages 6-12 prefer interactive or outdoor options; teens can handle more adventurous picks",
-      "date (optional): ISO date YYYY-MM-DD for planning one day",
-      "budget (optional): total day budget in the local currency",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, text (default) or json",
-    ],
-  },
-];
-
 function buildLanguageLines(): string[] {
   return [
     "## Languages",
@@ -289,6 +144,8 @@ export function buildLlmsTxt(): string {
     "Transport: Streamable HTTP (stateless)",
     "Access: No API key required",
     "Tool behavior: Read-only discovery and booking-assist workflows",
+    `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
+    `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
     "",
     "## Brand",
     "- tickadoo is always lowercase — never capitalise as Tickadoo or TICKADOO",
@@ -347,10 +204,13 @@ export function buildLlmsFullTxt(): string {
     "",
     SERVER_DESCRIPTION,
     "",
+    `Version: ${SERVER_VERSION}`,
     `Canonical URL: ${MCP_BASE_URL}`,
     `MCP endpoint: ${MCP_ENDPOINT_URL}`,
     `Short profile: ${LLMS_URL}`,
     `Company profile: ${COMPANY_LLMS_URL}`,
+    `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
+    `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
     "",
     "## Brand",
     "- tickadoo is always lowercase — never capitalise as Tickadoo or TICKADOO",

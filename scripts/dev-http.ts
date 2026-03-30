@@ -4,6 +4,7 @@ import indexHandler from "../api/index.ts";
 import llmsFullHandler from "../api/llms-full.ts";
 import llmsHandler from "../api/llms.ts";
 import handler from "../api/mcp.ts";
+import wellKnownAgentCardHandler from "../api/well-known-agent-card.ts";
 import wellKnownMcpHandler from "../api/well-known-mcp.ts";
 
 const host = process.env.HOST ?? "127.0.0.1";
@@ -13,6 +14,7 @@ const routes = [
   { match: (url: string) => url === "/health" || url.startsWith("/health?"), handler: healthHandler },
   { match: (url: string) => url === "/llms.txt", handler: llmsHandler },
   { match: (url: string) => url === "/llms-full.txt", handler: llmsFullHandler },
+  { match: (url: string) => url === "/.well-known/agent-card.json" || url.startsWith("/.well-known/agent-card.json?"), handler: wellKnownAgentCardHandler },
   { match: (url: string) => url === "/.well-known/mcp.json" || url.startsWith("/.well-known/mcp.json?"), handler: wellKnownMcpHandler },
   { match: (url: string) => url.startsWith("/mcp"), handler },
   { match: (url: string) => url === "/" || url.startsWith("/?"), handler: indexHandler },

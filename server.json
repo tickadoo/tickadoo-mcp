@@ -6,11 +6,11 @@
       "tools": [
         {
           "name": "search_experiences",
-          "description": "Search for bookable experiences in a specific city with city fallback matching and optional date filtering."
+          "description": "Search for bookable experiences in a specific city with optional category, price, date, audience, accessibility, and duration filtering."
         },
         {
           "name": "search_by_mood",
-          "description": "Search by emotional intent, mapping moods like romantic, relaxing, foodie, or rainy_day to optimized search filters before running a city search."
+          "description": "Search by emotional intent, mapping moods like romantic, relaxing, foodie, or rainy_day to optimized filters before running a city search."
         },
         {
           "name": "find_nearby_experiences",
@@ -37,8 +37,32 @@
           "description": "Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates."
         },
         {
+          "name": "recommend_experiences",
+          "description": "Get personalized experience recommendations from natural-language preferences such as audience, mood, occasion, budget, weather, and time of day."
+        },
+        {
+          "name": "get_categories",
+          "description": "List available experience categories with optional city scoping and per-category counts."
+        },
+        {
+          "name": "whats_on_tonight",
+          "description": "Find experiences happening tonight in a city, sorted for same-day discovery with timing and urgency context."
+        },
+        {
+          "name": "get_whats_on_this_week",
+          "description": "Return a day-by-day weekly calendar of what is happening in a city with morning, afternoon, and evening groupings."
+        },
+        {
+          "name": "get_city_guide",
+          "description": "Return a curated city guide with highlights, price range, category mix, best-for suggestions, and travel-planning context."
+        },
+        {
           "name": "get_family_day",
           "description": "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering and geographic clustering."
+        },
+        {
+          "name": "plan_itinerary",
+          "description": "Plan a multi-day itinerary with morning, afternoon, and evening slots, balancing geography, category variety, and budget."
         }
       ]
     }
