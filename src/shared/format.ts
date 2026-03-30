@@ -625,48 +625,6 @@ export function formatAvailableFiltersHint(products: SearchDisplayProduct[]): st
   return `\n🔍 Narrow with: ${parts.join(" · ")}`;
 }
 
-/** Build related search suggestions based on current result tags. */
-export function buildRelatedSearches(citySlug: string, products: SearchDisplayProduct[]): string[] {
-  const tagCounts = new Map<string, number>();
-  for (const p of products) {
-    for (const t of p.mcpProduct?.tags || []) {
-      tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
-    }
-  }
-  // Sort by frequency, suggest searching by top tags that have good coverage
-  const suggestions: string[] = [];
-  const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
-  for (const [tag, count] of sorted) {
-    if (count >= 2 && suggestions.length < 5) {
-      // Generate natural search suggestions
-      const tagMap: Record<string, string> = {
-        Musical: "musicals and theatre shows",
-        GuidedTour: "guided tours",
-        WalkingTour: "walking tours",
-        FoodTour: "food and culinary tours",
-        Museum: "museums and galleries",
-        Cruise: "boat cruises and river tours",
-        Adventure: "adventure activities",
-        NightLife: "nightlife and evening entertainment",
-        Dining: "dining experiences",
-        Outdoor: "outdoor activities",
-        SkipTheLine: "skip-the-line tickets",
-        Concert: "concerts and live music",
-        Spa: "spa and wellness",
-        WaterSport: "water sports",
-        Workshop: "workshops and classes",
-        Show: "shows and performances",
-        DayTrip: "day trips and excursions",
-        KidsAttraction: "kids attractions",
-        Seasonal: "seasonal events",
-      };
-      const label = tagMap[tag] || tag.toLowerCase();
-      suggestions.push(`search_experiences(city: '${citySlug}', tags: '${tag}') — ${label}`);
-    }
-  }
-  return suggestions;
-}
-
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
@@ -693,6 +651,7 @@ export function searchJsonPayload(
     results: products.map(product => productJsonData(product, `${citySlug}/${product.slug}`, options?.language)),
     view_all_url: buildBookingUrl(citySlug, options?.language),
     _next_step: "Use get_experience_details with a product slug to get availability.slots with specific dates, prices, and booking URLs for that experience.",
+    _related_searches: buildRelatedSearches(citySlug, products),
   };
 }
 
