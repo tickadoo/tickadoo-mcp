@@ -221,7 +221,7 @@ export async function getMcpEnrichedProducts(): Promise<Map<string, McpProduct>>
         const response = await fetchJsonFromUrl<McpProductsResponse>(url, {
           "x-api-token": MCP_API_TOKEN,
         });
-        return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct));
+        return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct).map(heuristicEnrich));
       } catch (error) {
         logMcpEnrichmentWarning("failed to fetch enriched MCP products;", error);
         return new Map<string, McpProduct>();
@@ -271,51 +271,6 @@ function normalizeMcpProductVariant(variant: McpProductVariant): McpProductVaria
   };
 }
 
-/**
- * Infer additional audience values from product characteristics.
- * Products tagged Family should also be Kids-friendly.
- * Easy physical level products are Seniors-friendly.
- * NightLife/Spa/Dining/adults-only content gets AdultsOnly.
- */
-function inferAudience(product: McpProduct): string[] {
-  const existing = new Set((product.audience || []).map(a => a.toLowerCase()));
-  const tags = new Set((product.tags || []).map(t => t.toLowerCase()));
-  const level = (product.physicalLevel || "").toLowerCase();
-  const inferred = new Set(product.audience || []);
-
-  // Kids: if Family-tagged or has KidsAttraction tag
-  if (!existing.has("kids")) {
-    if (existing.has("family") || tags.has("kidsattraction")) {
-      inferred.add("Kids");
-    }
-  }
-
-  // Seniors: Easy physical level products are senior-friendly
-  if (!existing.has("seniors")) {
-    if (level === "easy" || existing.has("family") || existing.has("couples")) {
-      inferred.add("Seniors");
-    }
-  }
-
-  // AdultsOnly: NightLife, Spa, Dining, or Wine/Beer tags
-  if (!existing.has("adultsonly")) {
-    const adultTags = ["nightlife", "spa", "dining", "workshop"];
-    if (adultTags.some(t => tags.has(t))) {
-      inferred.add("AdultsOnly");
-    }
-  }
-
-  // Groups: guided tours, day trips are group-friendly
-  if (!existing.has("groups")) {
-    const groupTags = ["guidedtour", "daytrip", "walkingtour", "foodtour", "biketour"];
-    if (groupTags.some(t => tags.has(t))) {
-      inferred.add("Groups");
-    }
-  }
-
-  return [...inferred];
-}
-
 function normalizeMcpProduct(product: McpProduct): McpProduct {
   return {
     ...product,
@@ -323,13 +278,95 @@ function normalizeMcpProduct(product: McpProduct): McpProduct {
     reviewCount: product.reviewCount ?? null,
     indoorOutdoor: product.indoorOutdoor ?? null,
     physicalLevel: product.physicalLevel ?? null,
-    audience: inferAudience(product),
+    audience: Array.isArray(product.audience) ? product.audience.filter(Boolean) : [],
     tags: Array.isArray(product.tags) ? product.tags.filter(Boolean) : [],
     wheelchairAccessible: product.wheelchairAccessible ?? null,
     strollerFriendly: product.strollerFriendly ?? null,
     languageOptions: Array.isArray(product.languageOptions) ? product.languageOptions.filter(Boolean) : [],
     variants: Array.isArray(product.variants) ? product.variants.map(normalizeMcpProductVariant) : [],
   };
+}
+
+/** Heuristic enrichment: fills audience/tag gaps based on product attributes. */
+function heuristicEnrich(product: McpProduct): McpProduct {
+  const name = (product.name || "").toLowerCase();
+  const tags = new Set(product.tags || []);
+  const audience = new Set(product.audience || []);
+
+  // === AUDIENCE ENRICHMENT ===
+  // Seniors: museums, galleries, classical, cruises, walking tours (Easy), theatre
+  const seniorKeywords = ["museum", "gallery", "classical", "cruise", "palace", "cathedral", "abbey", "church", "garden", "afternoon tea", "river", "sightseeing"];
+  if (!audience.has("Seniors") && (seniorKeywords.some(k => name.includes(k)) || (tags.has("Museum") || tags.has("Cruise") || tags.has("GuidedTour")) || product.physicalLevel === "Easy")) {
+    audience.add("Seniors");
+  }
+
+  // Kids: attractions, zoos, aquariums, theme parks, kid-specific
+  const kidsKeywords = ["kids", "children", "child", "zoo", "aquarium", "theme park", "sea life", "legoland", "madame tussauds", "shrek", "harry potter", "lion king", "matilda", "frozen", "disney"];
+  if (!audience.has("Kids") && (kidsKeywords.some(k => name.includes(k)) || tags.has("KidsAttraction"))) {
+    audience.add("Kids");
+  }
+  // If Family but not Kids, add Kids for most family experiences
+  if (audience.has("Family") && !audience.has("Kids") && !name.includes("adults only") && !name.includes("18+") && !name.includes("wine tasting")) {
+    audience.add("Kids");
+  }
+
+  // AdultsOnly: wine, cocktail, pub, burlesque, cabaret, comedy club, nightlife
+  const adultsKeywords = ["wine tasting", "cocktail", "pub crawl", "burlesque", "cabaret", "comedy club", "beer tasting", "gin", "whisky", "whiskey", "speakeasy", "adults only", "18+", "strip"];
+  if (!audience.has("AdultsOnly") && adultsKeywords.some(k => name.includes(k))) {
+    audience.add("AdultsOnly");
+  }
+
+  // Groups: most things work for groups unless solo-specific
+  if (!audience.has("Groups") && (audience.has("Family") || tags.has("GuidedTour") || tags.has("WalkingTour") || tags.has("FoodTour"))) {
+    audience.add("Groups");
+  }
+
+  // Solo: museums, self-guided, attractions
+  if (!audience.has("Solo") && (tags.has("Museum") || tags.has("SelfGuided") || tags.has("Attraction") || tags.has("SkipTheLine"))) {
+    audience.add("Solo");
+  }
+
+  // === TAG ENRICHMENT ===
+  // NightLife: evening shows, late-night tours, pub crawls, clubs
+  const nightlifeKeywords = ["pub crawl", "nightlife", "night tour", "evening cruise", "cabaret", "comedy club", "ghost tour", "haunted", "jack the ripper", "burlesque", "late night", "after dark"];
+  if (!tags.has("NightLife") && nightlifeKeywords.some(k => name.includes(k))) {
+    tags.add("NightLife");
+  }
+  // Evening tag implies potential NightLife
+  if (tags.has("Evening") && !tags.has("NightLife") && (name.includes("tour") || name.includes("cruise") || name.includes("pub") || name.includes("ghost"))) {
+    tags.add("NightLife");
+  }
+
+  // Workshop: classes, making, crafting, cooking class
+  const workshopKeywords = ["workshop", "class", "cooking class", "masterclass", "make your own", "hands-on", "craft", "pottery", "painting class", "art class"];
+  if (!tags.has("Workshop") && workshopKeywords.some(k => name.includes(k))) {
+    tags.add("Workshop");
+  }
+
+  // Adventure: climbing, kayaking, zip line, abseiling, adventure
+  const adventureKeywords = ["adventure", "climbing", "kayak", "zip line", "zipline", "abseil", "bungee", "skydiv", "paraglid", "rafting", "canyoning", "jet ski", "jetski", "go kart"];
+  if (!tags.has("Adventure") && adventureKeywords.some(k => name.includes(k))) {
+    tags.add("Adventure");
+  }
+
+  // Concert: live music, concert, gig, performance
+  const concertKeywords = ["concert", "live music", "symphony", "orchestra", "recital", "jazz", "blues", "opera", "philharmonic"];
+  if (!tags.has("Concert") && concertKeywords.some(k => name.includes(k))) {
+    tags.add("Concert");
+  }
+
+  // Morning: breakfast, sunrise, early morning
+  const morningKeywords = ["breakfast", "sunrise", "early morning", "morning tour", "brunch"];
+  if (!tags.has("Morning") && morningKeywords.some(k => name.includes(k))) {
+    tags.add("Morning");
+  }
+
+  // KidsAttraction: if Kids audience but no KidsAttraction tag
+  if (audience.has("Kids") && !tags.has("KidsAttraction") && (name.includes("kids") || name.includes("children") || name.includes("family"))) {
+    tags.add("KidsAttraction");
+  }
+
+  return { ...product, tags: [...tags], audience: [...audience] };
 }
 
 function extractMcpProducts(response: McpProductsResponse): McpProduct[] {
@@ -382,7 +419,7 @@ async function fetchDateFilteredMcpProducts(params: DateFilteredMcpProductsParam
       "x-api-token": MCP_API_TOKEN,
     });
 
-    return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct));
+    return createMcpProductMap(extractMcpProducts(response).map(normalizeMcpProduct).map(heuristicEnrich));
   } catch (error) {
     if (isNotFoundError(error)) {
       return new Map<string, McpProduct>();
