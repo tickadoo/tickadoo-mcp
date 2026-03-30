@@ -73,6 +73,15 @@ const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
+    name: "get_whats_on_this_week",
+    summary: "Build a 7-day city planner with a day-by-day breakdown of top experiences grouped into morning, afternoon, and evening, plus weekly highlight callouts.",
+    inputs: [
+      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
+  {
     name: "find_nearby_experiences",
     summary: "Find experiences near coordinates with all 11 filters, 6 sorts, configurable radius. Full parity: _available_filters, _conversation_starters, _related_searches, filter hints, and localised booking URLs.",
     inputs: [

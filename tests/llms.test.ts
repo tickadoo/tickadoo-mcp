@@ -62,6 +62,15 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("winner callouts (best_value, highest_rated, most_popular, best_for_families)");
   });
 
+  it("documents get_whats_on_this_week inputs and weekly highlights", () => {
+    const fullDoc = buildLlmsFullTxt();
+
+    expect(fullDoc).toContain("get_whats_on_this_week");
+    expect(fullDoc).toContain("Build a 7-day city planner");
+    expect(fullDoc).toContain("city (required): city name or slug such as london, new-york, paris, tokyo, or dubai");
+    expect(fullDoc).toContain("grouped into morning, afternoon, and evening");
+  });
+
   it("documents data freshness and limitations honestly", () => {
     const shortFreshnessSnippet = [
       "## Data Freshness & Cache Policy",

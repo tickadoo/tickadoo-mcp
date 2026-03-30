@@ -14,6 +14,11 @@ import {
   type ComparableExperience,
 } from "./compare.js";
 import {
+  buildWhatsOnThisWeek,
+  createWhatsOnThisWeekWindow,
+  formatWhatsOnThisWeekText,
+} from "../whats-on-this-week.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -78,6 +83,7 @@ import type { City, McpProduct, Product, ResolvedProduct, StructuredDataResponse
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
 const MAX_SEARCH_RESULT_LIMIT = 50;
+const WHATS_ON_THIS_WEEK_PRODUCT_LIMIT = 24;
 const DEFAULT_CITY_DIRECTORY_LIMIT = 50;
 const MAX_CITY_DIRECTORY_LIMIT = 200;
 const DEFAULT_RADIUS_KM = 25;
@@ -438,13 +444,11 @@ function productHasDescription(product: Product): boolean {
 
 export function isPopularSearchProduct(product: Product): boolean {
   const rating = product.averageRating ?? 0;
-  const reviewCount = product.mcpProduct?.reviewCount ?? 0;
   return (
     product.minPrice != null
     && productHasImage(product)
     && productHasDescription(product)
     && rating >= 4.5
-    && reviewCount >= 100
   );
 }
 
@@ -503,6 +507,12 @@ function popularityScore(product: Product): number {
 }
 
 function compareProductsByPopularity(a: Product, b: Product): number {
+  const popularDelta = Number(isPopularSearchProduct(b)) - Number(isPopularSearchProduct(a));
+  if (popularDelta !== 0) return popularDelta;
+
+  const ratingDelta = (b.averageRating ?? -1) - (a.averageRating ?? -1);
+  if (ratingDelta !== 0) return ratingDelta;
+
   const scoreDelta = popularityScore(b) - popularityScore(a);
   if (Math.abs(scoreDelta) > 0.1) return scoreDelta > 0 ? 1 : -1;
 
@@ -1854,6 +1864,46 @@ function validateSearchByMoodArgs(args: {
   };
 }
 
+function validateWhatsOnThisWeekArgs(args: {
+  city?: string;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city?.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "City is required. Provide a city name or slug like \"london\" or \"new-york\"."),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      city,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 type SearchExecutionArgs = {
   city: string;
   language: string;
@@ -2302,6 +2352,131 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
   );
 
   server.tool(
+    "get_whats_on_this_week",
+    `Return a day-by-day breakdown of the top experiences happening over the next 7 days in a city, grouped into morning, afternoon, and evening slots, with weekly highlights. ${LANGUAGE_SUPPORT_NOTE} Use when a user says things like "what's on this week in Paris?" or "I'm in London for the next few days, what should I do each day?"`,
+    {
+      city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_whats_on_this_week", logWriter, async args => {
+      const validated = validateWhatsOnThisWeekArgs({
+        city: typeof args.city === "string" ? args.city : undefined,
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(unknown)",
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const { city, language, format } = validated.data;
+      const { startDate, endDate, dayCount } = createWhatsOnThisWeekWindow();
+
+      try {
+        let citySlug = normalizeCityInput(city);
+        let cityName = city;
+        let products = await getProductsForCitySlug(citySlug, language, { dateFrom: startDate, dateTo: endDate });
+
+        if (!products.length) {
+          const candidates = findCityCandidates(city, await getCities(language));
+          const bestMatch = candidates[0];
+
+          if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
+            citySlug = bestMatch.city.slug;
+            cityName = bestMatch.city.name;
+            products = await getProductsForCitySlug(citySlug, language, { dateFrom: startDate, dateTo: endDate });
+          } else {
+            return {
+              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+              resultCount: 0,
+              summary: { city, date_from: startDate, date_to: endDate, format },
+            };
+          }
+        }
+
+        if (!products.length) {
+          const payload = buildWhatsOnThisWeek([], {
+            city: cityName,
+            citySlug,
+            startDate,
+            dayCount,
+          });
+
+          return {
+            response: createFormattedResponse(
+              format,
+              formatWhatsOnThisWeekText(payload),
+              payload,
+              { structuredContent: payload },
+            ),
+            resultCount: 0,
+            summary: { city: cityName, city_slug: citySlug, date_from: startDate, date_to: endDate, format },
+          };
+        }
+
+        const rankedProducts = sortProductsForSearch(products, "popular").slice(0, WHATS_ON_THIS_WEEK_PRODUCT_LIMIT);
+        const detailResults = await Promise.allSettled(
+          rankedProducts.map(async product => ({
+            product,
+            details: await getExperienceDetails(product.provider, product.providerId, dayCount),
+            bookingPath: `${citySlug}/${product.slug}`,
+            language,
+            popular: isPopularSearchProduct(product),
+          })),
+        );
+
+        const successfulDetails = detailResults.flatMap(result => result.status === "fulfilled" ? [result.value] : []);
+        if (!successfulDetails.length) {
+          const firstRejected = detailResults.find(result => result.status === "rejected");
+          throw (firstRejected?.status === "rejected" ? firstRejected.reason : new Error("Unable to build this week's schedule."));
+        }
+
+        const payload = buildWhatsOnThisWeek(successfulDetails, {
+          city: cityName,
+          citySlug,
+          startDate,
+          dayCount,
+        });
+        const resultCount = payload.week.reduce(
+          (sum, day) => sum + day.morning.length + day.afternoon.length + day.evening.length,
+          0,
+        );
+
+        return {
+          response: createFormattedResponse(
+            format,
+            formatWhatsOnThisWeekText(payload),
+            payload,
+            { structuredContent: payload },
+          ),
+          resultCount,
+          summary: {
+            city: cityName,
+            city_slug: citySlug,
+            date_from: startDate,
+            date_to: endDate,
+            format,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: { city, date_from: startDate, date_to: endDate, format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
     "find_nearby_experiences",
     `Find shows, events and experiences near a geographic location on tickadoo. Supports optional date filtering with dateFrom/dateTo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
     {
@@ -2716,7 +2891,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             formatComparisonText(payload),
-            payload,
+            payload as unknown as Record<string, unknown>,
             {
               structuredContent: payload,
             },
