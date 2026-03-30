@@ -1806,7 +1806,16 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       dateFrom: z.string().optional().describe("Optional start date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-27'). Must be used together with dateTo."),
       dateTo: z.string().optional().describe("Optional end date filter in ISO date format YYYY-MM-DD (e.g. '2026-03-28'). Must be used together with dateFrom."),
       tags: z.string().optional().describe("Optional comma-separated tag filter. Results must match at least one tag. Valid tags: Musical, WestEnd, WalkingTour, FoodTour, Museum, Outdoor, HiddenGem, MustSee, Bestseller, Cruise, DayTrip, SkipTheLine, Adventure, GuidedTour, Attraction, KidsAttraction, Show, Concert, Dining, Workshop, NightLife, Evening, Morning"),
-      sort: z.enum(["relevance", "popular", "price_low", "price_high", "rating"]).optional().default("relevance").describe("Sort order: relevance (default), popular, price_low, price_high, or rating"),
+      audience: z.string().optional().describe("Audience filter: Family, Couples, AdultsOnly, Kids, Seniors, Groups, Solo"),
+      setting: z.enum(["Indoor", "Outdoor", "Mixed"]).optional().describe("Indoor/outdoor filter"),
+      wheelchair_accessible: z.boolean().optional().describe("Filter for wheelchair-accessible experiences"),
+      physical_level: z.enum(["Easy", "Moderate", "Demanding"]).optional().describe("Physical difficulty filter"),
+      min_duration: z.number().optional().describe("Min duration in minutes"),
+      max_duration: z.number().optional().describe("Max duration in minutes"),
+      available_language: z.string().optional().describe("Language filter (ISO 639-1 code)"),
+      min_rating: z.number().optional().describe("Minimum rating (e.g. 4.5)"),
+      free_cancellation: z.boolean().optional().describe("Filter for free cancellation"),
+      sort: z.enum(["relevance", "popular", "price_low", "price_high", "rating", "best_value"]).optional().default("relevance").describe("Sort order"),
       max_results: z.number().optional().default(10).describe("Maximum number of experiences to return (default 10, max 50)"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
@@ -1861,9 +1870,18 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         }
 
         const enrichedProducts = await getMcpEnrichedProducts();
+        let filteredProducts = mergeEnrichedProducts(products, enrichedProducts);
+        filteredProducts = filterProductsByAudience(filteredProducts, args.audience as string | undefined);
+        filteredProducts = filterProductsBySetting(filteredProducts, args.setting as string | undefined);
+        filteredProducts = filterProductsByAccessibility(filteredProducts, args.wheelchair_accessible as boolean | undefined);
+        filteredProducts = filterProductsByPhysicalLevel(filteredProducts, args.physical_level as string | undefined);
+        filteredProducts = filterProductsByDuration(filteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
+        filteredProducts = filterProductsByLanguage(filteredProducts, args.available_language as string | undefined);
+        filteredProducts = filterProductsByRating(filteredProducts, args.min_rating as number | undefined);
+        filteredProducts = filterProductsByFreeCancellation(filteredProducts, args.free_cancellation as boolean | undefined);
         const nearbySort = (typeof args.sort === "string" ? args.sort : "relevance") as SearchSort;
         const nearbyMax = Math.min(Math.max(typeof args.max_results === "number" ? args.max_results : DEFAULT_SEARCH_RESULT_LIMIT, 1), 50);
-        const rankedProducts = sortProductsForSearch(mergeEnrichedProducts(products, enrichedProducts), nearbySort);
+        const rankedProducts = sortProductsForSearch(filteredProducts, nearbySort);
         const topProducts = rankedProducts.slice(0, nearbyMax);
         return {
           response: createFormattedResponse(
