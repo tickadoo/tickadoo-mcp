@@ -9,6 +9,11 @@ import {
   MAX_PARTY_SIZE,
 } from "./availability.js";
 import {
+  buildComparisonPayload,
+  formatComparisonText,
+  type ComparableExperience,
+} from "./compare.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -19,6 +24,7 @@ import {
   getProductsForCitySlug,
   resolveProductBySlug,
   heuristicEnrich,
+  normalizeSlugOrPath,
 } from "./api.js";
 import {
   DEFAULT_LANGUAGE,
@@ -63,6 +69,8 @@ import {
   buildConversationStarters,
   buildResultSummaryLine,
   formatAvailableFiltersHint,
+  formatCancellation,
+  formatDuration,
   type SearchAppliedFilters,
   type SearchOmittedResults,
 } from "./format.js";
@@ -297,6 +305,41 @@ function mergeEnrichedDetails(
 
   const mcpProduct = enrichedProducts.get(slug);
   return mcpProduct ? { ...details, mcpProduct } : details;
+}
+
+function getComparisonPriceFrom(product: Product, details: StructuredDataResponse): number | null {
+  const slotPrices = details.dates
+    .map(item => item.minPrice)
+    .filter((value): value is number => Number.isFinite(value));
+
+  if (slotPrices.length) {
+    return Math.min(...slotPrices);
+  }
+
+  return product.minPrice ?? details.mcpProduct?.minPrice ?? null;
+}
+
+function buildComparableExperience(
+  resolved: ResolvedProduct,
+  details: StructuredDataResponse,
+  language: string,
+): ComparableExperience {
+  const primaryVariant = details.mcpProduct?.variants?.[0];
+  return {
+    slug: resolved.product.slug,
+    title: resolved.product.title,
+    priceFrom: getComparisonPriceFrom(resolved.product, details),
+    currency: details.currencyCode ?? resolved.product.currency,
+    duration: formatDuration(primaryVariant?.duration ?? null),
+    rating: details.mcpProduct?.reviewRating ?? resolved.product.averageRating ?? null,
+    reviewCount: details.mcpProduct?.reviewCount ?? null,
+    tags: details.mcpProduct?.tags ?? [],
+    audience: details.mcpProduct?.audience ?? [],
+    wheelchairAccessible: details.mcpProduct?.wheelchairAccessible ?? null,
+    strollerFriendly: details.mcpProduct?.strollerFriendly ?? null,
+    cancellationPolicy: formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null),
+    bookingUrl: buildBookingUrl(resolved.bookingPath, language),
+  };
 }
 
 function productHasImage(product: Product): boolean {
@@ -1617,6 +1660,58 @@ function validateExperienceDetailsArgs(args: {
   };
 }
 
+function validateCompareArgs(args: {
+  slugs: string[];
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  slugs: string[];
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  if (!Array.isArray(args.slugs)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "Invalid slugs. Provide an array of 2 to 5 tickadoo slugs."),
+    };
+  }
+
+  const normalizedSlugs = [...new Set(
+    args.slugs
+      .map(slug => typeof slug === "string" ? normalizeSlugOrPath(slug) : "")
+      .filter(Boolean),
+  )];
+
+  if (normalizedSlugs.length < 2 || normalizedSlugs.length > 5) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "compare_experiences requires between 2 and 5 unique slugs."),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      slugs: normalizedSlugs,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 export function createTickadooServer(options: CreateTickadooServerOptions = {}): McpServer {
   const logWriter = options.logWriter ?? defaultLogWriter;
   const server = new McpServer({
@@ -2297,6 +2392,82 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { slug: slug ?? `${provider ?? ""}:${providerId ?? ""}`, format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "compare_experiences",
+    `Compare 2 to 5 tickadoo experiences side-by-side. Returns winner callouts for best_value, highest_rated, most_popular, and best_for_families, plus key differences across price, duration, reviews, accessibility, and cancellation policy. ${LANGUAGE_SUPPORT_NOTE}`,
+    {
+      slugs: z.array(z.string().min(1)).min(2).max(5).describe("Array of 2-5 tickadoo slugs or booking paths to compare side-by-side."),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("compare_experiences", logWriter, async args => {
+      const validated = validateCompareArgs({
+        slugs: Array.isArray(args.slugs) ? args.slugs : [],
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            slug_count: Array.isArray(args.slugs) ? args.slugs.length : 0,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const { slugs, language, format } = validated.data;
+
+      try {
+        const [resolvedProducts, enrichedProducts] = await Promise.all([
+          Promise.all(slugs.map(slug => resolveProductBySlug(slug, language))),
+          getMcpEnrichedProducts(),
+        ]);
+
+        const compared = await Promise.all(
+          resolvedProducts.map(async resolved => {
+            const details = await getExperienceDetails(resolved.product.provider, resolved.product.providerId, 30);
+            return buildComparableExperience(
+              resolved,
+              mergeEnrichedDetails(details, resolved.product.slug, enrichedProducts),
+              language,
+            );
+          }),
+        );
+
+        const payload = buildComparisonPayload(compared);
+        return {
+          response: createFormattedResponse(
+            format,
+            formatComparisonText(payload),
+            payload,
+            {
+              structuredContent: payload,
+            },
+          ),
+          resultCount: compared.length,
+          summary: {
+            slug_count: compared.length,
+            format,
+            language,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            slug_count: slugs.length,
+            format,
+            language,
+          },
         };
       }
     }),

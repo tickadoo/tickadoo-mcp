@@ -115,6 +115,15 @@ const TOOL_DOCS: ToolDoc[] = [
       "format (optional): response format, text (default) or json",
     ],
   },
+  {
+    name: "compare_experiences",
+    summary: "Compare 2-5 experiences side-by-side. JSON includes comparison rows, winner callouts (best_value, highest_rated, most_popular, best_for_families), key differences, and per-slug booking URLs. Text returns a comparison table with the same winner callouts.",
+    inputs: [
+      "slugs (required): array of 2-5 tickadoo slugs or booking paths to compare",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
 ];
 
 function buildLanguageLines(): string[] {

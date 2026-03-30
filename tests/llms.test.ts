@@ -53,6 +53,15 @@ describe("llms docs", () => {
     }
   });
 
+  it("documents compare_experiences inputs and winner callouts", () => {
+    const fullDoc = buildLlmsFullTxt();
+
+    expect(fullDoc).toContain("compare_experiences");
+    expect(fullDoc).toContain("Compare 2-5 experiences side-by-side");
+    expect(fullDoc).toContain("slugs (required): array of 2-5 tickadoo slugs or booking paths to compare");
+    expect(fullDoc).toContain("winner callouts (best_value, highest_rated, most_popular, best_for_families)");
+  });
+
   it("documents data freshness and limitations honestly", () => {
     const shortFreshnessSnippet = [
       "## Data Freshness & Cache Policy",
