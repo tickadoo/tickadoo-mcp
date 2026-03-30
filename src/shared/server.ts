@@ -26,6 +26,11 @@ import {
   type FamilyDayCandidate,
 } from "./family-day.js";
 import {
+  buildCityGuide,
+  formatCityGuide,
+  lookupCityCountry,
+} from "./city-guide.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -1696,6 +1701,44 @@ function validateListCitiesArgs(args: { language?: string; query?: string; limit
   };
 }
 
+function validateCityGuideArgs(args: { city?: string; language?: string; format?: string }): ValidationResult<{
+  city: string;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format);
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  if (typeof args.city !== "string" || !args.city.trim()) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "City is required. Provide a city name or slug like \"london\", \"prague\", or \"new-york\".",
+      ),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  return {
+    ok: true,
+    data: {
+      city: args.city.trim(),
+      language: language.data,
+      format,
+    },
+  };
+}
+
 function validateCheckAvailabilityArgs(args: {
   slug?: string;
   date?: string;
@@ -2913,6 +2956,106 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { query: query ?? "all", format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "get_city_guide",
+    `Return a curated city overview for trip planning. Summarises a destination with top highlights, category breakdown, price range, best_for suggestions, seasonal guidance, insider tips, and audience/tag signals. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks "tell me about things to do in Prague" or wants a pre-arrival city briefing instead of a raw search.`,
+    {
+      city: z.string().describe("City name or slug (e.g. 'london', 'prague', 'new-york', 'rome')"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_city_guide", logWriter, async args => {
+      const validated = validateCityGuideArgs({
+        city: typeof args.city === "string" ? args.city : undefined,
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(missing)",
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const { city, language, format } = validated.data;
+
+      try {
+        const cities = await getCities(language);
+        const candidates = findCityCandidates(city, cities);
+        const bestMatch = candidates[0];
+
+        if (!bestMatch || bestMatch.score < AUTO_MATCH_CONFIDENCE) {
+          return {
+            response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+            resultCount: 0,
+            summary: { city, format },
+          };
+        }
+
+        const matchedCity = bestMatch.city;
+        const [products, enrichedProducts, country] = await Promise.all([
+          getProductsForCitySlug(matchedCity.slug, language),
+          getMcpEnrichedProducts(),
+          lookupCityCountry(matchedCity),
+        ]);
+
+        if (!products.length) {
+          return {
+            response: createFormattedResponse(
+              format,
+              formatNoCoverageRecovery(matchedCity.name),
+              noCoverageRecoveryJson(matchedCity.name),
+            ),
+            resultCount: 0,
+            summary: { city: matchedCity.slug, format },
+          };
+        }
+
+        const guideProducts = products.map(product => {
+          const mcpProduct = enrichedProducts.get(product.slug);
+          return mcpProduct ? { ...product, mcpProduct } : product;
+        });
+        const payload = buildCityGuide(
+          {
+            name: matchedCity.name,
+            slug: matchedCity.slug,
+            country,
+          },
+          guideProducts,
+          language,
+        );
+
+        return {
+          response: createFormattedResponse(
+            format,
+            formatCityGuide(payload),
+            payload,
+            {
+              structuredContent: payload,
+            },
+          ),
+          resultCount: payload.highlights.length,
+          summary: {
+            city: matchedCity.slug,
+            format,
+            experiences: payload.city.experience_count,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: { city, format },
         };
       }
     }),

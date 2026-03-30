@@ -82,6 +82,15 @@ const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
+    name: "get_city_guide",
+    summary: "Return a curated city overview for trip planning. Includes top 5 highlights, category counts, price range, best_for suggestions, seasonal guidance, insider tips, top tags, and audience breakdown.",
+    inputs: [
+      "city (required): city name or slug such as london, prague, rome, or tokyo",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
+  {
     name: "find_nearby_experiences",
     summary: "Find experiences near coordinates with all 11 filters, 6 sorts, configurable radius. Full parity: _available_filters, _conversation_starters, _related_searches, filter hints, and localised booking URLs.",
     inputs: [
@@ -393,6 +402,7 @@ export function buildLlmsFullTxt(): string {
     "",
     "## Capabilities",
     "- Live experience discovery across 681 cities worldwide with 13,090 enriched products",
+    "- Curated city guides with highlights, category mix, pricing ranges, and trip-planning tips",
     "- Booking execution: every product includes a ReserveAction with urlTemplate for direct checkout deep-linking",
     "- Inventory urgency: inventoryLevel signals available ticket counts for urgency-aware recommendations",
     "- Smart Substitution: if a specific search returns zero results, the server automatically suggests popular alternatives in the same city with a fallback indicator so agents can distinguish direct matches from substitutes",
