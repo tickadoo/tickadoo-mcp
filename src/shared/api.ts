@@ -402,6 +402,30 @@ function heuristicEnrich(product: McpProduct): McpProduct {
     tags.add("Seasonal");
   }
 
+  // Musical: products with "musical" in name
+  if (!tags.has("Musical") && name.includes("musical")) {
+    tags.add("Musical");
+    if (!tags.has("Show")) tags.add("Show");
+  }
+
+  // Show: broadway, west end, theatre tickets, opera, ballet
+  const showKeywords = ["broadway", "west end", "theatre ticket", "theater ticket", "opera", "ballet", "cirque", "magic show", "comedy show", "variety show", "drag show"];
+  if (!tags.has("Show") && showKeywords.some(k => name.includes(k))) {
+    tags.add("Show");
+  }
+
+  // FoodTour: food tour, culinary, street food
+  const foodTourKeywords = ["food tour", "culinary", "street food", "food walk", "tasting tour", "food and drink"];
+  if (!tags.has("FoodTour") && foodTourKeywords.some(k => name.includes(k))) {
+    tags.add("FoodTour");
+  }
+
+  // SkipTheLine: skip the line, fast track, priority, express entry
+  const skipKeywords = ["skip the line", "fast track", "priority", "express entry", "skip-the-line", "queue jump"];
+  if (!tags.has("SkipTheLine") && skipKeywords.some(k => name.includes(k))) {
+    tags.add("SkipTheLine");
+  }
+
   return { ...product, tags: [...tags], audience: [...audience] };
 }
 
