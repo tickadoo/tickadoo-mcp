@@ -646,8 +646,6 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
     Morning: "morning activities", Attraction: "top attractions", Transfer: "airport transfers",
     BikeTour: "bike tours", HiddenGem: "hidden gems", WaterSport: "water sports",
     HopOnHopOff: "hop-on hop-off tours", Helicopter: "helicopter tours", SelfGuided: "self-guided tours",
-    Cooking: "cooking classes", Sunset: "sunset experiences", VIP: "VIP and private tours",
-    Rooftop: "rooftop experiences", Safari: "safari experiences", WhaleWatching: "whale watching",
   };
   const suggestions: string[] = [];
   const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
@@ -703,7 +701,7 @@ export function buildResultSummaryLine(products: SearchDisplayProduct[]): string
   const tc = af.tag_counts as Record<string, number> | undefined;
   if (tc) {
     const top = Object.entries(tc).filter(([t]) => !skip.has(t)).slice(0, 3).map(([t, c]) => {
-      const labels: Record<string, string> = { Musical: "musicals", GuidedTour: "guided tours", Museum: "museums", Cruise: "cruises", FoodTour: "food tours", Adventure: "adventure", NightLife: "nightlife", Dining: "dining", Show: "shows", Outdoor: "outdoor", SkipTheLine: "skip-line", Concert: "concerts", Attraction: "attractions" };
+      const labels: Record<string, string> = { Musical: "musicals", GuidedTour: "guided tours", Museum: "museums", Cruise: "cruises", FoodTour: "food tours", Adventure: "adventure", NightLife: "nightlife", Dining: "dining", Show: "shows", Outdoor: "outdoor", SkipTheLine: "skip-line", Concert: "concerts", Attraction: "attractions", Cooking: "cooking", Sunset: "sunset", VIP: "VIP", Rooftop: "rooftop", Safari: "safari", WhaleWatching: "whale watching", HopOnHopOff: "hop-on hop-off", Helicopter: "helicopter", SelfGuided: "self-guided" };
       return `${c} ${labels[t] || t.toLowerCase()}`;
     });
     if (top.length) parts.push(top.join(", "));
