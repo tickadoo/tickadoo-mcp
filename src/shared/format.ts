@@ -604,8 +604,6 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     languages: [...languages].sort().slice(0, 10),
     wheelchair_accessible: hasWheelchair,
     free_cancellation_available: hasFreeCancellation,
-    free_cancellation_count: products.filter(p => { const v = p.mcpProduct?.variants?.[0]; return v?.cancellationPolicy === "BeforeTimeslot" || v?.cancellationPolicy === "BeforeDate"; }).length,
-    bookable_count: products.filter(p => p.minPrice != null).length,
     ...(priceRange ? { price_range: priceRange } : {}),
     ...(durationRange ? { duration_range: durationRange } : {}),
     tags: [...tagSet].sort().slice(0, 15),
@@ -648,6 +646,9 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
     Morning: "morning activities", Attraction: "top attractions", Transfer: "airport transfers",
     BikeTour: "bike tours", HiddenGem: "hidden gems", WaterSport: "water sports",
     HopOnHopOff: "hop-on hop-off tours", Helicopter: "helicopter tours", SelfGuided: "self-guided tours",
+    Cooking: "cooking classes", Sunset: "sunset experiences", VIP: "VIP and private tours",
+    Rooftop: "rooftop experiences", Safari: "safari experiences", WhaleWatching: "whale watching",
+    ThemePark: "theme parks", Aquarium: "aquariums", Observatory: "observation decks and towers",
   };
   const suggestions: string[] = [];
   const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
