@@ -538,6 +538,18 @@ export function filterProductsByAccessibility(products: Product[], wheelchair?: 
 }
 
 /** Filter products by physical difficulty level. */
+/** Filter products by duration range in minutes. */
+export function filterProductsByDuration(products: Product[], minDuration?: number, maxDuration?: number): Product[] {
+  if (minDuration == null && maxDuration == null) return products;
+  return products.filter(product => {
+    const dur = product.durationMinutes;
+    if (dur == null) return minDuration == null;
+    if (minDuration != null && dur < minDuration) return false;
+    if (maxDuration != null && dur > maxDuration) return false;
+    return true;
+  });
+}
+
 export function filterProductsByPhysicalLevel(products: Product[], level?: string): Product[] {
   if (!level) return products;
   const l = level.trim().toLowerCase();
@@ -1471,6 +1483,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       setting: z.enum(["Indoor", "Outdoor", "Mixed"]).optional().describe("Optional indoor/outdoor filter. Use Indoor for rainy days."),
       wheelchair_accessible: z.boolean().optional().describe("Filter for wheelchair-accessible experiences only"),
       physical_level: z.enum(["Easy", "Moderate", "Demanding"]).optional().describe("Filter by physical difficulty level"),
+      min_duration: z.number().optional().describe("Minimum duration in minutes (e.g. 60 for 1 hour minimum)"),
+      max_duration: z.number().optional().describe("Maximum duration in minutes (e.g. 120 for under 2 hours)"),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1654,7 +1668,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
         const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, args.wheelchair_accessible as boolean | undefined);
         const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, args.physical_level as string | undefined);
-        const rankedProducts = sortProductsForSearch(physicalFilteredProducts, sort);
+        const durationFilteredProducts = filterProductsByDuration(physicalFilteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
+        const rankedProducts = sortProductsForSearch(durationFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
