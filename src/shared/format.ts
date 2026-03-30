@@ -546,6 +546,37 @@ export function productJsonData(product: SearchDisplayProduct, bookingPath = pro
   };
 }
 
+/** Build available filter values from a set of products — helps agents narrow results. */
+export function buildAvailableFilters(products: SearchDisplayProduct[]) {
+  const audiences = new Set<string>();
+  const settings = new Set<string>();
+  const physicalLevels = new Set<string>();
+  const languages = new Set<string>();
+  let hasWheelchair = false;
+  let hasFreeCancellation = false;
+
+  for (const p of products) {
+    for (const a of p.mcpProduct?.audience || []) audiences.add(a);
+    const s = p.mcpProduct?.indoorOutdoor;
+    if (s) settings.add(s);
+    const pl = p.mcpProduct?.physicalLevel;
+    if (pl) physicalLevels.add(pl);
+    for (const l of p.mcpProduct?.languageOptions || []) languages.add(l);
+    if (p.mcpProduct?.wheelchairAccessible) hasWheelchair = true;
+    const policy = p.mcpProduct?.variants?.[0]?.cancellationPolicy;
+    if (policy === "BeforeTimeslot" || policy === "BeforeDate") hasFreeCancellation = true;
+  }
+
+  return {
+    audience: [...audiences].sort(),
+    setting: [...settings].sort(),
+    physical_level: [...physicalLevels].sort(),
+    languages: [...languages].sort().slice(0, 10),
+    wheelchair_accessible: hasWheelchair,
+    free_cancellation_available: hasFreeCancellation,
+  };
+}
+
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
