@@ -112,17 +112,88 @@ export const SEARCH_SORT_OPTIONS = [
   "rating",
   "best_value",
 ] as const;
+export const SEARCH_MOOD_OPTIONS = [
+  "adventurous",
+  "romantic",
+  "relaxing",
+  "family_fun",
+  "cultural",
+  "thrill_seeking",
+  "foodie",
+  "budget_friendly",
+  "luxury",
+  "rainy_day",
+] as const;
 const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
 const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
 
 type SearchCategory = (typeof AVAILABLE_SEARCH_CATEGORIES)[number];
 export type SearchSort = (typeof SEARCH_SORT_OPTIONS)[number];
+export type SearchMood = (typeof SEARCH_MOOD_OPTIONS)[number];
 type LogWriter = (message: string) => void;
 type ToolLogSummary = Record<string, boolean | number | string | undefined>;
 type CreateTickadooServerOptions = {
   logWriter?: LogWriter;
 };
 const SEARCH_SORT_OPTION_SET = new Set<string>(SEARCH_SORT_OPTIONS);
+const SEARCH_MOOD_OPTION_SET = new Set<string>(SEARCH_MOOD_OPTIONS);
+
+type SearchMoodFilters = {
+  audience?: string;
+  tags?: string;
+  setting?: "Indoor" | "Outdoor" | "Mixed";
+  physicalLevel?: "Easy" | "Moderate" | "Demanding";
+  maxPrice?: number;
+  minRating?: number;
+  sort: SearchSort;
+};
+
+const SEARCH_MOOD_FILTERS: Record<SearchMood, SearchMoodFilters> = {
+  adventurous: {
+    tags: "Adventure,Outdoor,WaterSport",
+    sort: "rating",
+  },
+  romantic: {
+    audience: "Couples",
+    tags: "Evening,Cruise,Dining",
+    sort: "rating",
+  },
+  relaxing: {
+    tags: "Spa,Cruise",
+    physicalLevel: "Easy",
+    sort: "best_value",
+  },
+  family_fun: {
+    audience: "Family",
+    tags: "KidsAttraction,Outdoor",
+    sort: "popular",
+  },
+  cultural: {
+    tags: "Museum,WalkingTour,GuidedTour",
+    sort: "rating",
+  },
+  thrill_seeking: {
+    tags: "Adventure,Helicopter,WaterSport",
+    sort: "popular",
+  },
+  foodie: {
+    tags: "FoodTour,Dining,Workshop",
+    sort: "rating",
+  },
+  budget_friendly: {
+    maxPrice: 30,
+    sort: "price_low",
+  },
+  luxury: {
+    minRating: 4.5,
+    sort: "price_high",
+  },
+  rainy_day: {
+    setting: "Indoor",
+    tags: "Museum,Show,Theatre",
+    sort: "popular",
+  },
+};
 
 const SEARCH_CATEGORY_ALIASES: Record<string, SearchCategory> = {
   theatre: "theatre",
@@ -225,6 +296,21 @@ function canonicalizeSearchCategory(value: unknown): SearchCategory | undefined 
   const normalized = normalizeCategoryText(value);
   const stemmed = stemCategoryText(value);
   return SEARCH_CATEGORY_ALIASES[normalized] ?? SEARCH_CATEGORY_ALIASES[stemmed];
+}
+
+export function normalizeSearchMood(value: string | undefined): SearchMood | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/-/g, "_");
+  return SEARCH_MOOD_OPTION_SET.has(normalized)
+    ? normalized as SearchMood
+    : undefined;
+}
+
+export function getSearchMoodFilters(mood: SearchMood): SearchMoodFilters {
+  return { ...SEARCH_MOOD_FILTERS[mood] };
 }
 
 function formatAvailableSearchCategories(): string {
@@ -1712,6 +1798,370 @@ function validateCompareArgs(args: {
   };
 }
 
+function validateSearchByMoodArgs(args: {
+  city: string;
+  mood?: string;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  mood: SearchMood;
+  language: string;
+  format: ResponseFormat;
+  filters: SearchMoodFilters;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "City is required. Provide a city name or slug like \"london\" or \"new-york\"."),
+    };
+  }
+
+  const mood = normalizeSearchMood(args.mood);
+  if (!mood) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid mood. Use one of ${SEARCH_MOOD_OPTIONS.join(", ")} (got: ${formatValue(args.mood)}).`,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      city,
+      mood,
+      language: language.data,
+      format,
+      filters: getSearchMoodFilters(mood),
+    },
+  };
+}
+
+type SearchExecutionArgs = {
+  city: string;
+  language: string;
+  maxResults: number;
+  minPrice?: number;
+  maxPrice?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  category?: string;
+  query?: string;
+  sort: SearchSort;
+  format: ResponseFormat;
+  tags?: string;
+  audience?: string;
+  setting?: string;
+  wheelchairAccessible?: boolean;
+  physicalLevel?: string;
+  minDuration?: number;
+  maxDuration?: number;
+  availableLanguage?: string;
+  minRating?: number;
+  freeCancellation?: boolean;
+  jsonPayloadExtras?: Record<string, unknown>;
+  structuredContentExtras?: Record<string, unknown>;
+  summaryBase: ToolLogSummary;
+};
+
+async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedToolExecution> {
+  const {
+    city,
+    language,
+    maxResults,
+    minPrice,
+    maxPrice,
+    dateFrom,
+    dateTo,
+    category,
+    query,
+    sort,
+    format,
+  } = request;
+
+  try {
+    let citySlug = normalizeCityInput(city);
+    let products = await getProductsForCitySlug(citySlug, language, { dateFrom, dateTo });
+    let cityName = city;
+    let matchedKnownCity = Boolean(products.length);
+
+    if (!products.length) {
+      const cities = await getCities(language);
+      const candidates = findCityCandidates(city, cities);
+      const bestMatch = candidates[0];
+
+      if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
+        products = await getProductsForCitySlug(bestMatch.city.slug, language, { dateFrom, dateTo });
+        cityName = bestMatch.city.name;
+        citySlug = bestMatch.city.slug;
+        matchedKnownCity = true;
+      } else {
+        return {
+          response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+          resultCount: 0,
+          summary: request.summaryBase,
+        };
+      }
+    }
+
+    if (!products.length) {
+      if (!matchedKnownCity) {
+        return {
+          response: await buildSearchMissResponse(format, city, language, []),
+          resultCount: 0,
+          summary: request.summaryBase,
+        };
+      }
+
+      return {
+        response: createFormattedResponse(
+          format,
+          formatNoCoverageRecovery(cityName),
+          noCoverageRecoveryJson(cityName),
+        ),
+        resultCount: 0,
+        summary: request.summaryBase,
+      };
+    }
+
+    const categoryFilteredProducts = filterProductsByCategory(products, category);
+    if (category && !categoryFilteredProducts.length) {
+      const availableCategories = getAvailableCategoriesForProducts(products);
+      return {
+        response: createFormattedResponse(
+          format,
+          formatEmptyCategoryRecovery(
+            category,
+            cityName,
+            availableCategories,
+          ),
+          emptyCategoryRecoveryJson(
+            citySlug,
+            cityName,
+            category,
+            availableCategories,
+          ),
+        ),
+        resultCount: 0,
+        summary: request.summaryBase,
+      };
+    }
+
+    const queryFilteredProducts = filterProductsByQuery(categoryFilteredProducts, query);
+    const matchingProducts = filterProductsByPrice(queryFilteredProducts, minPrice, maxPrice);
+    const appliedFilters = buildAppliedSearchFilters(language, {
+      category: category ? canonicalizeSearchCategory(category) ?? category : undefined,
+      query,
+      minPrice,
+      maxPrice,
+      dateFrom,
+      dateTo,
+    });
+    if (!matchingProducts.length) {
+      let fallbackProducts: Product[] = [];
+      let fallbackNote = "";
+
+      if (query && categoryFilteredProducts.length > 0) {
+        fallbackProducts = categoryFilteredProducts.slice(0, 5);
+        fallbackNote = `No experiences matching "${query}" in ${cityName}. Here are the most popular alternatives:`;
+      } else if ((minPrice != null || maxPrice != null) && products.length > 0) {
+        fallbackProducts = products.slice(0, 5);
+        fallbackNote = `No experiences in ${cityName} within that price range. Here are popular options at other price points:`;
+      }
+
+      if (fallbackProducts.length > 0) {
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const enrichedFallback = mergeEnrichedProducts(fallbackProducts, enrichedProducts);
+        const rankedFallback = sortProductsForSearch(enrichedFallback, "popular");
+        const topFallback = rankedFallback.slice(0, 5).map(product => ({
+          ...product,
+          popular: isPopularSearchProduct(product),
+        }));
+        return {
+          response: createFormattedResponse(
+            format,
+            fallbackNote,
+            searchJsonPayload(citySlug, cityName, topFallback.length, [], {
+              filters: appliedFilters,
+              language,
+              sort: "popular",
+            }),
+          ),
+          resultCount: topFallback.length,
+          summary: { ...request.summaryBase, fallback: true },
+        };
+      }
+
+      const message = buildNoResultsMessage(cityName, {
+        category,
+        query,
+        minPrice,
+        maxPrice,
+        dateFrom,
+        dateTo,
+      });
+      return {
+        response: createFormattedResponse(
+          format,
+          message,
+          {
+            ...searchJsonPayload(citySlug, cityName, 0, [], {
+              filters: appliedFilters,
+              language,
+              sort,
+            }),
+            message,
+            ...(request.jsonPayloadExtras ?? {}),
+          },
+        ),
+        resultCount: 0,
+        summary: request.summaryBase,
+      };
+    }
+
+    const enrichedProducts = await getMcpEnrichedProducts();
+    const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
+    const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, request.tags);
+    const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, request.audience);
+    const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, request.setting);
+    const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, request.wheelchairAccessible);
+    const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, request.physicalLevel);
+    const durationFilteredProducts = filterProductsByDuration(physicalFilteredProducts, request.minDuration, request.maxDuration);
+    const languageFilteredProducts = filterProductsByLanguage(durationFilteredProducts, request.availableLanguage);
+    const ratingFilteredProducts = filterProductsByRating(languageFilteredProducts, request.minRating);
+    const cancellationFilteredProducts = filterProductsByFreeCancellation(ratingFilteredProducts, request.freeCancellation);
+
+    if (cancellationFilteredProducts.length === 0 && matchingProducts.length > 0) {
+      const activeFilters: string[] = [];
+      if (request.audience) activeFilters.push(`audience=${request.audience}`);
+      if (request.setting) activeFilters.push(`setting=${request.setting}`);
+      if (request.wheelchairAccessible != null) activeFilters.push(`wheelchair_accessible=${request.wheelchairAccessible}`);
+      if (request.physicalLevel) activeFilters.push(`physical_level=${request.physicalLevel}`);
+      if (request.minDuration != null || request.maxDuration != null) activeFilters.push(`duration=${request.minDuration || 0}-${request.maxDuration || "∞"}min`);
+      if (request.availableLanguage) activeFilters.push(`language=${request.availableLanguage}`);
+      if (request.minRating != null) activeFilters.push(`min_rating=${request.minRating}`);
+      if (request.freeCancellation != null) activeFilters.push(`free_cancellation=${request.freeCancellation}`);
+      const filterHint = activeFilters.length > 0
+        ? `\n\n💡 Active filters: ${activeFilters.join(", ")}. Try removing one filter to broaden results.`
+        : "";
+      const recoveryMsg = `No experiences in ${cityName} match all your filters (${matchingProducts.length} results before filtering).${filterHint}`;
+      return {
+        response: createFormattedResponse(
+          format,
+          recoveryMsg,
+          {
+            city: citySlug,
+            city_name: cityName,
+            total: 0,
+            showing: 0,
+            filters_applied: activeFilters,
+            pre_filter_count: matchingProducts.length,
+            experiences: [],
+            ...(request.jsonPayloadExtras ?? {}),
+          },
+        ),
+        resultCount: 0,
+        summary: { ...request.summaryBase, filters: activeFilters.join(",") },
+      };
+    }
+
+    const rankedProducts = sortProductsForSearch(cancellationFilteredProducts, sort);
+    const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
+      ...product,
+      popular: isPopularSearchProduct(product),
+    }));
+    const searchContext = buildSearchContext(cityName);
+    const omittedResults = buildOmittedResultsSummary(
+      products.length,
+      categoryFilteredProducts,
+      queryFilteredProducts,
+      matchingProducts,
+      {
+        category,
+        query,
+        minPrice,
+        maxPrice,
+      },
+    );
+    const resultIntro = [
+      buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext),
+      formatSearchSortLine(sort),
+      formatSearchFiltersLine(appliedFilters),
+      formatOmittedResultsHint(omittedResults),
+      buildResultSummaryLine(topProducts),
+    ].filter(Boolean).join("\n");
+    const jsonPayload = {
+      ...searchJsonPayload(
+        citySlug,
+        cityName,
+        matchingProducts.length,
+        topProducts,
+        {
+          filters: appliedFilters,
+          language,
+          omittedResults,
+          sort,
+        },
+      ),
+      ...(request.jsonPayloadExtras ?? {}),
+      _available_filters: buildAvailableFilters(topProducts),
+    };
+    return {
+      response: createFormattedResponse(
+        format,
+        appendNextStepHint(
+          `${resultIntro}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}${formatAvailableFiltersHint(topProducts)}`,
+          SEARCH_NEXT_STEP_HINT,
+        ),
+        jsonPayload,
+        {
+          structuredContent: {
+            city: cityName,
+            citySlug,
+            sort,
+            totalExperiences: matchingProducts.length,
+            ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
+            ...(query ? { query } : {}),
+            ...(minPrice != null ? { minPrice } : {}),
+            ...(maxPrice != null ? { maxPrice } : {}),
+            ...(dateFrom ? { dateFrom } : {}),
+            ...(dateTo ? { dateTo } : {}),
+            ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
+            ...(appliedFilters ? { filters: appliedFilters } : {}),
+            ...(omittedResults ? { omittedResults } : {}),
+            ...(request.structuredContentExtras ?? {}),
+            experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`, language)),
+          },
+        },
+      ),
+      resultCount: topProducts.length,
+      summary: request.summaryBase,
+    };
+  } catch (error) {
+    return {
+      response: createFormattedErrorResponse(format, getErrorMessage(error)),
+      resultCount: 0,
+      summary: request.summaryBase,
+    };
+  }
+}
 export function createTickadooServer(options: CreateTickadooServerOptions = {}): McpServer {
   const logWriter = options.logWriter ?? defaultLogWriter;
   const server = new McpServer({
@@ -1762,7 +2212,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         };
       }
 
-      const {
+      const { city, language, maxResults, minPrice, maxPrice, dateFrom, dateTo, category, query, sort, format } = validated.data;
+
+      return executeSearchTool({
         city,
         language,
         maxResults,
@@ -1774,261 +2226,78 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         query,
         sort,
         format,
-      } = validated.data;
+        tags: typeof args.tags === "string" ? args.tags : undefined,
+        audience: typeof args.audience === "string" ? args.audience : undefined,
+        setting: typeof args.setting === "string" ? args.setting : undefined,
+        wheelchairAccessible: typeof args.wheelchair_accessible === "boolean" ? args.wheelchair_accessible : undefined,
+        physicalLevel: typeof args.physical_level === "string" ? args.physical_level : undefined,
+        minDuration: typeof args.min_duration === "number" ? args.min_duration : undefined,
+        maxDuration: typeof args.max_duration === "number" ? args.max_duration : undefined,
+        availableLanguage: typeof args.available_language === "string" ? args.available_language : undefined,
+        minRating: typeof args.min_rating === "number" ? args.min_rating : undefined,
+        freeCancellation: typeof args.free_cancellation === "boolean" ? args.free_cancellation : undefined,
+        summaryBase: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
+      });
+    }),
+  );
 
-      try {
-        let citySlug = normalizeCityInput(city);
-        let products = await getProductsForCitySlug(citySlug, language, { dateFrom, dateTo });
-        let cityName = city;
-        let matchedKnownCity = Boolean(products.length);
-
-        if (!products.length) {
-          const cities = await getCities(language);
-          const candidates = findCityCandidates(city, cities);
-          const bestMatch = candidates[0];
-
-          if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
-            products = await getProductsForCitySlug(bestMatch.city.slug, language, { dateFrom, dateTo });
-            cityName = bestMatch.city.name;
-            citySlug = bestMatch.city.slug;
-            matchedKnownCity = true;
-          } else {
-            return {
-              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
-              resultCount: 0,
-              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-            };
-          }
-        }
-
-        if (!products.length) {
-          if (!matchedKnownCity) {
-            return {
-              response: await buildSearchMissResponse(format, city, language, []),
-              resultCount: 0,
-              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-            };
-          }
-
-          return {
-            response: createFormattedResponse(
-              format,
-              formatNoCoverageRecovery(cityName),
-              noCoverageRecoveryJson(cityName),
-            ),
-            resultCount: 0,
-            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-          };
-        }
-
-        const categoryFilteredProducts = filterProductsByCategory(products, category);
-        if (category && !categoryFilteredProducts.length) {
-          const availableCategories = getAvailableCategoriesForProducts(products);
-          return {
-            response: createFormattedResponse(
-              format,
-              formatEmptyCategoryRecovery(
-                category,
-                cityName,
-                availableCategories,
-              ),
-              emptyCategoryRecoveryJson(
-                citySlug,
-                cityName,
-                category,
-                availableCategories,
-              ),
-            ),
-            resultCount: 0,
-            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-          };
-        }
-
-        const queryFilteredProducts = filterProductsByQuery(categoryFilteredProducts, query);
-        const matchingProducts = filterProductsByPrice(queryFilteredProducts, minPrice, maxPrice);
-        const appliedFilters = buildAppliedSearchFilters(language, {
-          category: category ? canonicalizeSearchCategory(category) ?? category : undefined,
-          query,
-          minPrice,
-          maxPrice,
-          dateFrom,
-          dateTo,
-        });
-        if (!matchingProducts.length) {
-          // Smart Substitution: instead of returning empty, suggest alternatives
-          // Try broader search: drop query but keep city, or drop price filter
-          let fallbackProducts: Product[] = [];
-          let fallbackNote = "";
-
-          if (query && categoryFilteredProducts.length > 0) {
-            // Query too specific — show popular results in same city/category
-            fallbackProducts = categoryFilteredProducts.slice(0, 5);
-            fallbackNote = `No experiences matching "${query}" in ${cityName}. Here are the most popular alternatives:`;
-          } else if ((minPrice != null || maxPrice != null) && products.length > 0) {
-            // Price filter too restrictive — show popular regardless of price
-            fallbackProducts = products.slice(0, 5);
-            fallbackNote = `No experiences in ${cityName} within that price range. Here are popular options at other price points:`;
-          }
-
-          if (fallbackProducts.length > 0) {
-            const enrichedProducts = await getMcpEnrichedProducts();
-            const enrichedFallback = mergeEnrichedProducts(fallbackProducts, enrichedProducts);
-            const rankedFallback = sortProductsForSearch(enrichedFallback, "popular");
-            const topFallback = rankedFallback.slice(0, 5).map(product => ({
-              ...product,
-              popular: isPopularSearchProduct(product),
-            }));
-            return {
-              response: createFormattedResponse(
-                format,
-                fallbackNote,
-                searchJsonPayload(citySlug, cityName, topFallback.length, [], {
-                  filters: appliedFilters,
-                  language,
-                  sort: "popular",
-                }),
-              ),
-              resultCount: topFallback.length,
-              summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format, fallback: true },
-            };
-          }
-
-          const message = buildNoResultsMessage(cityName, {
-            category,
-            query,
-            minPrice,
-            maxPrice,
-            dateFrom,
-            dateTo,
-          });
-          return {
-            response: createFormattedResponse(
-              format,
-              message,
-              {
-                ...searchJsonPayload(citySlug, cityName, 0, [], {
-                  filters: appliedFilters,
-                  language,
-                  sort,
-                }),
-                message,
-              },
-            ),
-            resultCount: 0,
-            summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-          };
-        }
-
-        const enrichedProducts = await getMcpEnrichedProducts();
-        const enrichedMatchingProducts = mergeEnrichedProducts(matchingProducts, enrichedProducts);
-        const tagFilteredProducts = filterProductsByTags(enrichedMatchingProducts, args.tags as string | undefined);
-        const audienceFilteredProducts = filterProductsByAudience(tagFilteredProducts, args.audience as string | undefined);
-        const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
-        const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, args.wheelchair_accessible as boolean | undefined);
-        const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, args.physical_level as string | undefined);
-        const durationFilteredProducts = filterProductsByDuration(physicalFilteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
-        const languageFilteredProducts = filterProductsByLanguage(durationFilteredProducts, args.available_language as string | undefined);
-        const ratingFilteredProducts = filterProductsByRating(languageFilteredProducts, args.min_rating as number | undefined);
-        const cancellationFilteredProducts = filterProductsByFreeCancellation(ratingFilteredProducts, args.free_cancellation as boolean | undefined);
-
-        // Smart Filter Recovery: if new filters eliminated all results, tell the agent why
-        if (cancellationFilteredProducts.length === 0 && matchingProducts.length > 0) {
-          const activeFilters: string[] = [];
-          if (args.audience) activeFilters.push(`audience=${args.audience}`);
-          if (args.setting) activeFilters.push(`setting=${args.setting}`);
-          if (args.wheelchair_accessible != null) activeFilters.push(`wheelchair_accessible=${args.wheelchair_accessible}`);
-          if (args.physical_level) activeFilters.push(`physical_level=${args.physical_level}`);
-          if (args.min_duration != null || args.max_duration != null) activeFilters.push(`duration=${args.min_duration || 0}-${args.max_duration || "∞"}min`);
-          if (args.available_language) activeFilters.push(`language=${args.available_language}`);
-          if (args.min_rating != null) activeFilters.push(`min_rating=${args.min_rating}`);
-          if (args.free_cancellation != null) activeFilters.push(`free_cancellation=${args.free_cancellation}`);
-          const filterHint = activeFilters.length > 0
-            ? `\n\n💡 Active filters: ${activeFilters.join(", ")}. Try removing one filter to broaden results.`
-            : "";
-          const recoveryMsg = `No experiences in ${cityName} match all your filters (${matchingProducts.length} results before filtering).${filterHint}`;
-          return {
-            response: createFormattedResponse(format, recoveryMsg, { city: citySlug, city_name: cityName, total: 0, showing: 0, filters_applied: activeFilters, pre_filter_count: matchingProducts.length, experiences: [] }),
-            resultCount: 0,
-            summary: { city: citySlug, sort, format, filters: activeFilters.join(",") },
-          };
-        }
-
-        const rankedProducts = sortProductsForSearch(cancellationFilteredProducts, sort);
-        const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
-          ...product,
-          popular: isPopularSearchProduct(product),
-        }));
-        const searchContext = buildSearchContext(cityName);
-        const omittedResults = buildOmittedResultsSummary(
-          products.length,
-          categoryFilteredProducts,
-          queryFilteredProducts,
-          matchingProducts,
-          {
-            category,
-            query,
-            minPrice,
-            maxPrice,
-          },
-        );
-        const resultIntro = [
-          buildShownResultsLabel(topProducts.length, matchingProducts.length, searchContext),
-          formatSearchSortLine(sort),
-          formatSearchFiltersLine(appliedFilters),
-          formatOmittedResultsHint(omittedResults),
-        , buildResultSummaryLine(topProducts)].filter(Boolean).join("\n");
-        const jsonPayload = {
-          ...searchJsonPayload(
-            citySlug,
-            cityName,
-            matchingProducts.length,
-            topProducts,
-            {
-              filters: appliedFilters,
-              language,
-              omittedResults,
-              sort,
-            },
-          ),
-          _available_filters: buildAvailableFilters(topProducts),
-        };
+  server.tool(
+    "search_by_mood",
+    `Search tickadoo experiences by emotional intent instead of category. Maps moods (${SEARCH_MOOD_OPTIONS.join(", ")}) to the most relevant audience, tag, setting, rating, and price filters, then runs a city search. ${LANGUAGE_SUPPORT_NOTE} Use when a user says things like "something romantic", "we need to relax", "kids are bored", or "luxury options in Paris".`,
+    {
+      city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
+      mood: z.enum(SEARCH_MOOD_OPTIONS).describe(`Mood preset. Valid values: ${SEARCH_MOOD_OPTIONS.join(", ")}`),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("search_by_mood", logWriter, async args => {
+      const validated = validateSearchByMoodArgs(args);
+      if (!validated.ok) {
         return {
-          response: createFormattedResponse(
-            format,
-            appendNextStepHint(
-              `${resultIntro}\n\n${topProducts.map(product => formatProduct(product, `${citySlug}/${product.slug}`, language)).join("\n\n")}\n\nView all: ${buildBookingUrl(citySlug, language)}${formatAvailableFiltersHint(topProducts)}`,
-              SEARCH_NEXT_STEP_HINT,
-            ),
-            jsonPayload,
-            {
-              structuredContent: {
-                city: cityName,
-                citySlug,
-                sort,
-                totalExperiences: matchingProducts.length,
-                ...(category ? { category: canonicalizeSearchCategory(category) ?? category } : {}),
-                ...(query ? { query } : {}),
-                ...(minPrice != null ? { minPrice } : {}),
-                ...(maxPrice != null ? { maxPrice } : {}),
-                ...(dateFrom ? { dateFrom } : {}),
-                ...(dateTo ? { dateTo } : {}),
-                ...(language !== DEFAULT_LANGUAGE ? { language } : {}),
-                ...(appliedFilters ? { filters: appliedFilters } : {}),
-                ...(omittedResults ? { omittedResults } : {}),
-                experiences: topProducts.map(product => productStructuredData(product, `${citySlug}/${product.slug}`, language)),
-              },
-            },
-          ),
-          resultCount: topProducts.length,
-          summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
-        };
-      } catch (error) {
-        return {
-          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          response: validated.error,
           resultCount: 0,
-          summary: { city, query, sort, date_from: dateFrom, date_to: dateTo, format },
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(unknown)",
+            mood: typeof args.mood === "string" ? args.mood.trim() || "(empty)" : "(unknown)",
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
         };
       }
+
+      const { city, mood, language, format, filters } = validated.data;
+      const mappedFilters = {
+        ...(filters.audience ? { audience: filters.audience } : {}),
+        ...(filters.tags ? { tags: filters.tags } : {}),
+        ...(filters.setting ? { setting: filters.setting } : {}),
+        ...(filters.physicalLevel ? { physical_level: filters.physicalLevel } : {}),
+        ...(filters.maxPrice != null ? { max_price: filters.maxPrice } : {}),
+        ...(filters.minRating != null ? { min_rating: filters.minRating } : {}),
+        sort: filters.sort,
+      };
+
+      return executeSearchTool({
+        city,
+        language,
+        maxResults: DEFAULT_SEARCH_RESULT_LIMIT,
+        maxPrice: filters.maxPrice,
+        sort: filters.sort,
+        format,
+        tags: filters.tags,
+        audience: filters.audience,
+        setting: filters.setting,
+        physicalLevel: filters.physicalLevel,
+        minRating: filters.minRating,
+        jsonPayloadExtras: {
+          mood,
+          mapped_filters: mappedFilters,
+        },
+        structuredContentExtras: {
+          mood,
+          mappedFilters,
+        },
+        summaryBase: { city, mood, sort: filters.sort, format },
+      });
     }),
   );
 

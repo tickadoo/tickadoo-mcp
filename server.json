@@ -9,6 +9,10 @@
           "description": "Search for bookable experiences in a specific city with city fallback matching and optional date filtering."
         },
         {
+          "name": "search_by_mood",
+          "description": "Search by emotional intent, mapping moods like romantic, relaxing, foodie, or rainy_day to optimized search filters before running a city search."
+        },
+        {
           "name": "find_nearby_experiences",
           "description": "Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering."
         },

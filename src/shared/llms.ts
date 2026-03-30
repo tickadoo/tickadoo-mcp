@@ -7,6 +7,7 @@ import {
   SERVER_VERSION,
   SUPPORTED_LANGUAGE_CODES,
 } from "./config.js";
+import { SEARCH_MOOD_OPTIONS } from "./server.js";
 
 export const LLMS_URL = `${MCP_BASE_URL}/llms.txt`;
 export const LLMS_FULL_URL = `${MCP_BASE_URL}/llms-full.txt`;
@@ -58,6 +59,16 @@ const TOOL_DOCS: ToolDoc[] = [
       "available_language (optional): ISO 639-1 code (en, es, fr, de, ja, zh, pt, it, ko)",
       "min_rating (optional): minimum rating (e.g. 4.5 for top-rated only)",
       "free_cancellation (optional): boolean. True for refundable bookings only",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
+  {
+    name: "search_by_mood",
+    summary: "Search experiences by emotional intent instead of category. Maps moods to search filters, then returns the same booking-ready results as search_experiences.",
+    inputs: [
+      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
+      `mood (required): valid enum ${SEARCH_MOOD_OPTIONS.join(", ")}`,
+      "language (optional): supported language code for localised booking URLs, default en",
       "format (optional): response format, text (default) or json",
     ],
   },
@@ -151,6 +162,16 @@ function buildCategoryLines(): string[] {
   ];
 }
 
+function buildMoodLines(): string[] {
+  return [
+    "## Valid Moods",
+    "The following mood values are accepted by search_by_mood:",
+    `${SEARCH_MOOD_OPTIONS.join(", ")}`,
+    "",
+    "Mood search maps emotional intent to audience, tag, setting, rating, and price filters before searching.",
+  ];
+}
+
 function buildFreshnessLines(detailed = false): string[] {
   if (!detailed) {
     return [
@@ -236,6 +257,8 @@ export function buildLlmsTxt(): string {
     "",
     ...buildCategoryLines(),
     "",
+    ...buildMoodLines(),
+    "",
     ...buildFreshnessLines(),
     "",
     ...buildLimitationsLines(),
@@ -299,6 +322,8 @@ export function buildLlmsFullTxt(): string {
     ...buildLanguageLines(),
     "",
     ...buildCategoryLines(),
+    "",
+    ...buildMoodLines(),
     "",
     "## Enrichment Enums",
     "The following structured metadata is available on search results and experience details.",

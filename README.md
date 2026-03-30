@@ -24,7 +24,7 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 Current release: `v1.4.0`
 
-- 5 read-only MCP tools with 11 search filters + 6 sort options
+- 6 read-only MCP tools with 11 search filters + 6 sort options
 - 13,090 products across 681 cities in 40+ languages
 - Rule-based audience + tag enrichment (100% coverage)
 - Availability slots with real dates and prices
@@ -48,6 +48,7 @@ Current release: `v1.4.0`
 | Tool | Description |
 |------|-------------|
 | `search_experiences` | Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) + 6 sort options (incl. best_value) |
+| `search_by_mood` | Search by emotional intent instead of category. Maps moods like `romantic`, `relaxing`, `budget_friendly`, and `rainy_day` to optimized tags, audience, rating, setting, and price filters before returning booking-ready results |
 | `find_nearby_experiences` | Find experiences near lat/lng with same 11 filters, configurable radius, and date filtering |
 | `list_cities` | Browse supported cities with optional filtering and result limits |
 | `check_availability` | Fast date-specific availability check for a single experience. Returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
