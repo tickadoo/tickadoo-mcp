@@ -548,6 +548,26 @@ export function filterProductsByPhysicalLevel(products: Product[], level?: strin
   });
 }
 
+/** Parse ISO 8601 duration (PT2H30M) to minutes. */
+function parseDurationToMinutes(dur: string | null): number | null {
+  if (!dur) return null;
+  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!m) return null;
+  return (parseInt(m[1] || "0", 10) * 60) + parseInt(m[2] || "0", 10);
+}
+
+/** Filter products by duration range in minutes. */
+export function filterProductsByDuration(products: Product[], minDur?: number, maxDur?: number): Product[] {
+  if (minDur == null && maxDur == null) return products;
+  return products.filter(product => {
+    const mins = parseDurationToMinutes(product.duration);
+    if (mins == null) return minDur == null;
+    if (minDur != null && mins < minDur) return false;
+    if (maxDur != null && mins > maxDur) return false;
+    return true;
+  });
+}
+
 export function filterProductsByQuery(products: Product[], query?: string): Product[] {
   if (!query) {
     return products;
@@ -1471,6 +1491,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       setting: z.enum(["Indoor", "Outdoor", "Mixed"]).optional().describe("Optional indoor/outdoor filter. Use Indoor for rainy days."),
       wheelchair_accessible: z.boolean().optional().describe("Filter for wheelchair-accessible experiences only"),
       physical_level: z.enum(["Easy", "Moderate", "Demanding"]).optional().describe("Filter by physical difficulty level"),
+      min_duration: z.number().optional().describe("Minimum duration in minutes (e.g. 60 for at least 1 hour)"),
+      max_duration: z.number().optional().describe("Maximum duration in minutes (e.g. 120 for under 2 hours)"),
       sort: z.enum(SEARCH_SORT_OPTIONS).optional().default("relevance").describe(`Optional result ordering. Valid values: ${formatAvailableSearchSorts()}. "popular" prioritises experiences with price, imagery, rating >= 4.0, and a description.`),
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
@@ -1654,7 +1676,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const settingFilteredProducts = filterProductsBySetting(audienceFilteredProducts, args.setting as string | undefined);
         const accessibilityFilteredProducts = filterProductsByAccessibility(settingFilteredProducts, args.wheelchair_accessible as boolean | undefined);
         const physicalFilteredProducts = filterProductsByPhysicalLevel(accessibilityFilteredProducts, args.physical_level as string | undefined);
-        const rankedProducts = sortProductsForSearch(physicalFilteredProducts, sort);
+        const durationFilteredProducts = filterProductsByDuration(physicalFilteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
+        const rankedProducts = sortProductsForSearch(durationFilteredProducts, sort);
         const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
           ...product,
           popular: isPopularSearchProduct(product),
