@@ -38,7 +38,7 @@ const VALID_SEARCH_CATEGORIES = [
 const TOOL_DOCS: ToolDoc[] = [
   {
     name: "search_experiences",
-    summary: "Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) and 6 sort options including best_value. JSON responses include _available_filters showing which narrowing options exist in the result set. Smart Filter Recovery guides agents when filters are too restrictive. 100% Primary, Verified Ticket Inventory optimised for AI agents.",
+    summary: "Search 13,090+ experiences across 681 cities with 11 filters and 6 sort options. JSON responses include _available_filters (10 fields incl. tag_counts, price_range, duration_range), _conversation_starters, _related_searches, and Smart Filter Recovery. Text includes 📊 result summary and 🔍 filter hints. 100% Primary, Verified Ticket Inventory.",
     inputs: [
       "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
       "language (optional): supported language code for localised booking URLs, default en",
@@ -63,7 +63,7 @@ const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "find_nearby_experiences",
-    summary: "Find experiences near a latitude/longitude with all 11 filters, 6 sort options, configurable radius, date filtering, _available_filters metadata, and localised booking URLs.",
+    summary: "Find experiences near coordinates with all 11 filters, 6 sorts, configurable radius. Full parity: _available_filters, _conversation_starters, _related_searches, filter hints, and localised booking URLs.",
     inputs: [
       "latitude (required): decimal latitude",
       "longitude (required): decimal longitude",
@@ -96,7 +96,7 @@ const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "get_experience_details",
-    summary: "Fetch venue, imagery, and availability details for a specific tickadoo experience by slug or booking path, with localised booking URLs.",
+    summary: "Fetch venue, imagery, availability slots, and booking data. JSON includes _booking_urgency (TODAY availability, cancellation, rating), _cross_sell, _intent_token (Ghost Checkout), _accessibility. Text includes 🔥 urgency signals.",
     inputs: [
       "slug (preferred): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",
       "days (optional): availability horizon in days, default 30, max 180",
