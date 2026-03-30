@@ -1939,6 +1939,14 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         const nearbyMax = Math.min(Math.max(typeof args.max_results === "number" ? args.max_results : DEFAULT_SEARCH_RESULT_LIMIT, 1), 50);
         const rankedProducts = sortProductsForSearch(filteredProducts, nearbySort);
         const topProducts = rankedProducts.slice(0, nearbyMax);
+        // Resolve city slug for _related_searches
+        let nearbyCitySlug = "nearby";
+        if (topProducts.length > 0) {
+          const cities = await getCities(language);
+          const firstCityId = topProducts[0].cityId;
+          const matchedCity = cities.find(ct => ct.id === firstCityId);
+          if (matchedCity?.slug) nearbyCitySlug = matchedCity.slug;
+        }
         return {
           response: createFormattedResponse(
             format,
@@ -1946,7 +1954,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: (() => { const bp = (topProducts[0] as any)?.bookingPath ?? ""; const cs = bp.split("/").filter(Boolean)[0] || "nearby"; return buildRelatedSearches(cs, topProducts as any); })(), _conversation_starters: buildConversationStarters(topProducts as any, "nearby") },
+            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(nearbyCitySlug, topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby") },
             {
               structuredContent: {
                 latitude,
