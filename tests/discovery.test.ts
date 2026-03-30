@@ -45,7 +45,7 @@ function createRequest(method: "GET" | "HEAD" | "OPTIONS" = "GET") {
 }
 
 describe("discovery routes", () => {
-  it("serves the v1.4 registry manifest with 14 public tools", async () => {
+  it("serves the v1.4 registry manifest with the current public tools", async () => {
     const res = new MockResponse();
 
     await wellKnownMcpHandler(createRequest("GET"), res as any);
@@ -62,6 +62,7 @@ describe("discovery routes", () => {
         "get_last_minute",
         "recommend_experiences",
         "plan_itinerary",
+        "get_travel_tips",
         "get_transfer_info",
         "whats_on_tonight",
       ]),

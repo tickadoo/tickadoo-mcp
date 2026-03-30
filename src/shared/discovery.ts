@@ -181,6 +181,17 @@ export const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
+    name: "get_travel_tips",
+    summary: "Return local insider advice for 20 launch cities, including transport, money, safety, culture, food, weather, language, connectivity, emergency numbers, and quick local phrases.",
+    registryDescription: "Return local insider travel tips for supported cities, including emergency numbers and quick local phrases.",
+    inputs: [
+      "city (required): city name or slug such as london, paris, new-york, tokyo, rome, or singapore",
+      "topic (optional): transport, money, safety, culture, food, weather, language, or connectivity",
+      "language (optional): supported language code for consistency with other tools, default en",
+      "format (optional): response format, json (default) or text",
+    ],
+  },
+  {
     name: "get_family_day",
     summary: "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering. Under 3 triggers wheelchair-accessible filtering, and the planner clusters picks geographically to reduce travel.",
     registryDescription: "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering and geographic clustering.",

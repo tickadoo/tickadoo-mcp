@@ -4,7 +4,7 @@ const REQUIRED_TOOLS = [
   "list_cities",
   "get_experience_details",
 ];
-const EXPECTED_SERVER_VERSION = "1.4.0";
+const EXPECTED_SERVER_VERSION = "1.4.1";
 const EXPECTED_UTM_PARAMS = new URLSearchParams(
   process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
 );

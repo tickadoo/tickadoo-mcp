@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1] - 2026-03-30
+### Added
+- `get_travel_tips` MCP tool for local insider advice across 20 launch cities
+- Hardcoded emergency numbers and quick local phrases for supported destinations
+- Unit tests for the travel tips payload, formatting, discovery metadata, and MCP tool handler
+
 ## [1.4.0] - 2026-03-30
 ### Added
 - `check_availability` MCP tool for fast date-specific availability checks by slug + date + party size

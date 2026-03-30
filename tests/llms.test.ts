@@ -12,7 +12,7 @@ describe("llms docs", () => {
     const fullDoc = buildLlmsFullTxt();
 
     for (const snippet of [
-      "Version: 1.4.0",
+      "Version: 1.4.1",
       `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
       `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
     ]) {
@@ -120,6 +120,7 @@ describe("llms docs", () => {
       "whats_on_tonight",
       "get_whats_on_this_week",
       "get_city_guide",
+      "get_travel_tips",
       "get_transfer_info",
       "plan_itinerary",
       "query (required): natural-language preference prompt such as romantic evening in Paris under EUR 100",
@@ -133,6 +134,7 @@ describe("llms docs", () => {
       "- plan_itinerary:",
       "- whats_on_tonight:",
       "- get_city_guide:",
+      "- get_travel_tips:",
     ]) {
       expect(shortDoc).toContain(snippet);
     }

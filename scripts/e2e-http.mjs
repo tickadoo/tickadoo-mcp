@@ -12,8 +12,8 @@ const REQUIRED_CSP_SNIPPETS = [
 const REQUIRED_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 const REQUIRED_DISCOVERY_CACHE_CONTROL = "public, max-age=3600";
 const EXPECTED_ENDPOINT = "https://mcp.tickadoo.com/mcp";
-const EXPECTED_VERSION = "1.4.0";
-const EXPECTED_TOOL_COUNT = 14;
+const EXPECTED_VERSION = "1.4.1";
+const EXPECTED_TOOL_COUNT = 17;
 
 async function verifyHealthResponse(target) {
   const healthResponse = await fetch(target, {

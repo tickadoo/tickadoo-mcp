@@ -263,6 +263,7 @@ export function buildLlmsFullTxt(): string {
     "## Capabilities",
     "- Live experience discovery across 681 cities worldwide with 13,090 enriched products",
     "- Curated city guides with highlights, category mix, pricing ranges, and trip-planning tips",
+    "- Local insider travel tips for 20 launch cities, including emergency numbers, practical etiquette, transport advice, and quick phrases",
     "- Booking execution: every product includes a ReserveAction with urlTemplate for direct checkout deep-linking",
     "- Inventory urgency: inventoryLevel signals available ticket counts for urgency-aware recommendations",
     "- Smart Substitution: if a specific search returns zero results, the server automatically suggests popular alternatives in the same city with a fallback indicator so agents can distinguish direct matches from substitutes",

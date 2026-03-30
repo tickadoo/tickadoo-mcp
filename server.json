@@ -61,6 +61,10 @@
           "description": "Return a curated city guide with highlights, price range, category mix, best-for suggestions, and travel-planning context."
         },
         {
+          "name": "get_travel_tips",
+          "description": "Return local insider travel tips for supported cities, including emergency numbers and quick local phrases."
+        },
+        {
           "name": "get_family_day",
           "description": "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering and geographic clustering."
         },
@@ -79,7 +83,7 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "1.4.0",
+  "version": "1.4.1",
   "remotes": [
     {
       "type": "streamable-http",

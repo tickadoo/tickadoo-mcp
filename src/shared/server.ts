@@ -37,6 +37,14 @@ import {
   lookupCityCountry,
 } from "./city-guide.js";
 import {
+  buildTravelTipsPayload,
+  formatTravelTips,
+  normalizeTravelTipTopic,
+  SUPPORTED_TRAVEL_TIP_CITIES,
+  TRAVEL_TIP_TOPICS,
+  type TravelTipTopic,
+} from "./travel-tips.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -1773,6 +1781,57 @@ function validateCityGuideArgs(args: { city?: string; language?: string; format?
     ok: true,
     data: {
       city: args.city.trim(),
+      language: language.data,
+      format,
+    },
+  };
+}
+
+function validateTravelTipsArgs(args: { city?: string; topic?: string; language?: string; format?: string }): ValidationResult<{
+  city: string;
+  topic: TravelTipTopic | null;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format);
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  if (typeof args.city !== "string" || !args.city.trim()) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "City is required. Provide a city name or slug like \"tokyo\", \"paris\", or \"new-york\".",
+      ),
+    };
+  }
+
+  const topic = normalizeTravelTipTopic(args.topic);
+  if (args.topic != null && args.topic.trim() && !topic) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid topic. Use one of: ${TRAVEL_TIP_TOPICS.join(", ")}.`,
+      ),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  return {
+    ok: true,
+    data: {
+      city: args.city.trim(),
+      topic,
       language: language.data,
       format,
     },
@@ -3625,6 +3684,135 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { city, format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "get_travel_tips",
+    `Return hardcoded local insider advice for 20 launch cities. Covers transport, money, safety, culture, food, weather, language, and connectivity, plus emergency numbers and quick local phrases. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks "what should I know before visiting Tokyo?" or wants a hotel pre-arrival briefing beyond generic guidebook tips.`,
+    {
+      city: z.string().describe("City name or slug (e.g. 'tokyo', 'paris', 'new-york', 'london')"),
+      topic: z.enum(TRAVEL_TIP_TOPICS).optional().describe("Optional topic filter: transport, money, safety, culture, food, weather, language, or connectivity"),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_travel_tips", logWriter, async args => {
+      const validated = validateTravelTipsArgs({
+        city: typeof args.city === "string" ? args.city : undefined,
+        topic: typeof args.topic === "string" ? args.topic : undefined,
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(missing)",
+            topic: typeof args.topic === "string" ? args.topic : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const { city, topic, language, format } = validated.data;
+
+      try {
+        const directPayload = buildTravelTipsPayload(city, topic);
+        if (directPayload) {
+          return {
+            response: createFormattedResponse(
+              format,
+              formatTravelTips(directPayload),
+              directPayload,
+              {
+                structuredContent: directPayload,
+              },
+            ),
+            resultCount: directPayload.tips.length,
+            summary: {
+              city: directPayload.city,
+              topic: topic ?? "all",
+              format,
+            },
+          };
+        }
+
+        const cities = await getCities(language);
+        const candidates = findCityCandidates(city, cities);
+        const supportedSuggestions = candidates
+          .filter(candidate => SUPPORTED_TRAVEL_TIP_CITIES.some(entry => entry.slug === candidate.city.slug))
+          .slice(0, CITY_SUGGESTION_LIMIT);
+        const bestSupportedMatch = supportedSuggestions[0];
+
+        if (bestSupportedMatch && bestSupportedMatch.score >= SPELLING_CORRECTION_CONFIDENCE) {
+          const correctedPayload = buildTravelTipsPayload(bestSupportedMatch.city.slug, topic);
+          if (correctedPayload) {
+            return {
+              response: createFormattedResponse(
+                format,
+                formatTravelTips(correctedPayload),
+                correctedPayload,
+                {
+                  structuredContent: correctedPayload,
+                },
+              ),
+              resultCount: correctedPayload.tips.length,
+              summary: {
+                city: correctedPayload.city,
+                corrected_from: city,
+                topic: topic ?? "all",
+                format,
+              },
+            };
+          }
+        }
+
+        const suggestedCities = supportedSuggestions.map(candidate => ({
+          name: candidate.city.name,
+          slug: candidate.city.slug,
+        }));
+        const supportedLaunchCities = SUPPORTED_TRAVEL_TIP_CITIES.map(entry => entry.name);
+        const message = suggestedCities.length
+          ? `Travel tips are currently hardcoded for 20 launch cities. I could not confidently match "${city}", but you might mean ${suggestedCities.map(entry => entry.name).join(", ")}.`
+          : `Travel tips are currently hardcoded for 20 launch cities only. Try one of: ${supportedLaunchCities.join(", ")}.`;
+        const unavailablePayload = {
+          city,
+          topic: topic ?? null,
+          message,
+          supported_cities: SUPPORTED_TRAVEL_TIP_CITIES,
+          suggested_cities: suggestedCities,
+        };
+
+        return {
+          response: createFormattedResponse(
+            format,
+            message,
+            unavailablePayload,
+            {
+              structuredContent: unavailablePayload,
+            },
+          ),
+          resultCount: 0,
+          summary: {
+            city,
+            topic: topic ?? "all",
+            format,
+            supported: false,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            city,
+            topic: topic ?? "all",
+            format,
+          },
         };
       }
     }),
