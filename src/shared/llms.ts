@@ -281,7 +281,7 @@ export function buildLlmsFullTxt(): string {
     "Before recommending an experience, check: (1) Is it available for the user's dates? Use dateFrom/dateTo. (2) Is it reachable within the user's time constraints? (3) Does it match the user's mood or intent?",
     "",
     "### Temporal Logic",
-    "- 'tonight' = dateFrom and dateTo set to today, prefer Evening-tagged experiences",
+    "- 'tonight' = use whats_on_tonight(city) for same-day plans with countdowns and urgency; fall back to dateFrom/dateTo=today when you need broader filters",
     "- 'this weekend' = dateFrom Saturday, dateTo Sunday",
     "- 'rainy day' = filter for Indoor setting or combine with Museum/Attraction tags",
     "- 'last minute' = dateFrom and dateTo set to today",

@@ -100,11 +100,24 @@ import {
   TRANSFER_FROM_TYPES,
   type TransferFromType,
 } from "./transfer.js";
+import {
+  buildTonightResult,
+  formatLocalClock,
+  formatLocalIsoDate,
+  formatTonightText,
+  toWhatsOnTonightPayload,
+  type TonightSourceExperience,
+} from "./tonight.js";
 import type { City, McpProduct, Product, ResolvedProduct, StructuredDataResponse } from "./types.js";
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
 const MAX_SEARCH_RESULT_LIMIT = 50;
 const WHATS_ON_THIS_WEEK_PRODUCT_LIMIT = 24;
+const DEFAULT_WHATS_ON_TONIGHT_LIMIT = 10;
+const MAX_WHATS_ON_TONIGHT_LIMIT = 25;
+const TONIGHT_DETAIL_BATCH_SIZE = 8;
+const TONIGHT_MIN_CANDIDATES = 18;
+const TONIGHT_MAX_CANDIDATES = 40;
 const DEFAULT_CITY_DIRECTORY_LIMIT = 50;
 const MAX_CITY_DIRECTORY_LIMIT = 200;
 const DEFAULT_RADIUS_KM = 25;
@@ -629,6 +642,26 @@ export function sortProductsForSearch(products: Product[], sort: SearchSort = "r
   } satisfies Record<SearchSort, (left: Product, right: Product) => number>;
 
   return [...products].sort(comparator[sort]);
+}
+
+function tonightProductBoost(product: Product): number {
+  const tags = (product.mcpProduct?.tags || []).join(" ").toLowerCase();
+  let boost = 0;
+  if (tags.includes("evening")) boost += 4;
+  if (tags.includes("nightlife")) boost += 4;
+  if (tags.includes("show") || tags.includes("musical") || tags.includes("theatre")) boost += 3;
+  if (isPopularSearchProduct(product)) boost += 1;
+  return boost;
+}
+
+function sortProductsForTonight(products: Product[]): Product[] {
+  return [...products].sort((left, right) =>
+    tonightProductBoost(right) - tonightProductBoost(left)
+    || compareProductsByPopularity(left, right)
+    || compareProductsByRating(left, right)
+    || compareProductsByPriceLow(left, right)
+    || left.title.localeCompare(right.title)
+  );
 }
 
 export function productMatchesPriceRange(product: Product, minPrice?: number, maxPrice?: number): boolean {
@@ -2120,6 +2153,66 @@ function validateWhatsOnThisWeekArgs(args: {
   };
 }
 
+function validateWhatsOnTonightArgs(args: {
+  city: string;
+  category?: string;
+  max_results?: number;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  category?: string;
+  maxResults: number;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "City is required. Provide a city name or slug like \"london\" or \"new-york\"."),
+    };
+  }
+
+  if (args.category != null && !String(args.category).trim()) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid category. Use one of ${formatAvailableSearchCategories()} or omit the category filter.`,
+      ),
+    };
+  }
+
+  const maxResults = typeof args.max_results === "number"
+    ? Math.min(Math.max(Math.trunc(args.max_results), 1), MAX_WHATS_ON_TONIGHT_LIMIT)
+    : DEFAULT_WHATS_ON_TONIGHT_LIMIT;
+
+  return {
+    ok: true,
+    data: {
+      city,
+      category: args.category?.trim(),
+      maxResults,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 function validateFamilyDayArgs(args: {
   city?: string;
   kids_ages?: number[];
@@ -2760,6 +2853,208 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedErrorResponse(format, getErrorMessage(error)),
           resultCount: 0,
           summary: { city, date_from: startDate, date_to: endDate, format },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "whats_on_tonight",
+    `Find bookable experiences happening later today in a city. Automatically filters to today, removes already-started events, adds "starts in" countdowns, surfaces urgency signals from inventory data, and sorts by soonest start time with evening/show/nightlife boosts. ${LANGUAGE_SUPPORT_NOTE} Use for concierge-style requests like "what's on tonight in London?" or "any shows tonight in Paris?".`,
+    {
+      city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
+      category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}.`),
+      max_results: z.number().optional().default(DEFAULT_WHATS_ON_TONIGHT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_WHATS_ON_TONIGHT_LIMIT}, max ${MAX_WHATS_ON_TONIGHT_LIMIT})`),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("whats_on_tonight", logWriter, async args => {
+      const validated = validateWhatsOnTonightArgs(args);
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(unknown)",
+            category: typeof args.category === "string" ? args.category.trim() || undefined : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const { city, category, maxResults, language, format } = validated.data;
+      const tonightDate = formatLocalIsoDate();
+      const currentTime = formatLocalClock();
+
+      try {
+        let citySlug = normalizeCityInput(city);
+        let products = await getProductsForCitySlug(citySlug, language, {
+          dateFrom: tonightDate,
+          dateTo: tonightDate,
+          cacheContext: {
+            toolName: "search_experiences",
+            args: { citySlug, language, dateFrom: tonightDate, dateTo: tonightDate, mode: "tonight" },
+          },
+        });
+        let cityName = city;
+        let matchedKnownCity = Boolean(products.length);
+
+        if (!products.length) {
+          const cities = await getCities(language);
+          const candidates = findCityCandidates(city, cities);
+          const bestMatch = candidates[0];
+
+          if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
+            products = await getProductsForCitySlug(bestMatch.city.slug, language, {
+              dateFrom: tonightDate,
+              dateTo: tonightDate,
+              cacheContext: {
+                toolName: "search_experiences",
+                args: { citySlug: bestMatch.city.slug, language, dateFrom: tonightDate, dateTo: tonightDate, mode: "tonight" },
+              },
+            });
+            cityName = bestMatch.city.name;
+            citySlug = bestMatch.city.slug;
+            matchedKnownCity = true;
+          } else {
+            return {
+              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+              resultCount: 0,
+              summary: { city, category, date: tonightDate, format },
+            };
+          }
+        }
+
+        if (!products.length) {
+          if (!matchedKnownCity) {
+            return {
+              response: await buildSearchMissResponse(format, city, language, []),
+              resultCount: 0,
+              summary: { city, category, date: tonightDate, format },
+            };
+          }
+
+          const emptyResult = buildTonightResult({
+            city: cityName,
+            date: tonightDate,
+            currentTime,
+            experiences: [],
+            maxResults,
+          });
+          const payload = toWhatsOnTonightPayload(emptyResult);
+
+          return {
+            response: createFormattedResponse(
+              format,
+              formatTonightText(emptyResult),
+              payload,
+              { structuredContent: payload },
+            ),
+            resultCount: 0,
+            summary: { city: cityName, category, date: tonightDate, format },
+          };
+        }
+
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const categoryFilteredProducts = filterProductsByCategory(mergeEnrichedProducts(products, enrichedProducts), category);
+
+        if (category && !categoryFilteredProducts.length) {
+          const payload = {
+            tonight: [],
+            _summary: `No ${category} experiences remain tonight in ${cityName}.`,
+          };
+          return {
+            response: createFormattedResponse(
+              format,
+              `🌙 Tonight in ${cityName}\n\nNo ${category} experiences remain bookable for tonight right now.`,
+              payload,
+              { structuredContent: payload },
+            ),
+            resultCount: 0,
+            summary: { city: cityName, category, date: tonightDate, format },
+          };
+        }
+
+        const rankedCandidates = sortProductsForTonight(categoryFilteredProducts);
+        const candidateLimit = Math.min(
+          rankedCandidates.length,
+          Math.max(maxResults * 4, TONIGHT_MIN_CANDIDATES),
+          TONIGHT_MAX_CANDIDATES,
+        );
+        const candidates = rankedCandidates.slice(0, candidateLimit);
+        const tonightSources: TonightSourceExperience[] = [];
+        let tonightResult = buildTonightResult({
+          city: cityName,
+          date: tonightDate,
+          currentTime,
+          experiences: [],
+          maxResults,
+        });
+
+        for (let index = 0; index < candidates.length; index += TONIGHT_DETAIL_BATCH_SIZE) {
+          const batch = candidates.slice(index, index + TONIGHT_DETAIL_BATCH_SIZE);
+          const batchSources = await Promise.all(batch.map(async product => {
+            try {
+              const details = mergeEnrichedDetails(
+                await getExperienceDetails(product.provider, product.providerId, 1),
+                product.slug,
+                enrichedProducts,
+              );
+
+              return {
+                slug: product.slug,
+                title: product.title,
+                category,
+                priceFrom: product.minPrice ?? details.mcpProduct?.minPrice ?? null,
+                currency: details.currencyCode ?? product.currency,
+                venueAddress: details.address ?? details.locationWithAddress.address ?? product.address,
+                tags: details.mcpProduct?.tags ?? product.mcpProduct?.tags ?? [],
+                rating: details.mcpProduct?.reviewRating ?? product.averageRating ?? null,
+                bookingUrl: buildBookingUrl(`${citySlug}/${product.slug}`, language),
+                slots: details.dates,
+              } satisfies TonightSourceExperience;
+            } catch {
+              return undefined;
+            }
+          }));
+
+          tonightSources.push(...batchSources.filter((value): value is TonightSourceExperience => Boolean(value)));
+          tonightResult = buildTonightResult({
+            city: cityName,
+            date: tonightDate,
+            currentTime,
+            experiences: tonightSources,
+            maxResults,
+          });
+
+          if (tonightResult.tonight.length >= maxResults) {
+            break;
+          }
+        }
+
+        const payload = toWhatsOnTonightPayload(tonightResult);
+        return {
+          response: createFormattedResponse(
+            format,
+            formatTonightText(tonightResult),
+            payload,
+            { structuredContent: payload },
+          ),
+          resultCount: tonightResult.tonight.length,
+          summary: {
+            city: cityName,
+            category,
+            date: tonightDate,
+            max_results: maxResults,
+            format,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: { city, category, date: tonightDate, max_results: maxResults, format },
         };
       }
     }),
