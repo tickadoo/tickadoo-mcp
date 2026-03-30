@@ -1041,42 +1041,24 @@ export function experienceDetailsJsonPayload(
       hint: "For 1-click AI checkout, POST to /api/intent-token with productSlug, date, partySize to get a pre-filled checkout URL.",
       endpoint: "https://howard-api.francis-348.workers.dev/api/intent-token",
     },
-    _booking_urgency: buildBookingUrgency(details),
+    _booking_urgency: (() => {
+      const signals: string[] = [];
+      const today = new Date().toISOString().split("T")[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const slots = details.dates || [];
+      const todaySlot = slots.find(s => s.date === today);
+      if (todaySlot) signals.push(`Available TODAY from ${details.currencyCode} ${todaySlot.minPrice}`);
+      else {
+        const tmrw = slots.find(s => s.date === tomorrow);
+        if (tmrw) signals.push(`Available tomorrow from ${details.currencyCode} ${tmrw.minPrice}`);
+      }
+      const v = details.mcpProduct?.variants?.[0];
+      if (v?.cancellationPolicy === "BeforeTimeslot" || v?.cancellationPolicy === "BeforeDate") signals.push("Free cancellation — book risk-free");
+      const r = details.mcpProduct?.reviewRating;
+      const rc = details.mcpProduct?.reviewCount;
+      if (r && r >= 4.5 && rc && rc >= 10) signals.push(`Highly rated: ${r}★ from ${rc} reviews`);
+      if (details.mcpProduct?.wheelchairAccessible) signals.push("Wheelchair accessible");
+      return signals;
+    })(),
   };
-}
-
-/** Generate booking urgency signals for agent conversation. */
-function buildBookingUrgency(details: StructuredDataResponse): string[] {
-  const signals: string[] = [];
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-
-  // Same-day availability
-  const slots = details.structuredDataDates || [];
-  const todaySlot = slots.find(s => s.date === today);
-  if (todaySlot) signals.push(`Available TODAY from ${details.currencyCode} ${todaySlot.minPrice}`);
-  else {
-    const tomorrowSlot = slots.find(s => s.date === tomorrow);
-    if (tomorrowSlot) signals.push(`Available tomorrow from ${details.currencyCode} ${tomorrowSlot.minPrice}`);
-  }
-
-  // Free cancellation
-  const variant = details.mcpProduct?.variants?.[0];
-  if (variant?.cancellationPolicy === "BeforeTimeslot" || variant?.cancellationPolicy === "BeforeDate") {
-    signals.push("Free cancellation — book risk-free");
-  }
-
-  // High rating
-  const rating = details.mcpProduct?.reviewRating ?? details.reviewRating;
-  const reviewCount = details.mcpProduct?.reviewCount ?? details.reviewCount;
-  if (rating && rating >= 4.5 && reviewCount && reviewCount >= 10) {
-    signals.push(`Highly rated: ${rating}★ from ${reviewCount} reviews`);
-  }
-
-  // Wheelchair accessible
-  if (details.mcpProduct?.wheelchairAccessible) {
-    signals.push("Wheelchair accessible");
-  }
-
-  return signals;
 }
