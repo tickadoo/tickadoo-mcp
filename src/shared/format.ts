@@ -625,6 +625,33 @@ export function formatAvailableFiltersHint(products: SearchDisplayProduct[]): st
   return `\n🔍 Narrow with: ${parts.join(" · ")}`;
 }
 
+/** Build related search suggestions based on current result tags. */
+export function buildRelatedSearches(citySlug: string, products: SearchDisplayProduct[]): string[] {
+  const tagCounts = new Map<string, number>();
+  for (const p of products) {
+    for (const t of p.mcpProduct?.tags || []) {
+      tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+    }
+  }
+  const suggestions: string[] = [];
+  const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const tagMap: Record<string, string> = {
+    Musical: "musicals and shows", GuidedTour: "guided tours", WalkingTour: "walking tours",
+    FoodTour: "food tours", Museum: "museums and galleries", Cruise: "boat cruises",
+    Adventure: "adventure activities", NightLife: "nightlife", Dining: "dining experiences",
+    Outdoor: "outdoor activities", SkipTheLine: "skip-the-line tickets", Concert: "concerts",
+    Spa: "spa and wellness", Workshop: "workshops", Show: "shows", DayTrip: "day trips",
+    KidsAttraction: "kids attractions", Seasonal: "seasonal events",
+  };
+  for (const [tag, count] of sorted) {
+    if (count >= 2 && suggestions.length < 5) {
+      const label = tagMap[tag] || tag.toLowerCase();
+      suggestions.push(`search_experiences(city: '${citySlug}', tags: '${tag}') — ${label}`);
+    }
+  }
+  return suggestions;
+}
+
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
