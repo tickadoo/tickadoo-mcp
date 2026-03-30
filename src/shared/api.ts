@@ -288,7 +288,7 @@ function normalizeMcpProduct(product: McpProduct): McpProduct {
 }
 
 /** Heuristic enrichment: fills audience/tag gaps based on product attributes. */
-export function heuristicEnrich(product: McpProduct): McpProduct {
+function heuristicEnrich(product: McpProduct): McpProduct {
   const name = (product.name || "").toLowerCase();
   const tags = new Set(product.tags || []);
   const audience = new Set(product.audience || []);
@@ -424,6 +424,43 @@ export function heuristicEnrich(product: McpProduct): McpProduct {
   const skipKeywords = ["skip the line", "fast track", "priority", "express entry", "skip-the-line", "queue jump"];
   if (!tags.has("SkipTheLine") && skipKeywords.some(k => name.includes(k))) {
     tags.add("SkipTheLine");
+  }
+
+  // WalkingTour: walking tour, walk, stroll, on foot
+  const walkingKeywords = ["walking tour", "walk tour", "on foot", "stroll"];
+  if (!tags.has("WalkingTour") && walkingKeywords.some(k => name.includes(k))) {
+    tags.add("WalkingTour");
+    if (!tags.has("GuidedTour")) tags.add("GuidedTour");
+  }
+
+  // BikeTour: bike tour, cycling, e-bike, bicycle
+  const bikeKeywords = ["bike tour", "cycling tour", "e-bike", "bicycle tour", "ebike"];
+  if (!tags.has("BikeTour") && bikeKeywords.some(k => name.includes(k))) {
+    tags.add("BikeTour");
+  }
+
+  // Museum: museum, gallery, exhibition, exhibit
+  const museumKeywords = ["museum", "gallery", "exhibition", "exhibit"];
+  if (!tags.has("Museum") && museumKeywords.some(k => name.includes(k))) {
+    tags.add("Museum");
+  }
+
+  // Attraction: tower, observation, viewpoint, landmark, monument
+  const attractionKeywords = ["observation deck", "observation tower", "viewpoint", "landmark", "monument", "statue", "bridge tour"];
+  if (!tags.has("Attraction") && attractionKeywords.some(k => name.includes(k))) {
+    tags.add("Attraction");
+  }
+
+  // Transfer: transfer, shuttle, airport
+  const transferKeywords = ["transfer", "shuttle", "airport"];
+  if (!tags.has("Transfer") && transferKeywords.some(k => name.includes(k))) {
+    tags.add("Transfer");
+  }
+
+  // Outdoor: outdoor, nature, park, hike, trail, garden
+  const outdoorKeywords = ["outdoor", "nature", "hike", "hiking", "trail", "national park", "nature reserve"];
+  if (!tags.has("Outdoor") && outdoorKeywords.some(k => name.includes(k))) {
+    tags.add("Outdoor");
   }
 
   return { ...product, tags: [...tags], audience: [...audience] };
