@@ -28,8 +28,16 @@ Current release: `v1.3.0`
 - 13,090 products across 681 cities in 40+ languages
 - Rule-based audience + tag enrichment (100% coverage)
 - Availability slots with real dates and prices
-- Booking contract with checkout deep links
-- Accessibility data for 20+ London theatre venues
+- Booking contract with checkout deep links + Ghost Checkout
+- Accessibility data for 30 London theatre venues
+- Full Agent Intelligence Layer on both search tools:
+  - `_available_filters` (10 fields: tag_counts, price_range, duration_range, audience, setting, physical, languages, tags, wheelchair, free_cancellation)
+  - `_conversation_starters` (contextual prompts based on result data)
+  - `_related_searches` (tag-based follow-up suggestions)
+  - `_booking_urgency` (conversion signals: TODAY availability, free cancellation, rating, wheelchair)
+  - `_cross_sell`, `_intent_token`, `_accessibility`
+  - 📊 Result summary line + 🔍 filter hints in text responses
+  - 🔥 Urgency signals in text detail responses
 - Smart Filter Recovery (guides agents when filters are too restrictive)
 - 1 machine-readable product feed resource
 - Remote HTTP endpoint for hosted MCP clients
