@@ -897,6 +897,24 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   lines.push(`   📱 Mobile image: ${details.mobileFeatureImageUrl}`);
   lines.push(`   ✅ Booking available: yes (external checkout redirect)`);
 
+  // Booking urgency signals for text format
+  const urgencySignals: string[] = [];
+  const todayStr = new Date().toISOString().split("T")[0];
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const todayAvail = details.dates.find(s => s.date === todayStr);
+  if (todayAvail) urgencySignals.push(`🔥 Available TODAY from ${details.currencyCode} ${todayAvail.minPrice}`);
+  else {
+    const tmrwAvail = details.dates.find(s => s.date === tomorrowStr);
+    if (tmrwAvail) urgencySignals.push(`🔥 Available tomorrow from ${details.currencyCode} ${tmrwAvail.minPrice}`);
+  }
+  const pv = details.mcpProduct?.variants?.[0];
+  if (pv?.cancellationPolicy === "BeforeTimeslot" || pv?.cancellationPolicy === "BeforeDate") urgencySignals.push("🔥 Free cancellation — book risk-free");
+  const ur = details.mcpProduct?.reviewRating;
+  const urc = details.mcpProduct?.reviewCount;
+  if (ur && ur >= 4.5 && urc && urc >= 10) urgencySignals.push(`🔥 Highly rated: ${ur}★ from ${urc.toLocaleString()} reviews`);
+  if (details.mcpProduct?.wheelchairAccessible) urgencySignals.push("🔥 Wheelchair accessible");
+  if (urgencySignals.length > 0) lines.push("", ...urgencySignals);
+
   if (!details.dates.length) {
     lines.push("", `No availability returned for the next ${days} days.`);
   } else {
