@@ -658,6 +658,26 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
   return suggestions;
 }
 
+/** Context-aware conversation starters for agents. */
+export function buildConversationStarters(products: SearchDisplayProduct[], cityName: string): string[] {
+  const starters: string[] = [];
+  const af = buildAvailableFilters(products);
+  if (af.price_range) {
+    const pr = af.price_range as { min: number; max: number; currency: string };
+    starters.push(`Prices range from ${pr.currency} ${pr.min} to ${pr.currency} ${pr.max}. Do you have a budget in mind?`);
+  }
+  if (af.duration_range) {
+    const dr = af.duration_range as { min_minutes: number; max_minutes: number };
+    const minH = dr.min_minutes >= 60 ? `${Math.floor(dr.min_minutes / 60)}h` : `${dr.min_minutes}min`;
+    const maxH = dr.max_minutes >= 60 ? `${Math.floor(dr.max_minutes / 60)}h` : `${dr.max_minutes}min`;
+    starters.push(`Experiences range from ${minH} to ${maxH}. How much time do you have?`);
+  }
+  if (af.wheelchair_accessible) starters.push("Several options have wheelchair access. Need accessible choices?");
+  if (af.languages.length > 1) starters.push(`Available in ${af.languages.length} languages. Prefer a specific language?`);
+  if (af.free_cancellation_available) starters.push("Many offer free cancellation — great for flexible plans.");
+  return starters.slice(0, 3);
+}
+
 export function searchJsonPayload(
   citySlug: string,
   cityName: string,
@@ -685,6 +705,7 @@ export function searchJsonPayload(
     view_all_url: buildBookingUrl(citySlug, options?.language),
     _next_step: "Use get_experience_details with a product slug to get availability.slots with specific dates, prices, and booking URLs for that experience.",
     _related_searches: buildRelatedSearches(citySlug, products),
+    _conversation_starters: buildConversationStarters(products, cityName),
   };
 }
 
