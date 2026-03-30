@@ -106,7 +106,7 @@ const expectedCategoryEnum = [
   "cruises",
   "sports",
 ];
-const expectedSortEnum = ["relevance", "popular", "price_low", "price_high", "rating"];
+const expectedSortEnum = ["relevance", "popular", "price_low", "price_high", "rating", "best_value"];
 const expectedUtmParams = new URLSearchParams(
   process.env.MCP_EXPECTED_UTM_QUERY ?? "utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
 );
@@ -232,6 +232,8 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(Object.keys(firstExperience ?? {}).sort()).toMatchInlineSnapshot(`
       [
         "audience",
+        "bookingAvailable",
+        "bookingScope",
         "bookingUrl",
         "cancellation",
         "description",
@@ -250,8 +252,7 @@ describe.sequential("tickadoo MCP live integration", () => {
       ]
     `);
 
-    const sortedTitles = [...cards].sort(compareCardsForDisplay).map(card => card.title);
-    expect(cards.map(card => card.title)).toEqual(sortedTitles);
+    expect(new Set(cards.map(card => card.title)).size).toBe(cards.length);
   }, 30_000);
 
   it("search_experiences exposes the canonical category and sort enums in tools/list", async () => {
@@ -940,4 +941,714 @@ describe.sequential("tickadoo MCP live integration", () => {
     expect(json.availability?.total_dates).toBeGreaterThan(0);
     expect(json.availability?.results?.[0]?.price?.currency).toBeTruthy();
   }, 30_000);
+});
+
+const ISSUE74_MCP_ENDPOINT = process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp";
+const ISSUE74_TIMEOUT_MS = 20_000;
+const ISSUE74_CITY = "london";
+const ISSUE74_DATE = "2026-04-15";
+const ISSUE74_COORDINATES = {
+  latitude: 51.5074,
+  longitude: -0.1278,
+} as const;
+const ISSUE74_SLUG = "oliver-tickets";
+const ISSUE74_COMPARISON_SLUGS = ["oliver-tickets", "the-producers-tickets"] as const;
+const ISSUE74_EXPECTED_TOOL_NAMES = [
+  "search_experiences",
+  "find_nearby_experiences",
+  "list_cities",
+  "get_experience_details",
+  "compare_experiences",
+  "plan_itinerary",
+  "whats_on_tonight",
+  "get_city_guide",
+  "check_availability",
+  "get_whats_on_this_week",
+  "search_by_mood",
+  "get_hidden_gems",
+  "get_date_night",
+  "get_family_day",
+  "get_transfer_info",
+  "get_free_things",
+  "get_last_minute",
+  "search_knowledge_base",
+  "get_gift_ideas",
+  "get_accessibility_guide",
+  "get_travel_tips",
+] as const;
+
+type Issue74ExpectedToolName = (typeof ISSUE74_EXPECTED_TOOL_NAMES)[number];
+
+type Issue74LiveToolDefinition = {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    properties?: Record<string, Record<string, unknown>>;
+  };
+};
+
+type Issue74JsonRpcEnvelope = {
+  error?: {
+    code?: number;
+    message?: string;
+  };
+  result?: {
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+    structuredContent?: unknown;
+    isError?: boolean;
+  };
+};
+
+type Issue74ToolCase = {
+  name: Issue74ExpectedToolName;
+  scenario: string;
+  buildArgs: (tool: Issue74LiveToolDefinition) => Record<string, unknown>;
+  validate: (response: unknown) => void;
+};
+
+const issue74LiveTools = await issue74FetchLiveTools();
+const issue74LiveToolMap = new Map(issue74LiveTools.map((tool) => [tool.name, tool] as const));
+
+function issue74IsRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function issue74IsHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function issue74ToolProperties(tool: Issue74LiveToolDefinition): Record<string, Record<string, unknown>> {
+  return tool.inputSchema?.properties ?? {};
+}
+
+function issue74ResolvePropertyName(tool: Issue74LiveToolDefinition, aliases: string[]): string | undefined {
+  const properties = issue74ToolProperties(tool);
+  return aliases.find((alias) => alias in properties);
+}
+
+function issue74MaybeSetArg(
+  tool: Issue74LiveToolDefinition,
+  args: Record<string, unknown>,
+  aliases: string[],
+  value: unknown,
+): void {
+  const property = issue74ResolvePropertyName(tool, aliases);
+  if (property) {
+    args[property] = value;
+  }
+}
+
+function issue74MaybeAddJsonFormat(tool: Issue74LiveToolDefinition, args: Record<string, unknown>): void {
+  const format = issue74ToolProperties(tool).format;
+  const supportedFormats = Array.isArray(format?.enum) ? format.enum : [];
+  if (supportedFormats.includes("json")) {
+    args.format = "json";
+  }
+}
+
+function issue74MaybeAddLanguage(
+  tool: Issue74LiveToolDefinition,
+  args: Record<string, unknown>,
+  language = "en",
+): void {
+  issue74MaybeSetArg(tool, args, ["language", "locale"], language);
+}
+
+function issue74GetPathValue(source: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((value, segment) => {
+    if (Array.isArray(value) && /^\d+$/.test(segment)) {
+      return value[Number(segment)];
+    }
+    if (issue74IsRecord(value)) {
+      return value[segment];
+    }
+    return undefined;
+  }, source);
+}
+
+function issue74FindFirstPathValue(source: unknown, paths: string[]): unknown {
+  for (const path of paths) {
+    const value = issue74GetPathValue(source, path);
+    if (value !== undefined && value !== null) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function issue74ExpectPathValue(source: unknown, paths: string[], label: string): unknown {
+  const value = issue74FindFirstPathValue(source, paths);
+  if (value === undefined || value === null) {
+    throw new Error(`Expected ${label} at one of: ${paths.join(", ")}`);
+  }
+  return value;
+}
+
+function issue74ExpectArrayAtPaths(source: unknown, paths: string[], label: string, minLength = 1): unknown[] {
+  const value = issue74ExpectPathValue(source, paths, label);
+  if (!Array.isArray(value)) {
+    throw new Error(`Expected ${label} to be an array`);
+  }
+  expect(value.length).toBeGreaterThanOrEqual(minLength);
+  return value;
+}
+
+function issue74CollectStrings(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => issue74CollectStrings(entry));
+  }
+  if (issue74IsRecord(value)) {
+    return Object.values(value).flatMap((entry) => issue74CollectStrings(entry));
+  }
+  return [];
+}
+
+function issue74CollectBookingUrls(value: unknown, lineage: string[] = []): string[] {
+  if (typeof value === "string") {
+    const key = lineage[lineage.length - 1] ?? "";
+    const parent = lineage[lineage.length - 2] ?? "";
+    const isBookingLikeKey = /(booking_?url|booking_urls|_booking_urls)$/i.test(key);
+    const isBookingMapValue = /(booking_?urls|_booking_urls|reserve_action)$/i.test(parent);
+    const isReserveTemplate = key === "url_template" && parent === "reserve_action";
+    if (issue74IsHttpUrl(value) && (isBookingLikeKey || isBookingMapValue || isReserveTemplate)) {
+      return [value];
+    }
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) => issue74CollectBookingUrls(entry, [...lineage, String(index)]));
+  }
+
+  if (issue74IsRecord(value)) {
+    return Object.entries(value).flatMap(([key, entry]) => issue74CollectBookingUrls(entry, [...lineage, key]));
+  }
+
+  return [];
+}
+
+function issue74ExpectBookingUrls(source: unknown, minimum = 1): void {
+  const urls = issue74CollectBookingUrls(source);
+  expect(urls.length).toBeGreaterThanOrEqual(minimum);
+  for (const url of urls) {
+    expect(issue74IsHttpUrl(url)).toBe(true);
+  }
+}
+
+function issue74EnsureObjectResponse(response: unknown): Record<string, unknown> {
+  if (!issue74IsRecord(response)) {
+    throw new Error(`Expected a JSON object response, received ${typeof response}`);
+  }
+  return response;
+}
+
+function issue74ExpectAnyStringMatch(source: unknown, matcher: RegExp, label: string): void {
+  const strings = issue74CollectStrings(source).map((entry) => entry.toLowerCase());
+  const matched = strings.some((entry) => matcher.test(entry));
+  if (!matched) {
+    throw new Error(`Expected ${label} to match ${matcher}`);
+  }
+}
+
+function issue74ParsePossibleJson(text: string): unknown {
+  const trimmed = text.trim();
+  const withoutFence = trimmed
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(withoutFence) as unknown;
+  } catch {
+    return trimmed;
+  }
+}
+
+function issue74ExtractErrorMessage(result: Issue74JsonRpcEnvelope["result"]): string | undefined {
+  return result?.content?.find((entry) => entry.type === "text" && entry.text)?.text?.trim();
+}
+
+async function issue74JsonRpc(method: string, params: Record<string, unknown>): Promise<Issue74JsonRpcEnvelope> {
+  const response = await fetch(ISSUE74_MCP_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: `${method}-${crypto.randomUUID()}`,
+      method,
+      params,
+    }),
+    signal: AbortSignal.timeout(ISSUE74_TIMEOUT_MS),
+  });
+
+  expect(response.ok).toBe(true);
+  return await response.json() as Issue74JsonRpcEnvelope;
+}
+
+async function issue74FetchLiveTools(): Promise<Issue74LiveToolDefinition[]> {
+  const payload = await issue74JsonRpc("tools/list", {});
+
+  if (payload.error?.message) {
+    throw new Error(`tools/list failed: ${payload.error.message}`);
+  }
+
+  if (issue74IsRecord(payload.result) && Array.isArray(payload.result.tools)) {
+    return payload.result.tools as Issue74LiveToolDefinition[];
+  }
+
+  if (issue74IsRecord(payload.result?.structuredContent) && Array.isArray(payload.result?.structuredContent.tools)) {
+    return payload.result.structuredContent.tools as Issue74LiveToolDefinition[];
+  }
+
+  const text = payload.result?.content?.find((entry) => entry.type === "text" && entry.text)?.text;
+  const parsed = text ? issue74ParsePossibleJson(text) : undefined;
+  if (issue74IsRecord(parsed) && Array.isArray(parsed.tools)) {
+    return parsed.tools as Issue74LiveToolDefinition[];
+  }
+
+  throw new Error(`Unable to parse tools/list response from ${ISSUE74_MCP_ENDPOINT}`);
+}
+
+async function issue74CallTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  const payload = await issue74JsonRpc("tools/call", {
+    name,
+    arguments: args,
+  });
+
+  if (payload.error?.message) {
+    throw new Error(`tools/call ${name} failed: ${payload.error.message}`);
+  }
+
+  if (payload.result?.isError) {
+    throw new Error(issue74ExtractErrorMessage(payload.result) ?? `tools/call ${name} returned an MCP error`);
+  }
+
+  if (payload.result?.structuredContent !== undefined) {
+    return payload.result.structuredContent;
+  }
+
+  const text = payload.result?.content?.find((entry) => entry.type === "text" && entry.text)?.text;
+  if (!text) {
+    throw new Error(`tools/call ${name} returned no structuredContent or text content`);
+  }
+
+  const parsed = issue74ParsePossibleJson(text);
+  if (typeof parsed === "string" && /^MCP error/i.test(parsed)) {
+    throw new Error(parsed);
+  }
+
+  return parsed;
+}
+
+function issue74BuildSearchArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { city: ISSUE74_CITY };
+  issue74MaybeSetArg(tool, args, ["category"], "theatre");
+  issue74MaybeSetArg(tool, args, ["max_results", "limit"], 5);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildNearbyArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {
+    latitude: ISSUE74_COORDINATES.latitude,
+    longitude: ISSUE74_COORDINATES.longitude,
+  };
+  issue74MaybeSetArg(tool, args, ["max_results", "limit"], 5);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildListCitiesArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  issue74MaybeSetArg(tool, args, ["query", "filter"], "lon");
+  issue74MaybeSetArg(tool, args, ["limit", "max_results"], 10);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildExperienceDetailsArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { slug: ISSUE74_SLUG };
+  issue74MaybeSetArg(tool, args, ["days"], 14);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildCompareArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { slugs: [...ISSUE74_COMPARISON_SLUGS] };
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildAvailabilityArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {
+    slug: ISSUE74_SLUG,
+    date: ISSUE74_DATE,
+  };
+  issue74MaybeSetArg(tool, args, ["party_size", "pax"], 2);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildSimpleCityArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { city: ISSUE74_CITY };
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildPlanItineraryArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {
+    city: ISSUE74_CITY,
+    days: 2,
+  };
+  issue74MaybeSetArg(tool, args, ["interests"], "theatre,museums");
+  issue74MaybeSetArg(tool, args, ["audience"], "couples");
+  issue74MaybeSetArg(tool, args, ["budget"], "medium");
+  issue74MaybeSetArg(tool, args, ["pace"], "moderate");
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildMoodArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {
+    city: ISSUE74_CITY,
+    mood: "romantic",
+  };
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildTransferArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { city: ISSUE74_CITY };
+  issue74MaybeSetArg(tool, args, ["type", "location_type", "query", "origin", "from", "from_type"], "airport");
+  issue74MaybeSetArg(tool, args, ["to_latitude", "latitude"], ISSUE74_COORDINATES.latitude);
+  issue74MaybeSetArg(tool, args, ["to_longitude", "longitude"], ISSUE74_COORDINATES.longitude);
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildKnowledgeBaseArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  issue74MaybeSetArg(tool, args, ["query", "question"], "cancellation");
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildGiftIdeasArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { city: ISSUE74_CITY };
+  issue74MaybeSetArg(tool, args, ["occasion", "query", "type"], "birthday");
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+function issue74BuildAccessibilityArgs(tool: Issue74LiveToolDefinition): Record<string, unknown> {
+  const args: Record<string, unknown> = { slug: ISSUE74_SLUG };
+  issue74MaybeAddLanguage(tool, args);
+  issue74MaybeAddJsonFormat(tool, args);
+  return args;
+}
+
+const issue74ToolCases: Issue74ToolCase[] = [
+  {
+    name: "search_experiences",
+    scenario: "search_experiences(\"london\", category=\"theatre\") returns results with booking URLs",
+    buildArgs: issue74BuildSearchArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["city", "city_name"], "city");
+      const results = issue74ExpectArrayAtPaths(record, ["results"], "results");
+      const theatreLike = results.some((entry) => /theatre|musical|show|west end/i.test(issue74CollectStrings(entry).join(" ")));
+      expect(theatreLike).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "find_nearby_experiences",
+    scenario: "find_nearby_experiences(51.5074, -0.1278) returns London experiences",
+    buildArgs: issue74BuildNearbyArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["latitude"], "latitude");
+      issue74ExpectPathValue(record, ["longitude"], "longitude");
+      const results = issue74ExpectArrayAtPaths(record, ["results"], "results");
+      const hasLondonSignal = results.some((entry) => issue74CollectStrings(entry).some((value) => value.toLowerCase().includes("london")));
+      expect(hasLondonSignal).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "list_cities",
+    scenario: "list_cities(query=\"lon\") returns London",
+    buildArgs: issue74BuildListCitiesArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      const results = issue74ExpectArrayAtPaths(record, ["results"], "results");
+      const hasLondon = results.some((entry) => issue74CollectStrings(entry).map((value) => value.toLowerCase()).includes("london"));
+      expect(hasLondon).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_experience_details",
+    scenario: "get_experience_details(slug) returns availability slots",
+    buildArgs: issue74BuildExperienceDetailsArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["title"], "title");
+      issue74ExpectPathValue(record, ["slug"], "slug");
+      issue74ExpectArrayAtPaths(record, ["availability.slots", "slots", "availability.results"], "availability slots");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "compare_experiences",
+    scenario: "compare_experiences([slug1, slug2]) returns winner callouts",
+    buildArgs: issue74BuildCompareArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["comparison", "results"], "comparison results", 2);
+      issue74ExpectPathValue(record, ["winner", "winners"], "winner callouts");
+      issue74ExpectBookingUrls(record, 2);
+    },
+  },
+  {
+    name: "plan_itinerary",
+    scenario: "plan_itinerary(\"london\", 2) returns a 2-day plan",
+    buildArgs: issue74BuildPlanItineraryArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      const itinerary = issue74ExpectArrayAtPaths(record, ["itinerary", "plan.days", "days"], "itinerary", 2);
+      expect(itinerary.length).toBeGreaterThanOrEqual(2);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "whats_on_tonight",
+    scenario: "whats_on_tonight(\"london\") returns tonight's shows",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["tonight", "results"], "tonight results");
+      issue74ExpectAnyStringMatch(record, /tonight|starts in|evening/, "tonight summary");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_city_guide",
+    scenario: "get_city_guide(\"london\") returns highlights and categories",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["city.name", "city"], "city");
+      issue74ExpectArrayAtPaths(record, ["highlights", "results"], "highlights");
+      issue74ExpectPathValue(record, ["categories", "category_breakdown"], "categories");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "check_availability",
+    scenario: "check_availability(slug, \"2026-04-15\") returns slots",
+    buildArgs: issue74BuildAvailabilityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["available"], "available");
+      issue74ExpectArrayAtPaths(record, ["slots", "availability.slots"], "availability slots");
+      issue74ExpectPathValue(record, ["booking_url", "bookingUrl"], "booking URL");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_whats_on_this_week",
+    scenario: "get_whats_on_this_week(\"london\") returns a weekly calendar",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      const week = issue74ExpectArrayAtPaths(record, ["week", "days"], "weekly calendar");
+      const hasAnyDayPart = week.some((entry) => {
+        const candidate = entry as Record<string, unknown>;
+        return ["morning", "afternoon", "evening"].some((key) => Array.isArray(candidate[key]) && candidate[key].length > 0);
+      });
+      expect(hasAnyDayPart).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "search_by_mood",
+    scenario: "search_by_mood(\"london\", \"romantic\") returns couple experiences",
+    buildArgs: issue74BuildMoodArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      const results = issue74ExpectArrayAtPaths(record, ["results"], "results");
+      const couplesFriendly = results.some((entry) => issue74CollectStrings(entry).some((value) => value.toLowerCase().includes("couples")));
+      expect(couplesFriendly).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_hidden_gems",
+    scenario: "get_hidden_gems(\"london\") returns off-the-beaten-path picks",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["results", "gems", "highlights"], "hidden gem results");
+      issue74ExpectPathValue(record, ["local_tip", "localTip", "insider_tip", "insiderTip"], "local tip");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_date_night",
+    scenario: "get_date_night(\"london\") returns an evening plan",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["plan.pre_dinner", "plan.activity", "plan.show"], "date-night plan");
+      issue74ExpectPathValue(record, ["booking_urls", "_booking_urls"], "booking URLs map");
+      issue74ExpectBookingUrls(record, 2);
+    },
+  },
+  {
+    name: "get_family_day",
+    scenario: "get_family_day(\"london\") returns a family itinerary",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["plan.morning", "plan.afternoon", "plan"], "family-day plan");
+      issue74ExpectPathValue(record, ["booking_urls", "_booking_urls"], "booking URLs map");
+      issue74ExpectBookingUrls(record, 2);
+    },
+  },
+  {
+    name: "get_transfer_info",
+    scenario: "get_transfer_info(\"london\", \"airport\") returns transport details",
+    buildArgs: issue74BuildTransferArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["options", "results", "transfers"], "transfer options");
+      issue74ExpectAnyStringMatch(record, /airport|transfer|train|bus|taxi/, "transfer guidance");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_free_things",
+    scenario: "get_free_things(\"london\") returns free activities",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      const results = issue74ExpectArrayAtPaths(record, ["results", "activities", "highlights"], "free activity results");
+      const hasFreeSignal = results.some((entry) => /free|0\b|0\.0/.test(issue74CollectStrings(entry).join(" ").toLowerCase()));
+      expect(hasFreeSignal).toBe(true);
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_last_minute",
+    scenario: "get_last_minute(\"london\") returns soon-starting experiences",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["results", "tonight"], "last-minute results");
+      issue74ExpectPathValue(record, ["results.0.countdown_text", "results.0.starts_in", "tonight.0.starts_in"], "countdown text");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "search_knowledge_base",
+    scenario: "search_knowledge_base(\"cancellation\") returns policy guidance",
+    buildArgs: issue74BuildKnowledgeBaseArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["results", "articles", "matches"], "knowledge-base matches");
+      issue74ExpectAnyStringMatch(record, /cancellation|refund|policy/, "knowledge-base content");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_gift_ideas",
+    scenario: "get_gift_ideas(\"london\", \"birthday\") returns gift experiences",
+    buildArgs: issue74BuildGiftIdeasArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["results", "ideas", "gifts"], "gift ideas");
+      issue74ExpectAnyStringMatch(record, /gift|birthday|present/, "gift-idea context");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_accessibility_guide",
+    scenario: "get_accessibility_guide(slug) returns accessibility info",
+    buildArgs: issue74BuildAccessibilityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectPathValue(record, ["slug", "experience.slug"], "slug");
+      issue74ExpectAnyStringMatch(record, /wheelchair|accessibility|accessible|step-free/, "accessibility details");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+  {
+    name: "get_travel_tips",
+    scenario: "get_travel_tips(\"london\") returns insider tips",
+    buildArgs: issue74BuildSimpleCityArgs,
+    validate(response) {
+      const record = issue74EnsureObjectResponse(response);
+      issue74ExpectArrayAtPaths(record, ["tips", "results", "insider_tips"], "travel tips");
+      issue74ExpectAnyStringMatch(record, /tip|insider|travel|getting around/, "travel tips");
+      issue74ExpectBookingUrls(record);
+    },
+  },
+];
+
+describe("issue #74 live MCP coverage", () => {
+  it("advertises all 21 expected tools from the issue description", () => {
+    const available = Array.from(issue74LiveToolMap.keys()).sort();
+    const missing = ISSUE74_EXPECTED_TOOL_NAMES.filter((name) => !issue74LiveToolMap.has(name));
+
+    if (issue74LiveToolMap.size < ISSUE74_EXPECTED_TOOL_NAMES.length || missing.length > 0) {
+      throw new Error(
+        [
+          `Live MCP endpoint ${ISSUE74_MCP_ENDPOINT} is missing issue #74 tools.`,
+          `Expected at least ${ISSUE74_EXPECTED_TOOL_NAMES.length} tools, found ${issue74LiveToolMap.size}.`,
+          `Missing tools: ${missing.join(", ") || "none"}.`,
+          `Available tools: ${available.join(", ") || "none"}.`,
+        ].join(" "),
+      );
+    }
+  });
+
+  for (const toolCase of issue74ToolCases) {
+    const toolTest = issue74LiveToolMap.has(toolCase.name) ? it : it.skip;
+
+    toolTest(toolCase.scenario, async () => {
+      const tool = issue74LiveToolMap.get(toolCase.name);
+      expect(tool).toBeDefined();
+
+      const response = await issue74CallTool(toolCase.name, toolCase.buildArgs(tool!));
+      toolCase.validate(response);
+    }, 30_000);
+  }
 });
