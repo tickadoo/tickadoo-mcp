@@ -79,6 +79,15 @@ import {
   type SearchAppliedFilters,
   type SearchOmittedResults,
 } from "./format.js";
+import {
+  buildTransferPayload,
+  formatTransferInfo,
+  getSupportedTransferCities,
+  isTransferFromType,
+  resolveTransferCity,
+  TRANSFER_FROM_TYPES,
+  type TransferFromType,
+} from "./transfer.js";
 import type { City, McpProduct, Product, ResolvedProduct, StructuredDataResponse } from "./types.js";
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
@@ -1808,6 +1817,99 @@ function validateCompareArgs(args: {
   };
 }
 
+function validateTransferArgs(args: {
+  city?: string;
+  from_type?: string;
+  to_latitude?: number;
+  to_longitude?: number;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  fromType: TransferFromType;
+  toLatitude: number;
+  toLongitude: number;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city?.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        "City is required. Provide a supported city such as London, Paris, New York, Amsterdam, Barcelona, Rome, or Tokyo.",
+      ),
+    };
+  }
+
+  const supportedCity = resolveTransferCity(city);
+  if (!supportedCity) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Unsupported city. Transfer guidance is currently available for ${getSupportedTransferCities().join(", ")}.`,
+      ),
+    };
+  }
+
+  if (!isTransferFromType(args.from_type)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid from_type. Use one of ${TRANSFER_FROM_TYPES.join(", ")} (got: ${formatValue(args.from_type)}).`,
+      ),
+    };
+  }
+
+  if (!Number.isFinite(args.to_latitude) || args.to_latitude < -90 || args.to_latitude > 90) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid to_latitude. It must be between -90 and 90 (got: ${formatValue(args.to_latitude)}).`,
+      ),
+    };
+  }
+
+  if (!Number.isFinite(args.to_longitude) || args.to_longitude < -180 || args.to_longitude > 180) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(
+        format,
+        `Invalid to_longitude. It must be between -180 and 180 (got: ${formatValue(args.to_longitude)}).`,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      city: supportedCity.name,
+      fromType: args.from_type,
+      toLatitude: args.to_latitude,
+      toLongitude: args.to_longitude,
+      language: language.data,
+      format,
+    },
+  };
+}
+
 function validateSearchByMoodArgs(args: {
   city: string;
   mood?: string;
@@ -2911,6 +3013,80 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             slug_count: slugs.length,
             format,
             language,
+          },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "get_transfer_info",
+    `Get airport, station, or port transfer options from a city's primary arrival hub to hotel coordinates. Returns taxi, tube/metro, bus, and train estimates with durations, estimated costs, and practical directions. ${LANGUAGE_SUPPORT_NOTE} Uses known default hubs per city, for example Heathrow for London airports or Gare du Nord for Paris stations.`,
+    {
+      city: z.string().describe("Supported city, such as London, Paris, New York, Amsterdam, Barcelona, Rome, or Tokyo."),
+      from_type: z.enum(TRANSFER_FROM_TYPES).describe("Arrival hub type: airport, station, or port."),
+      to_latitude: z.number().describe("Hotel latitude."),
+      to_longitude: z.number().describe("Hotel longitude."),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_transfer_info", logWriter, async args => {
+      const validated = validateTransferArgs(args);
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(missing)",
+            from_type: typeof args.from_type === "string" ? args.from_type : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const {
+        city,
+        fromType,
+        toLatitude,
+        toLongitude,
+        language,
+        format,
+      } = validated.data;
+
+      try {
+        const payload = buildTransferPayload({
+          city,
+          fromType,
+          toLatitude,
+          toLongitude,
+        });
+
+        return {
+          response: createFormattedResponse(
+            format,
+            formatTransferInfo(payload, language),
+            payload,
+            {
+              structuredContent: payload,
+            },
+          ),
+          resultCount: payload.options.length,
+          summary: {
+            city: payload.city,
+            from_type: payload.from_type,
+            origin: payload.origin_name,
+            format,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            city,
+            from_type: fromType,
+            format,
           },
         };
       }

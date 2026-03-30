@@ -24,7 +24,7 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 Current release: `v1.4.0`
 
-- 6 read-only MCP tools with 11 search filters + 6 sort options
+- 8 read-only MCP tools with 11 search filters + 6 sort options
 - 13,090 products across 681 cities in 40+ languages
 - Rule-based audience + tag enrichment (100% coverage)
 - Availability slots with real dates and prices
@@ -53,6 +53,8 @@ Current release: `v1.4.0`
 | `list_cities` | Browse supported cities with optional filtering and result limits |
 | `check_availability` | Fast date-specific availability check for a single experience. Returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
 | `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
+| `compare_experiences` | Compare 2-5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit |
+| `get_transfer_info` | Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates |
 
 All tools expose MCP tool annotations for `readOnlyHint`, `destructiveHint`, and `openWorldHint`.
 

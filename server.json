@@ -27,6 +27,14 @@
         {
           "name": "get_experience_details",
           "description": "Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path."
+        },
+        {
+          "name": "compare_experiences",
+          "description": "Compare 2 to 5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit."
+        },
+        {
+          "name": "get_transfer_info",
+          "description": "Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates."
         }
       ]
     }

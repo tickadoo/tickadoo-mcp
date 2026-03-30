@@ -144,6 +144,18 @@ const TOOL_DOCS: ToolDoc[] = [
       "format (optional): response format, text (default) or json",
     ],
   },
+  {
+    name: "get_transfer_info",
+    summary: "Estimate airport, station, or port transfers from a city's default arrival hub to hotel coordinates. Returns taxi, tube/metro, bus, and train options with duration, estimated cost, currency, and practical directions.",
+    inputs: [
+      "city (required): supported city such as London, Paris, New York, Amsterdam, Barcelona, Rome, or Tokyo",
+      "from_type (required): airport, station, or port. Uses the city's default hub for that type (for example London airport => Heathrow)",
+      "to_latitude (required): hotel latitude",
+      "to_longitude (required): hotel longitude",
+      "language (optional): supported language code used for localized text/currency formatting, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
 ];
 
 function buildLanguageLines(): string[] {

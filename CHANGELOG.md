@@ -3,8 +3,9 @@
 ## [1.4.0] - 2026-03-30
 ### Added
 - `check_availability` MCP tool for fast date-specific availability checks by slug + date + party size
+- `get_transfer_info` MCP tool for airport/station/port-to-hotel transport estimates using default city arrival hubs
 - Date-specific booking payload with slot pricing, cheapest party total, prefilled booking URL, and Ghost Checkout intent-token metadata
-- Unit tests for availability payload generation, party-total calculation, and llms documentation updates
+- Unit tests for availability payload generation, party-total calculation, transfer estimation, and llms documentation updates
 
 ## [1.2.0] - 2026-03-27
 ### Added
