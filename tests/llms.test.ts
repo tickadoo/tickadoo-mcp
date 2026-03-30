@@ -71,6 +71,16 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("grouped into morning, afternoon, and evening");
   });
 
+  it("documents get_family_day planning behavior", () => {
+    const fullDoc = buildLlmsFullTxt();
+
+    expect(fullDoc).toContain("get_family_day");
+    expect(fullDoc).toContain("morning activity, lunch tip, afternoon attraction, and optional evening stop");
+    expect(fullDoc).toContain("kids_ages (optional): array of child ages");
+    expect(fullDoc).toContain("Under 3 triggers wheelchair-accessible filtering");
+    expect(fullDoc).toContain("clusters picks geographically to reduce travel");
+  });
+
   it("documents data freshness and limitations honestly", () => {
     const shortFreshnessSnippet = [
       "## Data Freshness & Cache Policy",

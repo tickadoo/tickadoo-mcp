@@ -19,6 +19,13 @@ import {
   formatWhatsOnThisWeekText,
 } from "../whats-on-this-week.js";
 import {
+  buildFamilyDayPayload,
+  deriveFamilyDayProfile,
+  formatFamilyDayText,
+  scoreFamilyDayCandidate,
+  type FamilyDayCandidate,
+} from "./family-day.js";
+import {
   buildBookingUrl,
   geocodeCityQuery,
   getCities,
@@ -440,6 +447,70 @@ function buildComparableExperience(
     strollerFriendly: details.mcpProduct?.strollerFriendly ?? null,
     cancellationPolicy: formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null),
     bookingUrl: buildBookingUrl(resolved.bookingPath, language),
+  };
+}
+
+function deriveFamilyDayCategory(product: Product, details?: StructuredDataResponse): string {
+  const values = [
+    ...(details?.mcpProduct?.tags ?? []),
+    ...(details?.mcpProduct?.audience ?? []),
+    ...(product.mcpProduct?.tags ?? []),
+    ...(product.mcpProduct?.audience ?? []),
+    product.title,
+  ].join(" ").toLowerCase();
+
+  if (/musical|show|concert|broadway|westend/.test(values)) return "theatre";
+  if (/cruise|boat|river|harbour|harbor/.test(values)) return "cruise";
+  if (/food|dining|afternoon tea|cocktail|wine/.test(values)) return "food";
+  if (/workshop|class|masterclass/.test(values)) return "workshop";
+  if (/tour|guided|walking/.test(values)) return "tour";
+  if (/museum|zoo|aquarium|attraction|kidsattraction/.test(values)) return "attraction";
+  return "experience";
+}
+
+function getFamilyDayPrice(product: Product, details: StructuredDataResponse | undefined, requestedDate?: string): number | null {
+  const preferredDates = details?.dates.filter(item => !requestedDate || item.date === requestedDate) ?? [];
+  const pricedDates = (preferredDates.length ? preferredDates : details?.dates ?? [])
+    .map(item => item.minPrice)
+    .filter((value): value is number => Number.isFinite(value));
+
+  if (pricedDates.length) {
+    return Math.min(...pricedDates);
+  }
+
+  return product.minPrice ?? details?.mcpProduct?.minPrice ?? null;
+}
+
+function buildFamilyDayCandidate(
+  product: Product,
+  citySlug: string,
+  language: string,
+  details?: StructuredDataResponse,
+  requestedDate?: string,
+): FamilyDayCandidate {
+  const mcpProduct = details?.mcpProduct ?? product.mcpProduct;
+  const primaryVariant = mcpProduct?.variants?.[0];
+  const location = details?.locationWithAddress;
+
+  return {
+    slug: product.slug,
+    title: product.title,
+    category: deriveFamilyDayCategory(product, details),
+    priceFrom: getFamilyDayPrice(product, details, requestedDate),
+    currency: details?.currencyCode ?? product.currency,
+    duration: formatDuration(primaryVariant?.duration ?? null),
+    tags: mcpProduct?.tags ?? [],
+    audience: mcpProduct?.audience ?? [],
+    wheelchairAccessible: mcpProduct?.wheelchairAccessible ?? null,
+    strollerFriendly: mcpProduct?.strollerFriendly ?? null,
+    physicalLevel: mcpProduct?.physicalLevel ?? null,
+    indoorOutdoor: mcpProduct?.indoorOutdoor ?? null,
+    bookingUrl: buildBookingUrl(`${citySlug}/${product.slug}`, language),
+    address: location?.address ?? product.address,
+    latitude: location?.latitude ?? null,
+    longitude: location?.longitude ?? null,
+    rating: mcpProduct?.reviewRating ?? product.averageRating ?? null,
+    reviewCount: mcpProduct?.reviewCount ?? null,
   };
 }
 
@@ -2006,6 +2077,79 @@ function validateWhatsOnThisWeekArgs(args: {
   };
 }
 
+function validateFamilyDayArgs(args: {
+  city?: string;
+  kids_ages?: number[];
+  date?: string;
+  budget?: number;
+  language?: string;
+  format?: string;
+}): ValidationResult<{
+  city: string;
+  kidsAges: number[];
+  date?: string;
+  budget?: number;
+  language: string;
+  format: ResponseFormat;
+}> {
+  const format = normalizeResponseFormat(args.format ?? "text");
+  if (!format) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse("text", `Invalid format. Use "text" (default) or "json" (got: ${formatValue(args.format)}).`),
+    };
+  }
+
+  const language = validateLanguageArg(args.language, format);
+  if (!language.ok) {
+    return language;
+  }
+
+  const city = args.city?.trim();
+  if (!city) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "Invalid city. Provide a non-empty city name or slug such as \"london\" or \"new-york\"."),
+    };
+  }
+
+  const date = args.date?.trim();
+  if (date && !isValidIsoDateOnly(date)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, `Invalid date. Use ISO date format YYYY-MM-DD (got: ${formatValue(args.date)}).`),
+    };
+  }
+
+  const kidsAgesInput = Array.isArray(args.kids_ages) ? args.kids_ages : [];
+  const invalidAge = kidsAgesInput.find(age => !Number.isInteger(age) || age < 0 || age > 17);
+  if (invalidAge != null) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "Invalid kids_ages. Use whole-number child ages between 0 and 17."),
+    };
+  }
+
+  if (args.budget != null && (!Number.isFinite(args.budget) || args.budget < 0)) {
+    return {
+      ok: false,
+      error: createFormattedErrorResponse(format, "Invalid budget. Use a positive number in the city's local currency."),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      city,
+      kidsAges: kidsAgesInput,
+      ...(date ? { date } : {}),
+      ...(args.budget != null ? { budget: args.budget } : {}),
+      language: language.data,
+      format,
+    },
+  };
+}
+
 type SearchExecutionArgs = {
   city: string;
   language: string;
@@ -3087,6 +3231,206 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             city,
             from_type: fromType,
             format,
+          },
+        };
+      }
+    }),
+  );
+
+  server.tool(
+    "get_family_day",
+    `Build a full family day in one city with a morning activity, lunch tip, afternoon attraction, and optional evening stop. Uses kids_ages for age-aware filtering, prefers wheelchair-friendly options when toddlers make stroller access likely, and clusters the day geographically to reduce travel. ${LANGUAGE_SUPPORT_NOTE}`,
+    {
+      city: z.string().describe("City name or slug, such as 'london', 'new-york', or 'paris'."),
+      kids_ages: z.array(z.number().int().min(0).max(17)).optional().describe("Optional array of child ages. Under 6 prefers easy and shorter stops, ages 6-12 prefer interactive or outdoor options, teens can handle more adventurous picks, and any age under 3 requires wheelchair-accessible options for stroller-friendly planning."),
+      date: z.string().optional().describe("Optional ISO date YYYY-MM-DD for building the day around one travel date."),
+      budget: z.number().optional().describe("Optional total day budget in the local currency for all selected activities."),
+      language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
+      format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_family_day", logWriter, async args => {
+      const validated = validateFamilyDayArgs({
+        city: typeof args.city === "string" ? args.city : undefined,
+        kids_ages: Array.isArray(args.kids_ages) ? args.kids_ages as number[] : undefined,
+        date: typeof args.date === "string" ? args.date : undefined,
+        budget: typeof args.budget === "number" ? args.budget : undefined,
+        language: typeof args.language === "string" ? args.language : undefined,
+        format: typeof args.format === "string" ? args.format : undefined,
+      });
+      if (!validated.ok) {
+        return {
+          response: validated.error,
+          resultCount: 0,
+          summary: {
+            city: typeof args.city === "string" ? args.city.trim() || "(empty)" : "(missing)",
+            date: typeof args.date === "string" ? args.date.trim() || undefined : undefined,
+            kids_count: Array.isArray(args.kids_ages) ? args.kids_ages.length : 0,
+            budget: typeof args.budget === "number" ? args.budget : undefined,
+            format: typeof args.format === "string" ? args.format : undefined,
+          },
+        };
+      }
+
+      const {
+        city,
+        kidsAges,
+        date,
+        budget,
+        language,
+        format,
+      } = validated.data;
+
+      try {
+        const searchDates = date ? { dateFrom: date, dateTo: date } : undefined;
+        let citySlug = normalizeCityInput(city);
+        let cityName = city;
+        let products = await getProductsForCitySlug(citySlug, language, searchDates);
+
+        if (!products.length) {
+          const cities = await getCities(language);
+          const candidates = findCityCandidates(city, cities);
+          const bestMatch = candidates[0];
+
+          if (bestMatch?.score >= AUTO_MATCH_CONFIDENCE) {
+            citySlug = bestMatch.city.slug;
+            cityName = bestMatch.city.name;
+            products = await getProductsForCitySlug(citySlug, language, searchDates);
+          } else {
+            return {
+              response: await buildSearchMissResponse(format, city, language, candidates.slice(0, CITY_SUGGESTION_LIMIT)),
+              resultCount: 0,
+              summary: { city, date, budget, kids_count: kidsAges.length, format },
+            };
+          }
+        }
+
+        if (!products.length) {
+          const message = date
+            ? `No bookable experiences were found in ${cityName} on ${date}. Try another date or omit the date to widen the search.`
+            : `tickadoo does not have enough bookable inventory in ${cityName} yet to build a family day.`;
+          const unavailablePayload = {
+            city: cityName,
+            plan: null,
+            total_cost: null,
+            currency: null,
+            all_wheelchair_accessible: false,
+            booking_urls: {},
+            message,
+          };
+
+          return {
+            response: createFormattedResponse(format, message, unavailablePayload, { structuredContent: unavailablePayload }),
+            resultCount: 0,
+            summary: { city: citySlug, date, budget, kids_count: kidsAges.length, format },
+          };
+        }
+
+        const profile = deriveFamilyDayProfile(kidsAges);
+        const enrichedProducts = await getMcpEnrichedProducts();
+        const enriched = mergeEnrichedProducts(products, enrichedProducts);
+        const shortlisted = enriched
+          .map(product => {
+            const candidate = buildFamilyDayCandidate(product, citySlug, language, undefined, date);
+            const morningScore = scoreFamilyDayCandidate(candidate, profile, "morning");
+            const afternoonScore = scoreFamilyDayCandidate(candidate, profile, "afternoon");
+            const eveningScore = profile.allowsEvening ? scoreFamilyDayCandidate(candidate, profile, "evening") : Number.NEGATIVE_INFINITY;
+            const shortlistScore = Math.max(morningScore, afternoonScore, eveningScore)
+              + ((candidate.rating ?? 0) * 2)
+              + Math.min(8, Math.log10((candidate.reviewCount ?? 0) + 1) * 4);
+
+            return {
+              product,
+              candidate,
+              shortlistScore,
+            };
+          })
+          .filter(entry => entry.shortlistScore > 0)
+          .sort((left, right) => right.shortlistScore - left.shortlistScore || left.product.title.localeCompare(right.product.title))
+          .slice(0, 12);
+
+        if (shortlisted.length < 2) {
+          const message = `Not enough family-friendly experiences were found in ${cityName}${date ? ` on ${date}` : ""} to build a full day. Try a nearby city, another date, or omit kids_ages to broaden the planner.`;
+          const unavailablePayload = {
+            city: cityName,
+            plan: null,
+            total_cost: null,
+            currency: null,
+            all_wheelchair_accessible: false,
+            booking_urls: {},
+            message,
+          };
+
+          return {
+            response: createFormattedResponse(format, message, unavailablePayload, { structuredContent: unavailablePayload }),
+            resultCount: 0,
+            summary: {
+              city: citySlug,
+              date,
+              budget,
+              kids_count: kidsAges.length,
+              wheelchair_filter: profile.requiresWheelchairAccess,
+              format,
+            },
+          };
+        }
+
+        const detailWindowDays = date ? calculateAvailabilityWindowDays(date) : 30;
+        const detailedCandidates: FamilyDayCandidate[] = await Promise.all(
+          shortlisted.map(async ({ product, candidate }) => {
+            try {
+              const details = await getExperienceDetails(product.provider, product.providerId, detailWindowDays);
+              return buildFamilyDayCandidate(
+                product,
+                citySlug,
+                language,
+                mergeEnrichedDetails(details, product.slug, enrichedProducts),
+                date,
+              );
+            } catch {
+              return candidate;
+            }
+          }),
+        );
+
+        const payload = buildFamilyDayPayload({
+          city: cityName,
+          kidsAges,
+          budget,
+          candidates: detailedCandidates,
+        });
+
+        return {
+          response: createFormattedResponse(
+            format,
+            formatFamilyDayText(payload),
+            payload,
+            {
+              structuredContent: payload,
+            },
+          ),
+          resultCount: Object.keys(payload.booking_urls).length,
+          summary: {
+            city: citySlug,
+            date,
+            budget,
+            kids_count: kidsAges.length,
+            wheelchair_filter: profile.requiresWheelchairAccess,
+            format,
+            language,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createFormattedErrorResponse(format, getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            city,
+            date,
+            budget,
+            kids_count: kidsAges.length,
+            format,
+            language,
           },
         };
       }

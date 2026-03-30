@@ -156,6 +156,18 @@ const TOOL_DOCS: ToolDoc[] = [
       "format (optional): response format, text (default) or json",
     ],
   },
+  {
+    name: "get_family_day",
+    summary: "Build a full family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop. Uses kids_ages for age-aware filtering, applies wheelchair-accessible filtering when toddlers make stroller access likely, and clusters picks geographically to reduce travel.",
+    inputs: [
+      "city (required): city name or slug such as london, paris, new-york, or tokyo",
+      "kids_ages (optional): array of child ages. Under 3 triggers wheelchair-accessible filtering; under 6 prefers easy, shorter stops; ages 6-12 prefer interactive or outdoor options; teens can handle more adventurous picks",
+      "date (optional): ISO date YYYY-MM-DD for planning one day",
+      "budget (optional): total day budget in the local currency",
+      "language (optional): supported language code for localised booking URLs, default en",
+      "format (optional): response format, text (default) or json",
+    ],
+  },
 ];
 
 function buildLanguageLines(): string[] {
