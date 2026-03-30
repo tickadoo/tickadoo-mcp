@@ -271,6 +271,51 @@ function normalizeMcpProductVariant(variant: McpProductVariant): McpProductVaria
   };
 }
 
+/**
+ * Infer additional audience values from product characteristics.
+ * Products tagged Family should also be Kids-friendly.
+ * Easy physical level products are Seniors-friendly.
+ * NightLife/Spa/Dining/adults-only content gets AdultsOnly.
+ */
+function inferAudience(product: McpProduct): string[] {
+  const existing = new Set((product.audience || []).map(a => a.toLowerCase()));
+  const tags = new Set((product.tags || []).map(t => t.toLowerCase()));
+  const level = (product.physicalLevel || "").toLowerCase();
+  const inferred = new Set(product.audience || []);
+
+  // Kids: if Family-tagged or has KidsAttraction tag
+  if (!existing.has("kids")) {
+    if (existing.has("family") || tags.has("kidsattraction")) {
+      inferred.add("Kids");
+    }
+  }
+
+  // Seniors: Easy physical level products are senior-friendly
+  if (!existing.has("seniors")) {
+    if (level === "easy" || existing.has("family") || existing.has("couples")) {
+      inferred.add("Seniors");
+    }
+  }
+
+  // AdultsOnly: NightLife, Spa, Dining, or Wine/Beer tags
+  if (!existing.has("adultsonly")) {
+    const adultTags = ["nightlife", "spa", "dining", "workshop"];
+    if (adultTags.some(t => tags.has(t))) {
+      inferred.add("AdultsOnly");
+    }
+  }
+
+  // Groups: guided tours, day trips are group-friendly
+  if (!existing.has("groups")) {
+    const groupTags = ["guidedtour", "daytrip", "walkingtour", "foodtour", "biketour"];
+    if (groupTags.some(t => tags.has(t))) {
+      inferred.add("Groups");
+    }
+  }
+
+  return [...inferred];
+}
+
 function normalizeMcpProduct(product: McpProduct): McpProduct {
   return {
     ...product,
@@ -278,7 +323,7 @@ function normalizeMcpProduct(product: McpProduct): McpProduct {
     reviewCount: product.reviewCount ?? null,
     indoorOutdoor: product.indoorOutdoor ?? null,
     physicalLevel: product.physicalLevel ?? null,
-    audience: Array.isArray(product.audience) ? product.audience.filter(Boolean) : [],
+    audience: inferAudience(product),
     tags: Array.isArray(product.tags) ? product.tags.filter(Boolean) : [],
     wheelchairAccessible: product.wheelchairAccessible ?? null,
     strollerFriendly: product.strollerFriendly ?? null,
