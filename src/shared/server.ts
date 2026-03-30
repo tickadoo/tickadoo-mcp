@@ -560,7 +560,7 @@ function parseDurationToMinutes(dur: string | null): number | null {
 export function filterProductsByDuration(products: Product[], minDur?: number, maxDur?: number): Product[] {
   if (minDur == null && maxDur == null) return products;
   return products.filter(product => {
-    const mins = parseDurationToMinutes(product.duration);
+    const mins = parseDurationToMinutes((product as any).duration);
     if (mins == null) return minDur == null;
     if (minDur != null && mins < minDur) return false;
     if (maxDur != null && mins > maxDur) return false;
