@@ -646,6 +646,8 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
     Morning: "morning activities", Attraction: "top attractions", Transfer: "airport transfers",
     BikeTour: "bike tours", HiddenGem: "hidden gems", WaterSport: "water sports",
     HopOnHopOff: "hop-on hop-off tours", Helicopter: "helicopter tours", SelfGuided: "self-guided tours",
+    Cooking: "cooking classes", Sunset: "sunset experiences", VIP: "VIP and private tours",
+    Rooftop: "rooftop experiences", Safari: "safari experiences", WhaleWatching: "whale watching",
   };
   const suggestions: string[] = [];
   const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
