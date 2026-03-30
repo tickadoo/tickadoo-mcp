@@ -350,6 +350,8 @@ export function buildLlmsFullTxt(): string {
     "- Lead with the recommendation, not the search process",
     "- Include social proof (ratings and review counts)",
     "- Include practical details (duration, price, booking link)",
+    "- JSON responses include _available_filters with audience, setting, physical_level, languages, tags, price_range, wheelchair_accessible, and free_cancellation_available values present in the result set. Use these to suggest narrowing options to users.",
+    "- Text responses include a 🔍 Narrow with: hint showing which filters will return results",
     "- Recommend 3-5 experiences unless the user asks for more",
     "- If no results match, suggest broadening criteria (wider dates, larger radius, fewer filters)",
     "",
