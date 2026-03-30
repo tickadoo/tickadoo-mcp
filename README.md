@@ -22,9 +22,15 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
-Current release: `v1.2.0`
+Current release: `v1.3.0`
 
-- 4 read-only MCP tools
+- 4 read-only MCP tools with 11 search filters + 6 sort options
+- 13,090 products across 681 cities in 40+ languages
+- Rule-based audience + tag enrichment (100% coverage)
+- Availability slots with real dates and prices
+- Booking contract with checkout deep links
+- Accessibility data for 20+ London theatre venues
+- Smart Filter Recovery (guides agents when filters are too restrictive)
 - 1 machine-readable product feed resource
 - Remote HTTP endpoint for hosted MCP clients
 - Local stdio entrypoint for desktop and development workflows
@@ -33,8 +39,8 @@ Current release: `v1.2.0`
 
 | Tool | Description |
 |------|-------------|
-| `search_experiences` | Search for bookable experiences in a specific city with city fallback matching and optional date filtering |
-| `find_nearby_experiences` | Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering |
+| `search_experiences` | Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) + 6 sort options (incl. best_value) |
+| `find_nearby_experiences` | Find experiences near lat/lng with same 11 filters, configurable radius, and date filtering |
 | `list_cities` | Browse supported cities with optional filtering and result limits |
 | `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
 
