@@ -53,6 +53,16 @@ Current release: `v1.4.1`
 | `list_cities` | Browse supported cities with optional filtering and result limits |
 | `check_availability` | Fast date-specific availability check for a single experience. Returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
 | `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
+| `check_availability` | Fast date-specific availability check with party-size-aware pricing |
+| `compare_experiences` | Side-by-side comparison of 2-5 experiences with winner callouts |
+| `search_by_mood` | Search by emotional intent (romantic, adventurous, foodie, rainy_day) |
+| `get_whats_on_this_week` | 7-day city planner with morning/afternoon/evening breakdown |
+| `whats_on_tonight` | Tonight's experiences with start-time ranking and urgency signals |
+| `get_last_minute` | Experiences starting within hours, sorted by soonest |
+| `get_city_guide` | Curated city overview with highlights, tips, and category breakdown |
+| `get_travel_tips` | Local insider advice: transport, money, safety, culture, food |
+| `get_transfer_info` | Airport/station transfer estimates with taxi, metro, bus options |
+| `get_family_day` | Family day planner with age-aware filtering and geographic clustering |
 | `compare_experiences` | Compare 2-5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit |
 | `get_city_guide` | Return a curated city overview with top highlights, category mix, pricing ranges, best-for suggestions, and insider tips |
 | `get_travel_tips` | Return local insider advice for 20 launch cities with transport, money, safety, culture, food, emergency numbers, and quick phrases |
