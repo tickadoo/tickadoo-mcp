@@ -608,6 +608,8 @@ export function buildAvailableFilters(products: SearchDisplayProduct[]) {
     languages: [...languages].sort().slice(0, 10),
     wheelchair_accessible: hasWheelchair,
     free_cancellation_available: hasFreeCancellation,
+    free_cancellation_count: products.filter(p => { const v = p.mcpProduct?.variants?.[0]; return v?.cancellationPolicy === "BeforeTimeslot" || v?.cancellationPolicy === "BeforeDate"; }).length,
+    bookable_count: products.filter(p => p.minPrice != null).length,
     ...(priceRange ? { price_range: priceRange } : {}),
     ...(durationRange ? { duration_range: durationRange } : {}),
     tags: [...tagSet].sort().slice(0, 15),
