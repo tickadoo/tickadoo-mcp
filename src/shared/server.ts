@@ -98,6 +98,7 @@ import {
   buildAvailableFilters,
   buildRelatedSearches,
   buildBestPicks,
+  buildBestPicksText,
   buildPriceTiers,
   buildConversationStarters,
   buildResultSummaryLine,
@@ -2704,7 +2705,7 @@ async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedTo
       formatSearchSortLine(sort),
       formatSearchFiltersLine(appliedFilters),
       formatOmittedResultsHint(omittedResults),
-      buildResultSummaryLine(topProducts),
+      buildResultSummaryLine(topProducts), buildBestPicksText(topProducts),
     ].filter(Boolean).join("\n");
     const jsonPayload = {
       ...searchJsonPayload(
