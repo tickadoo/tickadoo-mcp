@@ -712,23 +712,39 @@ export function buildPriceTiers(products: SearchDisplayProduct[]): Record<string
   };
 }
 
-/** Context-aware conversation starters for agents. */
+/** Context-aware conversation starters referencing best picks. */
 export function buildConversationStarters(products: SearchDisplayProduct[], cityName: string): string[] {
   const starters: string[] = [];
   const af = buildAvailableFilters(products);
-  if (af.price_range) {
+  const picks = buildBestPicks(products);
+  const bestValue = picks.find(p => p.reason === "best_value");
+  const topRated = picks.find(p => p.reason === "highest_rated");
+
+  // Lead with best value if available
+  if (bestValue && af.price_range) {
+    const pr = af.price_range as { min: number; max: number; currency: string };
+    starters.push(`Prices start from ${pr.currency} ${pr.min}. ${(bestValue.title as string).split(":")[0]} is our best value pick. Want budget-friendly options?`);
+  } else if (af.price_range) {
     const pr = af.price_range as { min: number; max: number; currency: string };
     starters.push(`Prices range from ${pr.currency} ${pr.min} to ${pr.currency} ${pr.max}. Do you have a budget in mind?`);
   }
+
+  // Duration with time hint
   if (af.duration_range) {
     const dr = af.duration_range as { min_minutes: number; max_minutes: number };
     const minH = dr.min_minutes >= 60 ? `${Math.floor(dr.min_minutes / 60)}h` : `${dr.min_minutes}min`;
     const maxH = dr.max_minutes >= 60 ? `${Math.floor(dr.max_minutes / 60)}h` : `${dr.max_minutes}min`;
     starters.push(`Experiences range from ${minH} to ${maxH}. How much time do you have?`);
   }
-  if (af.wheelchair_accessible) starters.push("Several options have wheelchair access. Need accessible choices?");
-  if (af.languages.length > 1) starters.push(`Available in ${af.languages.length} languages. Prefer a specific language?`);
-  if (af.free_cancellation_available) starters.push("Many offer free cancellation — great for flexible plans.");
+
+  // Cancellation with count
+  const fcCount = af.free_cancellation_count as number | undefined;
+  if (fcCount && fcCount > 0) {
+    starters.push(`${fcCount} of these offer free cancellation — great for flexible plans.`);
+  } else if (af.wheelchair_accessible) {
+    starters.push("Several options have wheelchair access. Need accessible choices?");
+  }
+
   return starters.slice(0, 3);
 }
 
