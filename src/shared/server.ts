@@ -2090,7 +2090,8 @@ function validateTransferArgs(args: {
     };
   }
 
-  if (!Number.isFinite(args.to_latitude) || args.to_latitude < -90 || args.to_latitude > 90) {
+  const toLat = typeof args.to_latitude === "number" ? args.to_latitude : NaN;
+  if (!Number.isFinite(toLat) || toLat < -90 || toLat > 90) {
     return {
       ok: false,
       error: createFormattedErrorResponse(
@@ -2100,7 +2101,8 @@ function validateTransferArgs(args: {
     };
   }
 
-  if (!Number.isFinite(args.to_longitude) || args.to_longitude < -180 || args.to_longitude > 180) {
+  const toLng = typeof args.to_longitude === "number" ? args.to_longitude : NaN;
+  if (!Number.isFinite(toLng) || toLng < -180 || toLng > 180) {
     return {
       ok: false,
       error: createFormattedErrorResponse(
@@ -2115,8 +2117,8 @@ function validateTransferArgs(args: {
     data: {
       city: supportedCity.name,
       fromType: args.from_type,
-      toLatitude: args.to_latitude,
-      toLongitude: args.to_longitude,
+      toLatitude: toLat,
+      toLongitude: toLng,
       language: language.data,
       format,
     },
@@ -3346,7 +3348,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 rating: details.mcpProduct?.reviewRating ?? product.averageRating ?? null,
                 bookingUrl: buildBookingUrl(`${citySlug}/${product.slug}`, language),
                 slots: details.dates,
-              } satisfies TonightSourceExperience;
+              } as TonightSourceExperience;
             } catch {
               return undefined;
             }
@@ -4304,9 +4306,9 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           response: createFormattedResponse(
             format,
             formatFamilyDayText(payload),
-            payload,
+            payload as unknown as Record<string, unknown>,
             {
-              structuredContent: payload,
+              structuredContent: payload as unknown as Record<string, unknown>,
             },
           ),
           resultCount: Object.keys(payload.booking_urls).length,
