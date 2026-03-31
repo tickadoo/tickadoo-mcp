@@ -667,12 +667,10 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
   return suggestions;
 }
 
-/** Auto-curated best picks with reasoning for agents. */
+/** Auto-curated best picks with reasoning. */
 export function buildBestPicks(products: SearchDisplayProduct[]): Record<string, unknown>[] {
   if (products.length < 2) return [];
   const picks: Record<string, unknown>[] = [];
-
-  // Best Value: highest rating/price ratio
   const withPrice = products.filter(p => p.minPrice != null && p.minPrice > 0);
   if (withPrice.length > 0) {
     const bestValue = withPrice.reduce((best, p) => {
@@ -682,8 +680,6 @@ export function buildBestPicks(products: SearchDisplayProduct[]): Record<string,
     });
     picks.push({ slug: bestValue.slug, title: bestValue.title, reason: "best_value", detail: `${bestValue.averageRating ?? "?"}★ at ${bestValue.currency ?? ""} ${bestValue.minPrice}` });
   }
-
-  // Highest Rated
   const rated = products.filter(p => (p.averageRating ?? 0) > 0 && (p.mcpProduct?.reviewCount ?? 0) >= 10);
   if (rated.length > 0) {
     const topRated = rated.reduce((best, p) => ((p.averageRating ?? 0) > (best.averageRating ?? 0) ? p : best));
@@ -691,8 +687,6 @@ export function buildBestPicks(products: SearchDisplayProduct[]): Record<string,
       picks.push({ slug: topRated.slug, title: topRated.title, reason: "highest_rated", detail: `${topRated.averageRating}★ from ${topRated.mcpProduct?.reviewCount ?? "?"} reviews` });
     }
   }
-
-  // Most Reviewed (social proof)
   const reviewed = products.filter(p => (p.mcpProduct?.reviewCount ?? 0) > 0);
   if (reviewed.length > 0) {
     const mostReviewed = reviewed.reduce((best, p) => ((p.mcpProduct?.reviewCount ?? 0) > (best.mcpProduct?.reviewCount ?? 0) ? p : best));
@@ -700,8 +694,22 @@ export function buildBestPicks(products: SearchDisplayProduct[]): Record<string,
       picks.push({ slug: mostReviewed.slug, title: mostReviewed.title, reason: "most_popular", detail: `${mostReviewed.mcpProduct?.reviewCount?.toLocaleString()} reviews` });
     }
   }
-
   return picks.slice(0, 3);
+}
+
+/** Group products into budget/mid/premium tiers. */
+export function buildPriceTiers(products: SearchDisplayProduct[]): Record<string, unknown> | null {
+  const priced = products.filter(p => p.minPrice != null && p.minPrice > 0);
+  if (priced.length < 3) return null;
+  const prices = priced.map(p => p.minPrice!).sort((a, b) => a - b);
+  const p33 = prices[Math.floor(prices.length / 3)];
+  const p66 = prices[Math.floor(prices.length * 2 / 3)];
+  const cur = priced[0].currency ?? "";
+  return {
+    budget: { count: priced.filter(p => p.minPrice! <= p33).length, max_price: p33, label: `Under ${cur} ${p33}` },
+    mid_range: { count: priced.filter(p => p.minPrice! > p33 && p.minPrice! <= p66).length, label: `${cur} ${p33}–${p66}` },
+    premium: { count: priced.filter(p => p.minPrice! > p66).length, min_price: p66, label: `Over ${cur} ${p66}` },
+  };
 }
 
 /** Context-aware conversation starters for agents. */
@@ -789,6 +797,7 @@ export function searchJsonPayload(
     _related_searches: buildRelatedSearches(citySlug, products),
     _conversation_starters: buildConversationStarters(products, cityName),
     _best_picks: buildBestPicks(products),
+    _price_tiers: buildPriceTiers(products),
   };
 }
 
