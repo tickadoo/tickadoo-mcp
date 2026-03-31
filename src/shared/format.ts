@@ -712,6 +712,17 @@ export function buildPriceTiers(products: SearchDisplayProduct[]): Record<string
   };
 }
 
+/** Format best picks as a text hint for text responses. */
+export function buildBestPicksText(products: SearchDisplayProduct[]): string {
+  const picks = buildBestPicks(products);
+  if (!picks.length) return "";
+  const lines = picks.map(p => {
+    const labels: Record<string, string> = { best_value: "💎 Best value", highest_rated: "⭐ Top rated", most_popular: "🔥 Most popular" };
+    return `${labels[p.reason as string] ?? p.reason}: ${p.title} (${p.detail})`;
+  });
+  return "\n" + lines.join("\n");
+}
+
 /** Context-aware conversation starters referencing best picks. */
 export function buildConversationStarters(products: SearchDisplayProduct[], cityName: string): string[] {
   const starters: string[] = [];
