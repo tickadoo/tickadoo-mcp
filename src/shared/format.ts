@@ -667,6 +667,43 @@ export function buildRelatedSearches(citySlug: string, products: SearchDisplayPr
   return suggestions;
 }
 
+/** Auto-curated best picks with reasoning for agents. */
+export function buildBestPicks(products: SearchDisplayProduct[]): Record<string, unknown>[] {
+  if (products.length < 2) return [];
+  const picks: Record<string, unknown>[] = [];
+
+  // Best Value: highest rating/price ratio
+  const withPrice = products.filter(p => p.minPrice != null && p.minPrice > 0);
+  if (withPrice.length > 0) {
+    const bestValue = withPrice.reduce((best, p) => {
+      const ratio = (p.averageRating ?? 0) / (p.minPrice ?? 999);
+      const bestRatio = (best.averageRating ?? 0) / (best.minPrice ?? 999);
+      return ratio > bestRatio ? p : best;
+    });
+    picks.push({ slug: bestValue.slug, title: bestValue.title, reason: "best_value", detail: `${bestValue.averageRating ?? "?"}★ at ${bestValue.currency ?? ""} ${bestValue.minPrice}` });
+  }
+
+  // Highest Rated
+  const rated = products.filter(p => (p.averageRating ?? 0) > 0 && (p.mcpProduct?.reviewCount ?? 0) >= 10);
+  if (rated.length > 0) {
+    const topRated = rated.reduce((best, p) => ((p.averageRating ?? 0) > (best.averageRating ?? 0) ? p : best));
+    if (!picks.some(pk => pk.slug === topRated.slug)) {
+      picks.push({ slug: topRated.slug, title: topRated.title, reason: "highest_rated", detail: `${topRated.averageRating}★ from ${topRated.mcpProduct?.reviewCount ?? "?"} reviews` });
+    }
+  }
+
+  // Most Reviewed (social proof)
+  const reviewed = products.filter(p => (p.mcpProduct?.reviewCount ?? 0) > 0);
+  if (reviewed.length > 0) {
+    const mostReviewed = reviewed.reduce((best, p) => ((p.mcpProduct?.reviewCount ?? 0) > (best.mcpProduct?.reviewCount ?? 0) ? p : best));
+    if (!picks.some(pk => pk.slug === mostReviewed.slug)) {
+      picks.push({ slug: mostReviewed.slug, title: mostReviewed.title, reason: "most_popular", detail: `${mostReviewed.mcpProduct?.reviewCount?.toLocaleString()} reviews` });
+    }
+  }
+
+  return picks.slice(0, 3);
+}
+
 /** Context-aware conversation starters for agents. */
 export function buildConversationStarters(products: SearchDisplayProduct[], cityName: string): string[] {
   const starters: string[] = [];
@@ -751,6 +788,7 @@ export function searchJsonPayload(
     _next_step: "Use get_experience_details with a product slug to get availability.slots with specific dates, prices, and booking URLs for that experience.",
     _related_searches: buildRelatedSearches(citySlug, products),
     _conversation_starters: buildConversationStarters(products, cityName),
+    _best_picks: buildBestPicks(products),
   };
 }
 
