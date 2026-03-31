@@ -97,6 +97,8 @@ import {
   searchJsonPayload,
   buildAvailableFilters,
   buildRelatedSearches,
+  buildBestPicks,
+  buildPriceTiers,
   buildConversationStarters,
   buildResultSummaryLine,
   formatAvailableFiltersHint,
@@ -557,11 +559,13 @@ function productHasDescription(product: Product): boolean {
 
 export function isPopularSearchProduct(product: Product): boolean {
   const rating = product.averageRating ?? 0;
+  const reviewCount = product.mcpProduct?.reviewCount ?? 0;
   return (
     product.minPrice != null
     && productHasImage(product)
     && productHasDescription(product)
     && rating >= 4.5
+    && reviewCount >= 100
   );
 }
 
@@ -3497,7 +3501,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
               NEARBY_NEXT_STEP_HINT,
             ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(nearbyCitySlug, topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby") },
+            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(nearbyCitySlug, topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby"), _best_picks: buildBestPicks(topProducts as any), _price_tiers: buildPriceTiers(topProducts as any) },
             {
               structuredContent: {
                 latitude,
