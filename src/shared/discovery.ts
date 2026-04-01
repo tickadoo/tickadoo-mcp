@@ -125,30 +125,6 @@ export const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
-    name: "recommend_experiences",
-    summary: "Recommend the best-fit experiences from natural-language preferences such as audience, budget, weather, occasion, and mood. Returns ranked recommendations with explanation-ready context.",
-    registryDescription: "Get personalized experience recommendations from natural-language preferences such as audience, mood, occasion, budget, weather, and time of day.",
-    inputs: [
-      "query (required): natural-language preference prompt such as romantic evening in Paris under EUR 100",
-      "city (optional): city slug to search in; inferred from the query when possible",
-      "date (optional): specific date in YYYY-MM-DD format for availability-aware recommendations",
-      "pax (optional): number of people, default 2",
-      "max_results (optional): maximum recommendations to return, default 5, max 20",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, json (default) or text",
-    ],
-  },
-  {
-    name: "get_categories",
-    summary: "List available experience categories, optionally scoped to a city, with counts to help agents understand what inventory exists before searching.",
-    registryDescription: "List available experience categories with optional city scoping and per-category counts.",
-    inputs: [
-      "city (optional): city slug to return category counts for a specific destination",
-      "language (optional): supported language code for localised labels, default en",
-      "format (optional): response format, json (default) or text",
-    ],
-  },
-  {
     name: "whats_on_tonight",
     summary: "Find experiences happening tonight in a city with start-time-aware ranking, venue context, and urgency signals for last-minute discovery.",
     registryDescription: "Find experiences happening tonight in a city, sorted for same-day discovery with timing and urgency context.",
@@ -215,21 +191,6 @@ export const TOOL_DOCS: ToolDoc[] = [
       "to_longitude (required): hotel longitude",
       "language (optional): supported language code used for localized text and currency formatting, default en",
       "format (optional): response format, text (default) or json",
-    ],
-  },
-  {
-    name: "plan_itinerary",
-    summary: "Plan a multi-day city itinerary with morning, afternoon, and evening slots, balancing geography, category variety, budget, audience, and pace.",
-    registryDescription: "Plan a multi-day itinerary with morning, afternoon, and evening slots, balancing geography, category variety, and budget.",
-    inputs: [
-      "city (required): city name or slug to plan for, such as london or new-york",
-      "days (required): number of days to plan, from 1 to 7",
-      "interests (optional): comma-separated interests, tags, or categories such as museums,theatre,food",
-      "audience (optional): family, couples, solo, groups, or kids",
-      "budget (optional): low, medium, or high",
-      "pace (optional): relaxed, moderate, or packed",
-      "language (optional): supported language code for localised booking URLs, default en",
-      "format (optional): response format, json (default) or text",
     ],
   },
 ];
