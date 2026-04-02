@@ -42,6 +42,7 @@ export interface McpProduct {
   name: string;
   url: string;
   minPrice: number;
+  googlePlaceId?: string | null;
   reviewRating: number | null;
   reviewCount: number | null;
   indoorOutdoor: "Indoor" | "Outdoor" | "Mixed" | null;

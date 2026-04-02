@@ -259,7 +259,7 @@ describe("product formatting", () => {
       ],
     });
 
-    expect(experienceDetailsJsonPayload(7, {
+    const detailsPayload = experienceDetailsJsonPayload(7, {
       desktopFeatureImageUrl: "https://cdn.tickadoo.com/example/desktop.jpg",
       mobileFeatureImageUrl: "https://cdn.tickadoo.com/example/mobile.jpg",
       currencyCode: "GBP",
@@ -283,7 +283,9 @@ describe("product formatting", () => {
       slug: "london-dungeon-tickets",
       bookingPath: "london/london-dungeon-tickets",
       language: "de",
-    })).toMatchObject({
+    });
+
+    expect(detailsPayload).toMatchObject({
       title: "London Dungeon",
       slug: "london-dungeon-tickets",
       booking_url: "https://www.tickadoo.com/de/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp",
@@ -321,6 +323,38 @@ describe("product formatting", () => {
         total_dates: 1,
       },
     });
+
+    expect(detailsPayload).not.toHaveProperty("google_place_id");
+    expect(detailsPayload._accessibility).not.toHaveProperty("google_place_id");
+
+    const payloadWithPlaceId = experienceDetailsJsonPayload(7, {
+      desktopFeatureImageUrl: "https://cdn.tickadoo.com/example/desktop.jpg",
+      mobileFeatureImageUrl: "https://cdn.tickadoo.com/example/mobile.jpg",
+      currencyCode: "GBP",
+      address: "Riverside Building",
+      locationWithAddress: {
+        latitude: 51.5,
+        longitude: -0.1,
+        address: "Riverside Building",
+      },
+      dates: [
+        {
+          date: "2026-03-21",
+          endDate: "2026-03-21",
+          minPrice: 25,
+          variantName: "Standard",
+        },
+      ],
+      mcpProduct: makeMcpProduct({ googlePlaceId: "ChIJ123examplePlaceId" }),
+    }, {
+      title: "London Dungeon",
+      slug: "london-dungeon-tickets",
+      bookingPath: "london/london-dungeon-tickets",
+      language: "de",
+    });
+
+    expect(payloadWithPlaceId.google_place_id).toBe("ChIJ123examplePlaceId");
+    expect(payloadWithPlaceId._accessibility?.google_place_id).toBe("ChIJ123examplePlaceId");
   });
 
   it("adds enriched fields to text search and details output", () => {
@@ -350,11 +384,12 @@ describe("product formatting", () => {
           variantName: "Standard",
         },
       ],
-      mcpProduct: makeMcpProduct(),
+      mcpProduct: makeMcpProduct({ googlePlaceId: "ChIJ123examplePlaceId" }),
     });
     expect(detailsText).toContain("♿ Wheelchair accessible: No");
     expect(detailsText).toContain("🍼 Stroller friendly: Yes");
     expect(detailsText).toContain("🗣️ Languages: EN · FR");
+    expect(detailsText).toContain("🗺️ Google Place ID: ChIJ123examplePlaceId");
     expect(detailsText).toContain("Variant details:");
     expect(detailsText).toContain("• Standard");
   });

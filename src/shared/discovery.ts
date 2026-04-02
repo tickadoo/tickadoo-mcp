@@ -104,7 +104,7 @@ export const TOOL_DOCS: ToolDoc[] = [
   },
   {
     name: "get_experience_details",
-    summary: "Fetch venue, imagery, availability slots, booking urgency, accessibility data, and booking-ready links for a specific experience.",
+    summary: "Fetch venue, imagery, availability slots, Google Maps place IDs, booking urgency, accessibility data, and booking-ready links for a specific experience.",
     registryDescription: "Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path.",
     inputs: [
       "slug (preferred): tickadoo slug or booking path such as london-dungeon-tickets or /london/london-dungeon-tickets",

@@ -110,6 +110,14 @@ describe("llms docs", () => {
     expect(fullDoc).toContain("clusters picks geographically to reduce travel");
   });
 
+  it("documents Google Place ID exposure in experience details", () => {
+    const fullDoc = buildLlmsFullTxt();
+
+    expect(fullDoc).toContain("google_place_id: Google Maps Place ID when venue enrichment is available");
+    expect(fullDoc).toContain("_accessibility: wheelchair, stroller, google_place_id mirror, venue accessibility API hint");
+    expect(fullDoc).toContain("Experience detail JSON responses expose google_place_id when venue enrichment is available");
+  });
+
   it("documents the expanded v1.4 tool catalog", () => {
     const shortDoc = buildLlmsTxt();
     const fullDoc = buildLlmsFullTxt();

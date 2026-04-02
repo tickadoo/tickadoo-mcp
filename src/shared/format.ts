@@ -85,6 +85,15 @@ export function formatJsonText(payload: Record<string, unknown>): string {
   return JSON.stringify(payload, null, 2);
 }
 
+function normalizeGooglePlaceId(value: string | null | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 function searchAppliedFiltersJson(filters?: SearchAppliedFilters) {
   const payload = {
     ...(filters?.category ? { category: filters.category } : {}),
@@ -946,6 +955,7 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   const wheelchairAccessible = formatBooleanLabel(details.mcpProduct?.wheelchairAccessible);
   const strollerFriendly = formatBooleanLabel(details.mcpProduct?.strollerFriendly);
   const languageOptions = formatJoinedValues(details.mcpProduct?.languageOptions, { uppercase: true });
+  const googlePlaceId = normalizeGooglePlaceId(details.mcpProduct?.googlePlaceId);
   const groupSize = formatGroupSize(primaryVariant);
   const lines = [
     "🎟️ Experience details",
@@ -970,6 +980,7 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   if (wheelchairAccessible) lines.push(`   ♿ Wheelchair accessible: ${wheelchairAccessible}`);
   if (strollerFriendly) lines.push(`   🍼 Stroller friendly: ${strollerFriendly}`);
   if (languageOptions) lines.push(`   🗣️ Languages: ${languageOptions}`);
+  if (googlePlaceId) lines.push(`   🗺️ Google Place ID: ${googlePlaceId}`);
   if (primaryVariant?.ageMinimum != null) lines.push(`   🔞 Minimum age: ${primaryVariant.ageMinimum}+`);
   if (groupSize) lines.push(`   👥 Group size: ${groupSize}`);
   if (details.address) lines.push(`   📍 ${details.address}`);
@@ -1049,6 +1060,7 @@ export function experienceDetailsJsonPayload(
   const primaryVariant = getPrimaryVariant(details.mcpProduct);
   const duration = formatDuration(primaryVariant?.duration ?? null);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
+  const googlePlaceId = normalizeGooglePlaceId(details.mcpProduct?.googlePlaceId);
 
   return {
     title: options?.title ?? null,
@@ -1056,6 +1068,7 @@ export function experienceDetailsJsonPayload(
     booking_url: options?.bookingPath ? buildBookingUrl(options.bookingPath, options.language) : null,
     days,
     currency: details.currencyCode,
+    ...(googlePlaceId ? { google_place_id: googlePlaceId } : {}),
     location: {
       address: details.address ?? details.locationWithAddress.address ?? null,
       latitude: details.locationWithAddress.latitude ?? null,
@@ -1127,6 +1140,7 @@ export function experienceDetailsJsonPayload(
       _accessibility: {
         wheelchair_accessible: details.mcpProduct.wheelchairAccessible ?? null,
         stroller_friendly: details.mcpProduct.strollerFriendly ?? null,
+        ...(googlePlaceId ? { google_place_id: googlePlaceId } : {}),
         hint: "For full venue accessibility data (hearing loop, captioned performances, companion seats, step-free access), query the accessibility API.",
         api: "https://howard-api.francis-348.workers.dev/api/accessibility/{venue-slug}",
       },

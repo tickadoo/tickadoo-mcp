@@ -272,8 +272,16 @@ function normalizeMcpProductVariant(variant: McpProductVariant): McpProductVaria
 }
 
 function normalizeMcpProduct(product: McpProduct): McpProduct {
+  const rawProduct = product as McpProduct & { google_place_id?: unknown };
+  const googlePlaceId = typeof rawProduct.googlePlaceId === "string"
+    ? rawProduct.googlePlaceId.trim()
+    : typeof rawProduct.google_place_id === "string"
+      ? rawProduct.google_place_id.trim()
+      : "";
+
   return {
     ...product,
+    googlePlaceId: googlePlaceId || null,
     reviewRating: product.reviewRating ?? null,
     reviewCount: product.reviewCount ?? null,
     indoorOutdoor: product.indoorOutdoor ?? null,
