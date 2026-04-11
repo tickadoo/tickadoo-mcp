@@ -732,6 +732,20 @@ export function buildBestPicksText(products: SearchDisplayProduct[]): string {
   return "\n" + lines.join("\n");
 }
 
+/** Category breakdown of search results for agents. */
+export function buildGroupSummary(products: SearchDisplayProduct[]): Record<string, number> | null {
+  if (products.length < 2) return null;
+  const cats: Record<string, number> = {};
+  for (const p of products) {
+    const cat = p.mcpProduct?.category ?? p.category ?? "other";
+    cats[cat] = (cats[cat] ?? 0) + 1;
+  }
+  if (Object.keys(cats).length < 2) return null;
+  return Object.fromEntries(
+    Object.entries(cats).sort(([, a], [, b]) => b - a)
+  );
+}
+
 /** Context-aware conversation starters referencing best picks. */
 export function buildConversationStarters(products: SearchDisplayProduct[], cityName: string): string[] {
   const starters: string[] = [];
@@ -834,6 +848,7 @@ export function searchJsonPayload(
     _conversation_starters: buildConversationStarters(products, cityName),
     _best_picks: buildBestPicks(products),
     _price_tiers: buildPriceTiers(products),
+    _group_summary: buildGroupSummary(products),
   };
 }
 
