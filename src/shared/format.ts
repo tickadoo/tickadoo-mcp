@@ -732,17 +732,21 @@ export function buildBestPicksText(products: SearchDisplayProduct[]): string {
   return "\n" + lines.join("\n");
 }
 
-/** Category breakdown of search results for agents. */
+/** Tag-based breakdown of search results for agents. */
 export function buildGroupSummary(products: SearchDisplayProduct[]): Record<string, number> | null {
   if (products.length < 2) return null;
-  const cats: Record<string, number> = {};
+  const tags: Record<string, number> = {};
   for (const p of products) {
-    const cat = p.mcpProduct?.category ?? p.category ?? "other";
-    cats[cat] = (cats[cat] ?? 0) + 1;
+    const pTags = p.mcpProduct?.tags ?? [];
+    if (pTags.length === 0) {
+      tags["other"] = (tags["other"] ?? 0) + 1;
+    } else {
+      for (const t of pTags) tags[t] = (tags[t] ?? 0) + 1;
+    }
   }
-  if (Object.keys(cats).length < 2) return null;
+  if (Object.keys(tags).length < 2) return null;
   return Object.fromEntries(
-    Object.entries(cats).sort(([, a], [, b]) => b - a)
+    Object.entries(tags).sort(([, a], [, b]) => b - a).slice(0, 8)
   );
 }
 
