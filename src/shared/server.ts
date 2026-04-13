@@ -129,7 +129,7 @@ import {
 import type { City, McpProduct, Product, ResolvedProduct, StructuredDataResponse } from "./types.js";
 
 const DEFAULT_SEARCH_RESULT_LIMIT = 12;
-const MAX_SEARCH_RESULT_LIMIT = 50;
+const MAX_SEARCH_RESULT_LIMIT = 200;
 const WHATS_ON_THIS_WEEK_PRODUCT_LIMIT = 24;
 const DEFAULT_WHATS_ON_TONIGHT_LIMIT = 10;
 const MAX_WHATS_ON_TONIGHT_LIMIT = 25;
@@ -1490,6 +1490,7 @@ function validateSearchArgs(args: {
   city: string;
   language?: string;
   max_results?: number;
+  offset?: number;
   min_price?: number;
   max_price?: number;
   dateFrom?: string;
@@ -1502,6 +1503,7 @@ function validateSearchArgs(args: {
   city: string;
   language: string;
   maxResults: number;
+  offset: number;
   minPrice?: number;
   maxPrice?: number;
   dateFrom?: string;
@@ -1615,6 +1617,7 @@ function validateSearchArgs(args: {
       city,
       language: language.data,
       maxResults,
+      offset: typeof args.offset === "number" && args.offset >= 0 ? args.offset : 0,
       minPrice: args.min_price,
       maxPrice: args.max_price,
       dateFrom: dateRange.data.dateFrom,
@@ -2487,6 +2490,7 @@ async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedTo
     city,
     language,
     maxResults,
+    offset,
     minPrice,
     maxPrice,
     dateFrom,
@@ -2684,7 +2688,7 @@ async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedTo
     }
 
     const rankedProducts = sortProductsForSearch(cancellationFilteredProducts, sort);
-    const topProducts = rankedProducts.slice(0, maxResults).map(product => ({
+    const topProducts = rankedProducts.slice(offset || 0, (offset || 0) + maxResults).map(product => ({
       ...product,
       popular: isPopularSearchProduct(product),
     }));
@@ -2778,6 +2782,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       max_results: z.number().optional().default(DEFAULT_SEARCH_RESULT_LIMIT).describe(`Maximum number of experiences to return (default ${DEFAULT_SEARCH_RESULT_LIMIT}, max ${MAX_SEARCH_RESULT_LIMIT})`),
+      offset: z.number().optional().default(0).describe("Pagination offset. Skip this many results before returning. Use with max_results for cursor-based pagination."),
       query: z.string().optional().describe("Optional free-text filter matched against experience title and description (e.g. 'ghost tour', 'pizza', 'harry potter')"),
       category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}. Matching is fuzzy, so singular forms like "tour" still map to "tours" internally.`),
       min_price: z.number().optional().describe("Optional minimum price in the experience's local currency"),
@@ -2813,12 +2818,13 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
         };
       }
 
-      const { city, language, maxResults, minPrice, maxPrice, dateFrom, dateTo, category, query, sort, format } = validated.data;
+      const { city, language, maxResults, offset, minPrice, maxPrice, dateFrom, dateTo, category, query, sort, format } = validated.data;
 
       return executeSearchTool({
         city,
         language,
         maxResults,
+        offset,
         minPrice,
         maxPrice,
         dateFrom,
