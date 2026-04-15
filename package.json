@@ -1,6 +1,6 @@
 {
   "name": "@tickadoo/mcp-server",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "tickadoo MCP Server \u2014 14 AI-powered tools for discovering and booking 13,090+ experiences across 681 cities. Agent intelligence layer with best picks, price tiers, mood search, city guides, family planners, and booking urgency signals. No API key required.",
   "type": "module",
   "main": "dist/index.js",
