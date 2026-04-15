@@ -1503,7 +1503,7 @@ function validateSearchArgs(args: {
   city: string;
   language: string;
   maxResults: number;
-  offset: number;
+  offset?: number;
   minPrice?: number;
   maxPrice?: number;
   dateFrom?: string;
@@ -2462,7 +2462,7 @@ type SearchExecutionArgs = {
   city: string;
   language: string;
   maxResults: number;
-  offset: number;
+  offset?: number;
   minPrice?: number;
   maxPrice?: number;
   dateFrom?: string;
