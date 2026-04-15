@@ -2462,6 +2462,7 @@ type SearchExecutionArgs = {
   city: string;
   language: string;
   maxResults: number;
+  offset: number;
   minPrice?: number;
   maxPrice?: number;
   dateFrom?: string;
