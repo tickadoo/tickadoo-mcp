@@ -1,3 +1,4 @@
+// v1.4.2 — offset pagination + max_results 200
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { SERVER_VERSION } from "../src/shared/config.js";
