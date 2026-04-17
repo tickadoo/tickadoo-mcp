@@ -5,7 +5,7 @@ dist/
 .vercel
 
 # Internal files
-AGENTS.md
+# AGENTS.md — un-ignored 17 April 2026. Now a committed shared ruleset (Codex auto-reads on task start). Ephemeral status files still ignored below.
 CODEX_BRIEF.md
 CODEX_STATUS.md
 CLAUDE_STATUS.md
