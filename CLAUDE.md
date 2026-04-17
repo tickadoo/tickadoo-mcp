@@ -44,6 +44,20 @@ COORDINATION:
 - If you make multiple commits for one task, reference all of them (or the range `<first-sha>..<last-sha>`) in the done post
 ```
 
+### New Claude Code capabilities (announced 17 April 2026)
+
+**Opus 4.7** is the current CC default. Better long-session context retention and cross-session memory. Default effort is xhigh.
+
+**Auto mode** (research preview, Shift+Tab in Claude Code) handles permission decisions via classifiers instead of prompting per file-write or bash. Use it for long autonomous tasks with upfront context. **For GRO-214 specifically (this repo's Vercel → CF Workers migration), howardmcp should run the task in auto mode** — the full multi-phase plan is pre-written in the Linear issue.
+
+**Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the Howard repo today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post to `#ai-activity` on start/progress/done, commit trailer `Claude-Chat: routine-{name}`).
+
+**`/ultrareview`** spins up a careful-review pass in the terminal. Three free runs per account. For this repo, use one on the diff of ported tool handlers before the Vercel → CF Workers cutover.
+
+**Dispatch** (research preview, Pro/Max) kicks off tasks from your phone, running locally via the desktop app.
+
+Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. Sibling Linear issues: GRO-196 (routine setup) and GRO-216 (Slack wiring).
+
 ## Cross-repo links
 
 - Howard backend: `github.com/tickadoo/howard`
