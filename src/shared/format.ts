@@ -783,6 +783,13 @@ export function buildConversationStarters(products: SearchDisplayProduct[], city
     starters.push("Several options have wheelchair access. Need accessible choices?");
   }
 
+  // Add group summary hint
+  const groups = buildGroupSummary(products);
+  if (groups && Object.keys(groups).length >= 3) {
+    const top3 = Object.entries(groups).slice(0, 3).map(([tag, count]) => `${count} ${tag}`).join(", ");
+    starters.push(`Mix of ${top3} and more. Want to narrow by type?`);
+  }
+
   return starters.slice(0, 3);
 }
 
