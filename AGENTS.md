@@ -75,6 +75,25 @@ See `.claude/active-chats.md` for current status of each.
 - Codex tasks that run in parallel must not touch the same file.
 - Prefer surgical commits. Smaller changes rebase cleaner against racing agents.
 
+## Auto mode, Routines, and /ultrareview (Claude Code features, 17 April 2026)
+
+Anthropic shipped several new Claude Code capabilities on 17 April. Short version:
+
+- **Opus 4.7** is the current CC default. Default effort is xhigh. Switch to `/effort high` for cost/intelligence balance on simpler tasks.
+- **Auto mode** (Shift+Tab in CC, research preview) — classifier-based permission handling for long autonomous tasks. Use it when the plan is pre-written. Example: GRO-214 (this repo: Vercel → CF Workers migration) — howardmcp should run this task in auto mode.
+- **Routines** (research preview) — prompts in `.claude/routines/`, run on CC web infrastructure (no laptop needed), triggered by schedule / API / GitHub webhook. Each routine is an AI agent under this convention: it must post to `#ai-activity` on start / progress / done, and every routine commit carries `Claude-Chat: routine-{routine-name}`. See GRO-196 (setup) and GRO-216 (Slack wiring). Note: most routines live in the Howard repo, but this repo may gain its own over time.
+- **`/ultrareview`** — careful-review pass, 3 free runs per account. For this repo, save one for the pre-deploy review of the full 14-tool port in GRO-214 Phase 3.
+- **Dispatch** (Pro/Max, research preview) — kick off tasks from phone, runs locally via desktop app.
+
+Routine message format mirrors Codex:
+```
+🤖 Routine [{routine-name}]: starting — triggered by {schedule|webhook|api|manual}
+🤖 Routine [{routine-name}]: {progress update}
+🤖 Routine [{routine-name}]: done — pushed {sha(s)} — {what shipped}
+```
+
+Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
+
 ## Repo specifics
 
 - **Package name**: `@tickadoo/mcp-server`
