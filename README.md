@@ -22,7 +22,7 @@ tickadoo® MCP 서버는 AI 어시스턴트(Claude, ChatGPT, Gemini 등)에서 6
 
 [mcp.tickadoo.com](https://mcp.tickadoo.com)
 
-Current release: `v1.4.1`
+Current release: `v1.4.2`
 
 - 17 read-only MCP tools with search, comparison, city-guide, family-day, transfer, and local travel-tip workflows
 - 13,090 products across 681 cities in 40+ languages
@@ -69,6 +69,24 @@ Current release: `v1.4.1`
 | `get_transfer_info` | Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates |
 
 All tools expose MCP tool annotations for `readOnlyHint`, `destructiveHint`, and `openWorldHint`.
+
+
+### Agent Intelligence Layer
+
+Every search response includes metadata keys designed for AI agents:
+
+| Key | Description |
+|-----|-------------|
+| `_available_filters` | 12 fields: tags, audience, setting, price_range, duration_range, etc. |
+| `_best_picks` | Auto-curated top 3: best_value, highest_rated, most_popular |
+| `_price_tiers` | Budget/mid-range/premium grouping from result prices |
+| `_group_summary` | Tag-based category breakdown (e.g. "8 Cruise, 6 GuidedTour, 5 Dining") |
+| `_conversation_starters` | Context-aware prompts referencing actual products |
+| `_related_searches` | Tag-based suggestions for narrowing results |
+| `_next_step` | Recommended follow-up action |
+
+`get_experience_details` adds: `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`
+
 
 ## Resource
 
