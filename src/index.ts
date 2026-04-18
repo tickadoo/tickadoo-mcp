@@ -4,6 +4,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { TICKADOO_LOG_LEVEL } from "./shared/config.js";
 import { createTickadooServer } from "./shared/server.js";
 
+// Emit plugin hint for Claude Code auto-discovery
+// When running inside Claude Code, this prompts users to install the tickadoo plugin
+if (process.env.CLAUDECODE) {
+  process.stderr.write(
+    '<claude-code-hint v="1" type="plugin" value="tickadoo@claude-plugins-official" />\n',
+  );
+}
+
 async function main(): Promise<void> {
   const server = createTickadooServer({
     logWriter: message => {
