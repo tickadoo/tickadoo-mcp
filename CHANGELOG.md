@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.0] - 2026-04-18
+### Added
+- MCP Apps support (GRO-229): `experience-card` and `experience-map` UI resources wired into `get_experience_details` and `find_nearby_experiences` via `_meta.ui.resourceUri`, with `openai/outputTemplate` fallback for ChatGPT Apps. Conforming clients (Claude, ChatGPT Apps, Goose, VS Code) render interactive booking cards and price-pin maps inline; non-conforming clients see the normal text and structured response. Zero new npm dependencies; Leaflet 1.9.4 is loaded from cdnjs with SRI hashes only inside the experience-map iframe.
+- `tests/ui-resources.test.ts` covering URI exports, resource registration shape, and required HTML markers.
+
 ## [1.4.1] - 2026-03-30
 ### Added
 - `get_travel_tips` MCP tool for local insider advice across 20 launch cities

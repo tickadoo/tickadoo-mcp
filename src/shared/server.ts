@@ -1,6 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  EXPERIENCE_CARD_URI,
+  EXPERIENCE_MAP_URI,
+  registerTickadooUiResources,
+  uiMeta,
+} from "./ui-resources.js";
+import {
   buildAvailabilityCheckPayload,
   calculateAvailabilityWindowDays,
   CHECK_AVAILABILITY_NEXT_STEP_HINT,
@@ -3408,7 +3414,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     }),
   );
 
-  server.tool(
+  const nearbyTool = server.tool(
     "find_nearby_experiences",
     `Find shows, events and experiences near a geographic location on tickadoo. Supports optional date filtering with dateFrom/dateTo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
     {
@@ -3535,6 +3541,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       }
     }),
   );
+
+  nearbyTool.update({ _meta: uiMeta(EXPERIENCE_MAP_URI) });
 
   server.tool(
     "list_cities",
@@ -3913,7 +3921,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     }),
   );
 
-  server.tool(
+  const detailsTool = server.tool(
     "get_experience_details",
     `Get detailed availability, venue details, and images for a specific tickadoo experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs. ${LANGUAGE_SUPPORT_NOTE}`,
     {
@@ -4001,6 +4009,8 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       }
     }),
   );
+
+  detailsTool.update({ _meta: uiMeta(EXPERIENCE_CARD_URI) });
 
   server.tool(
     "compare_experiences",
@@ -4368,5 +4378,6 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     }),
   );
 
+  registerTickadooUiResources(server);
   return server;
 }
