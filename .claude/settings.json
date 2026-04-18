@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tickadoo": {
+      "url": "https://mcp.tickadoo.com/mcp",
+      "type": "streamable-http"
+    }
+  }
+}
