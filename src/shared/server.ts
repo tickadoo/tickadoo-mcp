@@ -3542,7 +3542,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     }),
   );
 
-  nearbyTool.update({ _meta: uiMeta(EXPERIENCE_MAP_URI) });
+  nearbyTool.update({
+    _meta: uiMeta(EXPERIENCE_MAP_URI, {
+      invoking: "Searching tickadoo nearby…",
+      invoked: "Map ready",
+    }),
+  });
 
   server.tool(
     "list_cities",
@@ -4010,7 +4015,12 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
     }),
   );
 
-  detailsTool.update({ _meta: uiMeta(EXPERIENCE_CARD_URI) });
+  detailsTool.update({
+    _meta: uiMeta(EXPERIENCE_CARD_URI, {
+      invoking: "Loading experience…",
+      invoked: "Details ready",
+    }),
+  });
 
   server.tool(
     "compare_experiences",

@@ -26,23 +26,46 @@ export const EXPERIENCE_MAP_URI = "ui://tickadoo/experience-map.html";
  * resources. The dual key shape (`ui.resourceUri` + `openai/outputTemplate`)
  * lets one declaration light up Claude/Goose/VS Code (MCP Apps spec) and
  * ChatGPT Apps simultaneously, with neither client breaking on the other's
- * key.
+ * key. Optional `invoking`/`invoked` hints are ChatGPT-only loading state
+ * strings; conforming MCP-Apps clients ignore them safely.
  */
-export function uiMeta(uri: string): {
+export function uiMeta(
+  uri: string,
+  hints?: { invoking?: string; invoked?: string },
+): {
   ui: { resourceUri: string };
   "openai/outputTemplate": string;
+  "openai/toolInvocation/invoking"?: string;
+  "openai/toolInvocation/invoked"?: string;
 } {
-  return {
+  const meta: {
+    ui: { resourceUri: string };
+    "openai/outputTemplate": string;
+    "openai/toolInvocation/invoking"?: string;
+    "openai/toolInvocation/invoked"?: string;
+  } = {
     ui: { resourceUri: uri },
     "openai/outputTemplate": uri,
   };
+  if (hints?.invoking) meta["openai/toolInvocation/invoking"] = hints.invoking;
+  if (hints?.invoked) meta["openai/toolInvocation/invoked"] = hints.invoked;
+  return meta;
 }
+
+/**
+ * MCP Apps standard MIME type. Hosts (Claude, ChatGPT, Goose, VS Code)
+ * only enable the MCP Apps bridge — sandbox iframe + ui/* postMessage
+ * channel — when this exact MIME is returned. Plain `text/html` is
+ * treated as a generic resource and will NOT render inline.
+ */
+export const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
 
 interface UiResourceSpec {
   readonly name: string;
   readonly uri: string;
   readonly description: string;
   readonly html: string;
+  readonly resourceMeta?: Record<string, unknown>;
 }
 
 const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
@@ -213,7 +236,19 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
   }
 
   function getBookingUrl(exp) {
-    return exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    var raw = exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    if (!raw) return "";
+    try {
+      var u = new URL(raw, "https://www.tickadoo.com");
+      if (!u.searchParams.has("utm_source")) {
+        u.searchParams.set("utm_source", "mcp");
+        u.searchParams.set("utm_medium", "mcp-app");
+        u.searchParams.set("utm_campaign", "experience-card");
+      }
+      return u.toString();
+    } catch (e) {
+      return raw;
+    }
   }
 
   function metaParts(exp) {
@@ -524,7 +559,19 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
   }
 
   function getBookingUrl(exp) {
-    return exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    var raw = exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    if (!raw) return "";
+    try {
+      var u = new URL(raw, "https://www.tickadoo.com");
+      if (!u.searchParams.has("utm_source")) {
+        u.searchParams.set("utm_source", "mcp");
+        u.searchParams.set("utm_medium", "mcp-app");
+        u.searchParams.set("utm_campaign", "experience-map");
+      }
+      return u.toString();
+    } catch (e) {
+      return raw;
+    }
   }
 
   function panelMeta(exp) {
@@ -676,6 +723,12 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
     description:
       "Inline booking card for a single tickadoo experience. Rendered by MCP Apps-capable clients when get_experience_details returns.",
     html: EXPERIENCE_CARD_HTML,
+    resourceMeta: {
+      ui: {
+        // Card already has its own rounded-border styling; suppress host chrome.
+        prefersBorder: false,
+      },
+    },
   },
   {
     name: "experience-map",
@@ -683,6 +736,23 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
     description:
       "Interactive map with price-pin markers for a list of nearby tickadoo experiences. Rendered by MCP Apps-capable clients when find_nearby_experiences returns.",
     html: EXPERIENCE_MAP_HTML,
+    resourceMeta: {
+      ui: {
+        prefersBorder: true,
+        // Map iframe fetches Leaflet from cdnjs and basemap tiles from CARTO.
+        // Hosts with strict CSP (Claude, ChatGPT) block anything not listed here.
+        csp: {
+          resourceDomains: [
+            "https://cdnjs.cloudflare.com",
+            "https://a.basemaps.cartocdn.com",
+            "https://b.basemaps.cartocdn.com",
+            "https://c.basemaps.cartocdn.com",
+            "https://d.basemaps.cartocdn.com",
+          ],
+          connectDomains: [],
+        },
+      },
+    },
   },
 ];
 
@@ -698,14 +768,15 @@ export function registerTickadooUiResources(server: McpServer): void {
       resource.uri,
       {
         description: resource.description,
-        mimeType: "text/html",
+        mimeType: MCP_APP_MIME_TYPE,
       },
       async () => ({
         contents: [
           {
             uri: resource.uri,
             text: resource.html,
-            mimeType: "text/html",
+            mimeType: MCP_APP_MIME_TYPE,
+            ...(resource.resourceMeta ? { _meta: resource.resourceMeta } : {}),
           },
         ],
       }),
