@@ -1,40 +1,94 @@
 {
   "installCommand": "npm install --include=dev",
   "functions": {
-    "api/mcp.ts": { "maxDuration": 30 }
+    "api/mcp.ts": {
+      "maxDuration": 30
+    }
   },
   "rewrites": [
-    { "source": "/", "destination": "/api/index" },
-    { "source": "/health", "destination": "/api/health" },
-    { "source": "/llms.txt", "destination": "/api/llms" },
-    { "source": "/llms-full.txt", "destination": "/api/llms-full" },
-    { "source": "/.well-known/mcp.json", "destination": "/api/well-known-mcp" },
-    { "source": "/mcp", "destination": "/api/mcp" }
+    {
+      "source": "/icon.svg",
+      "destination": "/api/icon"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/llms.txt",
+      "destination": "/api/llms"
+    },
+    {
+      "source": "/llms-full.txt",
+      "destination": "/api/llms-full"
+    },
+    {
+      "source": "/.well-known/mcp.json",
+      "destination": "/api/well-known-mcp"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/api/mcp"
+    }
   ],
   "headers": [
     {
       "source": "/api/mcp",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS, DELETE" },
-        { "key": "Access-Control-Allow-Headers", "value": "*" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        }
       ]
     },
     {
       "source": "/api/llms(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=300" },
-        { "key": "X-MCP-Version", "value": "1.3.0" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300"
+        },
+        {
+          "key": "X-MCP-Version",
+          "value": "1.3.0"
+        }
       ]
     },
     {
       "source": "/api/(index|health|well-known-mcp)",
       "headers": [
-        { "key": "X-MCP-Version", "value": "1.3.0" },
-        { "key": "X-MCP-Tags", "value": "39" },
-        { "key": "X-MCP-Products", "value": "13090" },
-        { "key": "X-MCP-Cities", "value": "681" },
-        { "key": "X-MCP-DateFiltering", "value": "true" }
+        {
+          "key": "X-MCP-Version",
+          "value": "1.3.0"
+        },
+        {
+          "key": "X-MCP-Tags",
+          "value": "39"
+        },
+        {
+          "key": "X-MCP-Products",
+          "value": "13090"
+        },
+        {
+          "key": "X-MCP-Cities",
+          "value": "681"
+        },
+        {
+          "key": "X-MCP-DateFiltering",
+          "value": "true"
+        }
       ]
     }
   ]
