@@ -1,11 +1,12 @@
 {
   "name": "tickadoo",
-  "description": "Discover and book 13,090+ experiences across 700+ cities. 14 AI-powered tools with agent intelligence metadata.",
+  "description": "Discover and book 13,090+ experiences across 700+ cities. 14 AI-powered tools for search, mood discovery, city guides, family planners, availability, and comparison.",
   "version": "1.4.2",
   "author": {
     "name": "tickadoo",
     "url": "https://tickadoo.com"
   },
+  "homepage": "https://mcp.tickadoo.com",
   "repository": "https://github.com/tickadoo/tickadoo-mcp",
   "license": "MIT",
   "keywords": [
