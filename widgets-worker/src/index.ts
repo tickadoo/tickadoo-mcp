@@ -339,6 +339,220 @@ app.get("/trio", async (c) => {
   });
 });
 
+
+// ── Public embeds gallery at /examples ────────────────────────────────────
+// Living demo page for partner conversations. The widget iframes below work
+// because the `test_demo` partner has `domain = tickadoo.com`, and any call
+// with Referer = https://widgets.tickadoo.com/... matches via the
+// ".tickadoo.com" suffix rule in validatePartner.
+
+const EXAMPLES_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>tickadoo widgets &middot; live embeds</title>
+<meta name="description" content="Experience commerce embeds: map, card, and related-experiences widgets you can drop into any partner site.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #f9fafb;
+    --bg-code: #0f1115;
+    --border: #e5e7eb;
+    --text: #0f172a;
+    --text-dim: #475569;
+    --text-muted: #94a3b8;
+    --accent: #f97316;
+    --accent-hover: #ea580c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0d12;
+      --bg-alt: #13161d;
+      --bg-code: #05060a;
+      --border: #23272f;
+      --text: #e5e7eb;
+      --text-dim: #9ca3af;
+      --text-muted: #6b7280;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 56px 24px 96px; }
+  header { margin-bottom: 56px; text-align: center; }
+  h1 { font-size: 42px; font-weight: 800; margin: 0 0 16px; letter-spacing: -0.03em; line-height: 1.05; }
+  h1 .accent { color: var(--accent); }
+  .tagline { font-size: 18px; color: var(--text-dim); max-width: 640px; margin: 0 auto; }
+  .cta-row { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cta { display: inline-block; padding: 10px 22px; background: var(--accent); color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px; transition: background 0.15s; }
+  .cta:hover { background: var(--accent-hover); }
+  .cta.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+  .example { margin-bottom: 72px; }
+  .example-head { margin-bottom: 20px; }
+  .kicker { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  h2 { font-size: 24px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .lede { color: var(--text-dim); font-size: 15px; margin: 0; max-width: 560px; }
+
+  .preview-frame {
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--bg-alt); margin-bottom: 16px; position: relative;
+  }
+  .preview-label {
+    position: absolute; top: 12px; right: 12px; z-index: 1;
+    background: rgba(15,23,42,0.8); color: #fff; padding: 4px 10px;
+    border-radius: 999px; font-size: 11px; font-weight: 600;
+    font-family: ui-monospace, Menlo, Consolas, monospace; backdrop-filter: blur(4px);
+  }
+  iframe { width: 100%; border: 0; display: block; background: transparent; }
+
+  .code-block {
+    background: var(--bg-code); color: #e5e7eb; border-radius: 10px;
+    padding: 18px 20px; font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    overflow-x: auto; position: relative;
+  }
+  .code-block::before {
+    content: "copy this snippet";
+    position: absolute; top: 10px; right: 14px;
+    color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    font-family: -apple-system, sans-serif;
+  }
+  .code-block code { color: inherit; }
+  .code-block .str { color: #86efac; }
+  .code-block .attr { color: #93c5fd; }
+  .code-block .tag { color: #fca5a5; }
+  .code-block .comment { color: #64748b; }
+
+  .params-list { display: grid; gap: 6px; margin: 16px 0; color: var(--text-dim); font-size: 14px; }
+  .params-list code { background: var(--bg-alt); padding: 2px 7px; border-radius: 4px; color: var(--text); font-size: 13px; }
+
+  .faq { border-top: 1px solid var(--border); padding-top: 48px; }
+  .faq h3 { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin: 0 0 24px; }
+  details { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  details:last-child { border-bottom: none; }
+  summary { font-weight: 600; cursor: pointer; padding: 4px 0; list-style: none; }
+  summary::marker, summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; display: inline-block; width: 20px; color: var(--accent); font-weight: 700; }
+  details[open] summary::before { content: "−"; }
+  details p { color: var(--text-dim); margin: 8px 0 0 20px; }
+  details p code { background: var(--bg-alt); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+  footer { margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 13px; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Embed experiences <span class="accent">anywhere</span>.</h1>
+    <p class="tagline">Three production-ready widgets, powered by the tickadoo catalogue. Drop them into any travel site, hotel concierge, or blog post. Live data, live booking, commissions paid out automatically.</p>
+    <div class="cta-row">
+      <a class="cta" href="mailto:partners@tickadoo.com?subject=tickadoo%20widget%20access">Get your partner key</a>
+      <a class="cta secondary" href="https://mcp.tickadoo.com/mcp">Or use the MCP directly</a>
+    </div>
+  </header>
+
+  <section class="example">
+    <div class="example-head">
+      <div class="kicker">Widget 1 &middot; /map</div>
+      <h2>City map with inventory</h2>
+      <p class="lede">A mini-map of bookable experiences in any city. Clicks attribute back to you. Ships as a single iframe.</p>
+    </div>
+    <div class="preview-frame" style="height: 560px;">
+      <div class="preview-label">widgets.tickadoo.com/map</div>
+      <iframe src="/map?key=test_demo&city=london" height="560" loading="lazy" title="Live tickadoo map widget for London"></iframe>
+    </div>
+    <div class="code-block">
+<span class="tag">&lt;iframe</span> <span class="attr">src</span>=<span class="str">"https://widgets.tickadoo.com/map?key=YOUR_KEY&amp;city=london"</span>
+        <span class="attr">width</span>=<span class="str">"100%"</span> <span class="attr">height</span>=<span class="str">"560"</span> <span class="attr">style</span>=<span class="str">"border:0;border-radius:12px;"</span><span class="tag">&gt;&lt;/iframe&gt;</span>
+    </div>
+    <div class="params-list">
+      <div><code>city</code> &middot; city slug (e.g. <code>london</code>, <code>new-york</code>, <code>paris</code>, <code>tokyo</code>)</div>
+      <div><code>max_results</code> &middot; optional, 1–20, defaults to 10</div>
+    </div>
+  </section>
+
+  <section class="example">
+    <div class="example-head">
+      <div class="kicker">Widget 2 &middot; /card</div>
+      <h2>Single experience card</h2>
+      <p class="lede">The full detail card for one experience: hero image, price, reviews, and a book-now button that carries your attribution.</p>
+    </div>
+    <div class="preview-frame" style="height: 700px;">
+      <div class="preview-label">widgets.tickadoo.com/card</div>
+      <iframe src="/card?key=test_demo&slug=abba-voyage-tickets" height="700" loading="lazy" title="Live tickadoo card widget for ABBA Voyage"></iframe>
+    </div>
+    <div class="code-block">
+<span class="tag">&lt;iframe</span> <span class="attr">src</span>=<span class="str">"https://widgets.tickadoo.com/card?key=YOUR_KEY&amp;slug=EXPERIENCE_SLUG"</span>
+        <span class="attr">width</span>=<span class="str">"100%"</span> <span class="attr">height</span>=<span class="str">"700"</span> <span class="attr">style</span>=<span class="str">"border:0;border-radius:12px;"</span><span class="tag">&gt;&lt;/iframe&gt;</span>
+    </div>
+    <div class="params-list">
+      <div><code>slug</code> &middot; the tickadoo product slug (e.g. <code>abba-voyage-tickets</code>)</div>
+    </div>
+  </section>
+
+  <section class="example">
+    <div class="example-head">
+      <div class="kicker">Widget 3 &middot; /trio</div>
+      <h2>Related experiences trio</h2>
+      <p class="lede">Three related or co-bookable experiences for a given product. Ideal for "you might also like" blocks on experience pages.</p>
+    </div>
+    <div class="preview-frame" style="height: 320px;">
+      <div class="preview-label">widgets.tickadoo.com/trio</div>
+      <iframe src="/trio?key=test_demo&slug=abba-voyage-tickets&context=pair" height="320" loading="lazy" title="Live tickadoo related experiences widget"></iframe>
+    </div>
+    <div class="code-block">
+<span class="tag">&lt;iframe</span> <span class="attr">src</span>=<span class="str">"https://widgets.tickadoo.com/trio?key=YOUR_KEY&amp;slug=EXPERIENCE_SLUG&amp;context=pair"</span>
+        <span class="attr">width</span>=<span class="str">"100%"</span> <span class="attr">height</span>=<span class="str">"320"</span> <span class="attr">style</span>=<span class="str">"border:0;border-radius:12px;"</span><span class="tag">&gt;&lt;/iframe&gt;</span>
+    </div>
+    <div class="params-list">
+      <div><code>slug</code> &middot; the source experience slug</div>
+      <div><code>context</code> &middot; one of <code>pair</code>, <code>after</code>, <code>nearby</code>, <code>similar</code></div>
+    </div>
+  </section>
+
+  <div class="faq">
+    <h3>Common questions</h3>
+    <details>
+      <summary>How does attribution work?</summary>
+      <p>Every click out of a widget carries <code>utm_source=partner_YOUR_KEY</code>, <code>utm_medium=widget</code>, and a campaign tag. When the booking completes, a row lands in <code>partner_commissions</code> with your share of the gross. Dashboards and payouts follow automatically.</p>
+    </details>
+    <details>
+      <summary>What does a partner key look like?</summary>
+      <p>Something like <code>ptr_abc12345</code>. You send us the primary domain you'll embed on, we issue a key, and the widget enforces Referer matching so nobody else can borrow your key.</p>
+    </details>
+    <details>
+      <summary>Can I restyle the widgets?</summary>
+      <p>For deeper customisation, talk to us about <code>CONNECT</code> or call the MCP directly at <code>mcp.tickadoo.com/mcp</code> and render however you like. These iframes are the zero-effort path.</p>
+    </details>
+    <details>
+      <summary>Is there an API I can call instead of iframes?</summary>
+      <p>Yes — <a href="https://mcp.tickadoo.com/mcp" style="color:var(--accent)">mcp.tickadoo.com/mcp</a> exposes the full MCP tool surface. Or the Howard CONNECT REST API for traditional integrations.</p>
+    </details>
+    <details>
+      <summary>What is the current commercial rate?</summary>
+      <p>Default is 10% of gross on confirmed bookings. Higher for strategic partners and hotels on CONNECT. Paid out via Stripe Connect.</p>
+    </details>
+  </div>
+
+  <footer>
+    <a href="mailto:partners@tickadoo.com">partners@tickadoo.com</a> &middot; tickadoo ® &middot; powered by <a href="https://mcp.tickadoo.com">mcp.tickadoo.com</a>
+  </footer>
+</div>
+</body>
+</html>`;
+
+app.get("/examples", (c) => c.html(EXAMPLES_HTML, 200, {
+  "Cache-Control": "public, max-age=300",
+  "Content-Security-Policy": "default-src 'self'; frame-src 'self'; style-src 'self' 'unsafe-inline'",
+  "X-Robots-Tag": "noindex",
+}));
+
 const requireAdmin = async (c: any, next: any) => {
   const key = c.req.header("X-Admin-Key");
   if (!key || key !== c.env.ADMIN_API_KEY) return c.text("Forbidden", 403);
