@@ -3,8 +3,22 @@ type NeonSqlResponse<Row> = {
   message?: string;
 };
 
+// Cloudflare Workers do not surface secrets via `process.env`. Secrets pushed
+// via `wrangler secret put` or the CF API only show up on the `env` parameter
+// of handlers. The worker entrypoint calls configureNeonConnectionString()
+// with the per-request env.NEON_URL so graph queries can find it.
+let cachedConnectionString: string | undefined;
+
+export function configureNeonConnectionString(url: string | undefined): void {
+  if (url && url.trim()) cachedConnectionString = url.trim();
+}
+
+function resolveConnectionString(): string | undefined {
+  return cachedConnectionString ?? process.env.NEON_URL?.trim();
+}
+
 function getNeonEndpoint(): string {
-  const connectionString = process.env.NEON_URL?.trim();
+  const connectionString = resolveConnectionString();
   if (!connectionString) {
     throw new Error("NEON_URL is required for graph queries.");
   }
@@ -24,7 +38,7 @@ function getNeonEndpoint(): string {
 }
 
 export async function neonQuery<Row>(query: string, params: unknown[] = []): Promise<Row[]> {
-  const connectionString = process.env.NEON_URL?.trim();
+  const connectionString = resolveConnectionString();
   if (!connectionString) {
     throw new Error("NEON_URL is required for graph queries.");
   }
