@@ -14,6 +14,7 @@ import { buildServerManifest, buildAgentCard } from "./shared/discovery.js";
 import { buildLlmsTxt, buildLlmsFullTxt } from "./shared/llms.js";
 import { createTelemetrySql } from "./shared/telemetry.js";
 import { configureNeonConnectionString } from "./shared/neon.js";
+import { AGENTX_HTML } from "./shared/agentx.js";
 import { fetchTelemetryDashboard, TELEMETRY_DASHBOARD_HTML } from "./shared/telemetry-dashboard.js";
 
 /* ---------- helpers ---------- */
@@ -163,6 +164,17 @@ app.get("/sitemap.xml", () =>
     { contentType: "application/xml; charset=utf-8", cache: CACHE_1H })
 );
 
+// AgentX playbook — thought leadership + AEO anchor for AI agents that crawl us.
+app.get("/agentx", () => new Response(AGENTX_HTML, {
+  status: 200,
+  headers: {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "public, max-age=600, stale-while-revalidate=3600",
+    "Access-Control-Allow-Origin": "*",
+    "Link": "<https://mcp.tickadoo.com/agentx>; rel=\"canonical\"",
+  },
+}));
+
 // Landing page: GET serves the JSON descriptor; POST is forwarded to the MCP handler so
 // legacy clients that POST JSON-RPC at the root still work without a 404.
 app.get("/", () =>
@@ -174,6 +186,7 @@ app.get("/", () =>
     docs: {
       llms_txt: "https://mcp.tickadoo.com/llms.txt",
       llms_full_txt: "https://mcp.tickadoo.com/llms-full.txt",
+      agentx: "https://mcp.tickadoo.com/agentx",
       github: "https://github.com/tickadoo/tickadoo-mcp",
     },
   })
