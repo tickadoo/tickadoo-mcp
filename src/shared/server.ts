@@ -4252,15 +4252,42 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
         try {
           const edgeTypes = edgeTypePreference[context];
-          const edges = await neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
-            `SELECT target_id, edge_type, strength, metadata
-             FROM product_edges
-             WHERE source_id = $1
-               AND edge_type = ANY($2::text[])
-             ORDER BY strength DESC
-             LIMIT $3`,
-            [productId, edgeTypes, maxResults * 3],
-          );
+
+          // Fetch heuristic edges (product_edges graph, ~2M rows) and semantic
+          // edges (product_embeddings via pgvector cosine similarity) in
+          // parallel. Semantic returns empty until embeddings are computed,
+          // which degrades gracefully to heuristic-only behaviour.
+          const [edges, semanticEdges] = await Promise.all([
+            neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
+              `SELECT target_id, edge_type, strength, metadata
+               FROM product_edges
+               WHERE source_id = $1
+                 AND edge_type = ANY($2::text[])
+               ORDER BY strength DESC
+               LIMIT $3`,
+              [productId, edgeTypes, maxResults * 3],
+            ),
+            // Semantic similarity via HNSW cosine index on product_embeddings.
+            // Returns 0 rows if the source product has no embedding or the
+            // table is empty; wrapped in try/catch so a missing pgvector
+            // extension or schema drift never breaks the tool.
+            (async () => {
+              try {
+                return await neonQuery<Array<{ target_id: string; cosine_similarity: number }>[number]>(
+                  `WITH source AS (SELECT embedding FROM product_embeddings WHERE product_id = $1)
+                   SELECT pe.product_id AS target_id,
+                          1 - (pe.embedding <=> source.embedding) AS cosine_similarity
+                   FROM product_embeddings pe CROSS JOIN source
+                   WHERE pe.product_id <> $1
+                   ORDER BY pe.embedding <=> source.embedding
+                   LIMIT $2`,
+                  [productId, maxResults * 2],
+                );
+              } catch {
+                return [];
+              }
+            })(),
+          ]);
 
           const byTarget = new Map<string, { edge_type: string; strength: number; metadata: unknown }>();
           for (const edge of edges) {
@@ -4270,6 +4297,30 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
                 edge_type: edge.edge_type,
                 strength: Number(edge.strength),
                 metadata: edge.metadata,
+              });
+            }
+          }
+          // Fold semantic matches in. If a slug already exists (from the
+          // heuristic graph), boost its strength by the semantic signal
+          // rather than overwriting — both signals matter. Otherwise, add
+          // the slug with edge_type "semantic" and a strength proportional
+          // to cosine similarity (scaled to be comparable with heuristic
+          // strength values, which roughly live in [0, 1]).
+          for (const sim of semanticEdges) {
+            const cosine = Number(sim.cosine_similarity);
+            if (!Number.isFinite(cosine) || cosine <= 0.5) continue; // ignore weak matches
+            const prev = byTarget.get(sim.target_id);
+            if (prev) {
+              byTarget.set(sim.target_id, {
+                edge_type: prev.edge_type,
+                strength: prev.strength + cosine * 0.25, // small boost
+                metadata: { ...(prev.metadata && typeof prev.metadata === "object" ? prev.metadata as object : {}), cosine_similarity: cosine },
+              });
+            } else {
+              byTarget.set(sim.target_id, {
+                edge_type: "semantic",
+                strength: cosine,
+                metadata: { cosine_similarity: cosine },
               });
             }
           }
