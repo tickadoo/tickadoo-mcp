@@ -5,7 +5,7 @@
  * Uses Hono for routing and the MCP SDK's WebStandardStreamableHTTPServerTransport
  * for native Workers compatibility (no Node.js shims needed).
  */
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createTickadooServer } from "./shared/server.js";
@@ -232,6 +232,24 @@ const ROBOTS_TXT = [
   "Allow: /",
   "",
 ].join("\n") + "\n";
+
+// OpenAI domain verification for ChatGPT Apps Directory submission.
+// When Francis submits tickadoo as a ChatGPT App, OpenAI issues a verification
+// token that must be served at a specific path as plain text (not JSON/HTML).
+// Set OPENAI_DOMAIN_VERIFY_TOKEN as a worker secret and this route answers.
+// Until the token is issued, the route 404s (identical to the default).
+app.get("/.well-known/openai-domain-verify", (c: Context<{ Bindings: Env }>) => {
+  const token = (c.env as Env & { OPENAI_DOMAIN_VERIFY_TOKEN?: string }).OPENAI_DOMAIN_VERIFY_TOKEN;
+  if (!token) return c.text("", 404);
+  return c.text(token, 200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" });
+});
+
+// Legacy path variant some OpenAI documentation references.
+app.get("/openai-domain-verification.txt", (c: Context<{ Bindings: Env }>) => {
+  const token = (c.env as Env & { OPENAI_DOMAIN_VERIFY_TOKEN?: string }).OPENAI_DOMAIN_VERIFY_TOKEN;
+  if (!token) return c.text("", 404);
+  return c.text(token, 200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" });
+});
 
 app.get("/robots.txt", () =>
   textResponse(ROBOTS_TXT, { contentType: "text/plain; charset=utf-8", cache: CACHE_1H })
