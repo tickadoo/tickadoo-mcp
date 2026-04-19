@@ -69,7 +69,7 @@ interface UiResourceSpec {
   readonly resourceMeta?: Record<string, unknown>;
 }
 
-const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
+export const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -242,9 +242,12 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
     try {
       var u = new URL(raw, "https://www.tickadoo.com");
       if (!u.searchParams.has("utm_source")) {
-        u.searchParams.set("utm_source", "mcp");
-        u.searchParams.set("utm_medium", "mcp-app");
-        u.searchParams.set("utm_campaign", "experience-card");
+        var utm = window.__tickadooUtm || { utm_source: "mcp", utm_medium: "mcp-app", utm_campaign: "experience-card" };
+        u.searchParams.set("utm_source", utm.utm_source);
+        u.searchParams.set("utm_medium", utm.utm_medium);
+        u.searchParams.set("utm_campaign", utm.utm_campaign || "experience-card");
+        var callId = exp && exp._meta && exp._meta.agent_call_id;
+        if (callId && typeof callId === "string") u.searchParams.set("utm_content", callId.replace(/-/g, "").slice(0, 8));
       }
       return u.toString();
     } catch (e) {
@@ -297,10 +300,12 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
     });
   }
 
+  var rendered = false;
   function render(exp) {
     var root = document.getElementById("root");
     if (!exp || (typeof exp === "object" && !exp.title && !exp.name)) {
       root.innerHTML = '<div class="card"><div class="empty">No experience to display.</div></div>';
+      rendered = true;
       return;
     }
     var title = exp.title || exp.name || "Untitled";
@@ -346,6 +351,7 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
     if (btn && url) {
       btn.addEventListener("click", function () { onBook(url, exp); });
     }
+    rendered = true;
   }
 
   function handleMessage(event) {
@@ -361,17 +367,43 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
 
   window.addEventListener("message", handleMessage, false);
 
-  emit({
-    jsonrpc: "2.0",
-    method: "initialize",
-    params: { resource: "experience-card", protocolVersion: "2025-06-18" },
-  });
+  (function tryBootstrap() {
+    var el = document.getElementById("bootstrap");
+    if (!el) return;
+    try {
+      var bootData = JSON.parse(el.textContent || "{}");
+      if (bootData._meta && bootData._meta.utm_source) {
+        window.__tickadooUtm = bootData._meta;
+      }
+      var payload = extractPayload({ params: { structuredContent: bootData } });
+      var item = typeof pickExperience === "function"
+        ? pickExperience(payload)
+        : (typeof pickList === "function" ? pickList(payload) : payload);
+      if (item) {
+        if (typeof renderList === "function") renderList(item);
+        else if (typeof render === "function") render(item);
+        rendered = true;
+      }
+    } catch (e) { /* fall through to postMessage path */ }
+  })();
+
+  function sendInitialize() {
+    emit({
+      jsonrpc: "2.0",
+      method: "initialize",
+      params: { resource: "experience-card", protocolVersion: "2025-06-18" },
+    });
+  }
+
+  if (!rendered) sendInitialize();
+  var _retry = setInterval(function () { if (rendered) { clearInterval(_retry); return; } sendInitialize(); }, 1500);
+  setTimeout(function () { clearInterval(_retry); }, 15000);
 })();
 </script>
 </body>
 </html>`;
 
-const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
+export const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -565,9 +597,12 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
     try {
       var u = new URL(raw, "https://www.tickadoo.com");
       if (!u.searchParams.has("utm_source")) {
-        u.searchParams.set("utm_source", "mcp");
-        u.searchParams.set("utm_medium", "mcp-app");
-        u.searchParams.set("utm_campaign", "experience-map");
+        var utm = window.__tickadooUtm || { utm_source: "mcp", utm_medium: "mcp-app", utm_campaign: "experience-map" };
+        u.searchParams.set("utm_source", utm.utm_source);
+        u.searchParams.set("utm_medium", utm.utm_medium);
+        u.searchParams.set("utm_campaign", utm.utm_campaign || "experience-map");
+        var callId = exp && exp._meta && exp._meta.agent_call_id;
+        if (callId && typeof callId === "string") u.searchParams.set("utm_content", callId.replace(/-/g, "").slice(0, 8));
       }
       return u.toString();
     } catch (e) {
@@ -645,6 +680,7 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
     return map;
   }
 
+  var rendered = false;
   function renderList(list) {
     var m = ensureMap();
     if (!m) return;
@@ -660,6 +696,7 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
     var emptyEl = document.getElementById("empty");
     if (!withCoords.length) {
       emptyEl.style.display = "flex";
+      rendered = true;
       return;
     }
     emptyEl.style.display = "none";
@@ -686,6 +723,7 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
     } else {
       m.fitBounds(bounds.pad(0.15));
     }
+    rendered = true;
   }
 
   function handleMessage(event) {
@@ -707,17 +745,43 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
 
   window.addEventListener("message", handleMessage, false);
 
-  emit({
-    jsonrpc: "2.0",
-    method: "initialize",
-    params: { resource: "experience-map", protocolVersion: "2025-06-18" },
-  });
+  (function tryBootstrap() {
+    var el = document.getElementById("bootstrap");
+    if (!el) return;
+    try {
+      var bootData = JSON.parse(el.textContent || "{}");
+      if (bootData._meta && bootData._meta.utm_source) {
+        window.__tickadooUtm = bootData._meta;
+      }
+      var payload = extractPayload({ params: { structuredContent: bootData } });
+      var item = typeof pickExperience === "function"
+        ? pickExperience(payload)
+        : (typeof pickList === "function" ? pickList(payload) : payload);
+      if (item) {
+        if (typeof renderList === "function") renderList(item);
+        else if (typeof render === "function") render(item);
+        rendered = true;
+      }
+    } catch (e) { /* fall through to postMessage path */ }
+  })();
+
+  function sendInitialize() {
+    emit({
+      jsonrpc: "2.0",
+      method: "initialize",
+      params: { resource: "experience-map", protocolVersion: "2025-06-18" },
+    });
+  }
+
+  if (!rendered) sendInitialize();
+  var _retry = setInterval(function () { if (rendered) { clearInterval(_retry); return; } sendInitialize(); }, 1500);
+  setTimeout(function () { clearInterval(_retry); }, 15000);
 })();
 </script>
 </body>
 </html>`;
 
-const EXPERIENCE_TRIO_HTML = String.raw`<!doctype html>
+export const EXPERIENCE_TRIO_HTML = String.raw`<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>tickadoo related experiences</title>
@@ -764,9 +828,10 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
     try {
       var u = new URL(raw, 'https://www.tickadoo.com');
       if (!u.searchParams.has('utm_source')) {
-        u.searchParams.set('utm_source', 'mcp');
-        u.searchParams.set('utm_medium', 'mcp-app');
-        u.searchParams.set('utm_campaign', 'experience-trio');
+        var utm = window.__tickadooUtm || { utm_source: 'mcp', utm_medium: 'mcp-app', utm_campaign: 'experience-trio' };
+        u.searchParams.set('utm_source', utm.utm_source);
+        u.searchParams.set('utm_medium', utm.utm_medium);
+        u.searchParams.set('utm_campaign', utm.utm_campaign || 'experience-trio');
         var callId = exp && exp._meta && exp._meta.agent_call_id;
         if (callId && typeof callId === 'string') u.searchParams.set('utm_content', callId.replace(/-/g,'').slice(0,8));
       }
@@ -814,10 +879,30 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
   }
   window.addEventListener('message', handleMessage, false);
 
+  (function tryBootstrap() {
+    var el = document.getElementById('bootstrap');
+    if (!el) return;
+    try {
+      var bootData = JSON.parse(el.textContent || '{}');
+      if (bootData._meta && bootData._meta.utm_source) {
+        window.__tickadooUtm = bootData._meta;
+      }
+      var payload = extractPayload({ params: { structuredContent: bootData } });
+      var item = typeof pickExperience === 'function'
+        ? pickExperience(payload)
+        : (typeof pickList === 'function' ? pickList(payload) : payload);
+      if (item) {
+        if (typeof renderList === 'function') renderList(item);
+        else if (typeof render === 'function') render(item);
+        rendered = true;
+      }
+    } catch (e) { /* fall through to postMessage path */ }
+  })();
+
   function sendInitialize() {
     emit({ jsonrpc: '2.0', method: 'initialize', params: { resource: 'experience-trio', protocolVersion: '2025-06-18' } });
   }
-  sendInitialize();
+  if (!rendered) sendInitialize();
   var _retry = setInterval(function () { if (rendered) { clearInterval(_retry); return; } sendInitialize(); }, 1500);
   setTimeout(function () { clearInterval(_retry); }, 15000);
 })();

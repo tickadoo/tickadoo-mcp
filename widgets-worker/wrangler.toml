@@ -1,0 +1,11 @@
+name = "tickadoo-widgets-worker"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+account_id = "e4374ada916c35df9b0090cea132b65b"
+
+[[routes]]
+pattern = "widgets.tickadoo.com/*"
+zone_id = "a06ca0027303da7ab46f4200dfd000cc"
+
+[vars]
+MCP_INTERNAL_URL = "https://mcp.tickadoo.com"
