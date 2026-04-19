@@ -3,9 +3,11 @@ import { z } from "zod";
 import {
   EXPERIENCE_CARD_URI,
   EXPERIENCE_MAP_URI,
+  EXPERIENCE_TRIO_URI,
   registerTickadooUiResources,
   uiMeta,
 } from "./ui-resources.js";
+import { neonQuery } from "./neon.js";
 import {
   buildAvailabilityCheckPayload,
   calculateAvailabilityWindowDays,
@@ -1081,6 +1083,21 @@ function createTextResponse(text: string, options?: { isError?: boolean; structu
   }
 
   return response;
+}
+
+function formatRelatedAsText(payload: { source_id: string; context: string; results: Array<{ title?: string | null; rating?: number | null; edge_type: string; edge_strength: number }> }): string {
+  if (!payload.results.length) {
+    return "No related experiences found for " + payload.source_id;
+  }
+  const lines = [
+    "Related experiences (" + payload.context + ") for " + payload.source_id + ":",
+    ...payload.results.map((r, i) =>
+      (i + 1) + ". " + (r.title || "Untitled experience")
+      + (r.rating ? " - " + r.rating + " stars" : "")
+      + " (" + r.edge_type + ", strength " + Number(r.edge_strength).toFixed(2) + ")"
+    ),
+  ];
+  return lines.join("\n");
 }
 
 function createErrorResponse(message: string) {
@@ -4097,6 +4114,164 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       }
     }),
   );
+
+  const relatedTool = server.tool(
+    "get_related_experiences",
+    "Find experiences related to a given experience. Use for cross-sell, pairs with, or also nearby recommendations. Returns up to 10 related products with edge metadata.",
+    {
+      product_id: z.string().describe("Product slug of the source experience"),
+      context: z.enum(["pair", "after", "nearby", "similar"]).default("pair")
+        .describe("Relationship type: pair (co-booked or thematically linked), after (something to do after), nearby (spatial proximity), similar (same category)"),
+      max_results: z.number().int().min(1).max(10).default(6),
+    },
+    READ_ONLY_TOOL_ANNOTATIONS,
+    withToolLogging("get_related_experiences", logWriter, async args => {
+      const edgeTypePreference: Record<"pair" | "after" | "nearby" | "similar", string[]> = {
+        pair: ["co_booked", "tag_overlap", "spatial"],
+        after: ["co_booked", "spatial"],
+        nearby: ["spatial"],
+        similar: ["similar", "tag_overlap"],
+      };
+      const productId = typeof args.product_id === "string" ? args.product_id.trim() : "";
+      const context = (args.context ?? "pair") as "pair" | "after" | "nearby" | "similar";
+      const maxResults = typeof args.max_results === "number" ? args.max_results : 6;
+
+      if (!productId) {
+        return {
+          response: createErrorResponse("product_id is required."),
+          resultCount: 0,
+          summary: {
+            context,
+            max_results: maxResults,
+          },
+        };
+      }
+
+      try {
+        const edgeTypes = edgeTypePreference[context];
+        const edges = await neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
+          `SELECT target_id, edge_type, strength, metadata
+           FROM product_edges
+           WHERE source_id = $1
+             AND edge_type = ANY($2::text[])
+           ORDER BY strength DESC
+           LIMIT $3`,
+          [productId, edgeTypes, maxResults * 3],
+        );
+
+        const byTarget = new Map<string, { edge_type: string; strength: number; metadata: unknown }>();
+        for (const edge of edges) {
+          const prev = byTarget.get(edge.target_id);
+          if (!prev || Number(edge.strength) > prev.strength) {
+            byTarget.set(edge.target_id, {
+              edge_type: edge.edge_type,
+              strength: Number(edge.strength),
+              metadata: edge.metadata,
+            });
+          }
+        }
+
+        const topTargets = Array.from(byTarget.entries())
+          .sort((a, b) => b[1].strength - a[1].strength)
+          .slice(0, maxResults);
+
+        const targetSlugs = topTargets.map(([slug]) => slug);
+        const products = targetSlugs.length > 0
+          ? await neonQuery<Array<{
+            slug: string;
+            title: string;
+            description: string | null;
+            image_url: string | null;
+            booking_url: string | null;
+            price: number | null;
+            currency: string | null;
+            rating: number | null;
+            review_count: number | null;
+            city_slug: string;
+            latitude: number | null;
+            longitude: number | null;
+          }>[number]>(
+            `SELECT DISTINCT ON (slug)
+               slug,
+               name AS title,
+               description,
+               COALESCE(image_url, desktop_image_url, vertical_image_url) AS image_url,
+               checkout_url AS booking_url,
+               price_from AS price,
+               currency_code AS currency,
+               rating,
+               review_count,
+               city_slug,
+               latitude,
+               longitude
+             FROM products
+             WHERE slug = ANY($1::text[])
+             ORDER BY slug, rating DESC NULLS LAST, review_count DESC NULLS LAST, updated_at DESC NULLS LAST, created_at DESC NULLS LAST`,
+            [targetSlugs],
+          )
+          : [];
+
+        const bySlug = new Map(products.map(product => [product.slug, product]));
+        const results = topTargets
+          .map(([slug, edge]) => {
+            const product = bySlug.get(slug);
+            if (!product) {
+              return null;
+            }
+
+            return {
+              ...product,
+              booking_url: product.booking_url || buildBookingUrl(`${product.city_slug}/${product.slug}`),
+              price: product.price == null ? null : Number(product.price),
+              rating: product.rating == null ? null : Number(product.rating),
+              review_count: product.review_count == null ? null : Number(product.review_count),
+              location: product.latitude != null && product.longitude != null
+                ? { latitude: Number(product.latitude), longitude: Number(product.longitude) }
+                : null,
+              edge_type: edge.edge_type,
+              edge_strength: edge.strength,
+              edge_metadata: edge.metadata,
+            };
+          })
+          .filter((value): value is NonNullable<typeof value> => value !== null);
+
+        const payload = {
+          source_id: productId,
+          context,
+          results,
+          total: results.length,
+        };
+
+        return {
+          response: createTextResponse(formatRelatedAsText(payload), { structuredContent: payload }),
+          resultCount: results.length,
+          summary: {
+            product_id: productId,
+            context,
+            max_results: maxResults,
+            returned: results.length,
+          },
+        };
+      } catch (error) {
+        return {
+          response: createErrorResponse(getErrorMessage(error)),
+          resultCount: 0,
+          summary: {
+            product_id: productId,
+            context,
+            max_results: maxResults,
+          },
+        };
+      }
+    }),
+  );
+
+  relatedTool.update({
+    _meta: uiMeta(EXPERIENCE_TRIO_URI, {
+      invoking: "Finding related experiences...",
+      invoked: "Related experiences ready",
+    }),
+  });
 
   server.tool(
     "get_transfer_info",

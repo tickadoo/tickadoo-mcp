@@ -26,6 +26,7 @@ function buildProduct(input: {
     averageRating: input.rating,
     currency: "GBP",
     address: "London",
+    minPrice: input.minPrice,
     mcpProduct: {
       niceId: 1,
       name: input.title,

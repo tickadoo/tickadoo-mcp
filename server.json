@@ -37,6 +37,10 @@
           "description": "Compare 2 to 5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit."
         },
         {
+          "name": "get_related_experiences",
+          "description": "Find related experiences for a source slug using relationship contexts such as pair, after, nearby, and similar."
+        },
+        {
           "name": "get_transfer_info",
           "description": "Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates."
         },

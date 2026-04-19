@@ -1,7 +1,26 @@
 import { describe, expect, it } from "vitest";
 
 import { isPopularSearchProduct, sortProductsForSearch } from "../src/shared/server.js";
-import type { Product } from "../src/shared/types.js";
+import type { McpProduct, Product } from "../src/shared/types.js";
+
+function makePopularMcpProduct(): McpProduct {
+  return {
+    niceId: 1,
+    name: "Product",
+    url: "product-slug",
+    minPrice: 25,
+    reviewRating: 4.8,
+    reviewCount: 700,
+    indoorOutdoor: "Indoor",
+    physicalLevel: "Easy",
+    audience: ["Couples"],
+    tags: ["Evening"],
+    wheelchairAccessible: true,
+    strollerFriendly: false,
+    languageOptions: ["en"],
+    variants: [],
+  };
+}
 
 function makeProduct(overrides: Partial<Product>): Product {
   return {
@@ -27,6 +46,7 @@ describe("search sorting", () => {
     expect(isPopularSearchProduct(makeProduct({
       slug: "popular-product",
       title: "Popular Product",
+      mcpProduct: makePopularMcpProduct(),
     }))).toBe(true);
 
     expect(isPopularSearchProduct(makeProduct({
@@ -46,6 +66,7 @@ describe("search sorting", () => {
       slug: "low-rating",
       title: "Low Rating",
       averageRating: 3.9,
+      mcpProduct: makePopularMcpProduct(),
     }))).toBe(false);
   });
 
@@ -56,12 +77,14 @@ describe("search sorting", () => {
         title: "Top Popular",
         averageRating: 4.9,
         minPrice: 45,
+        mcpProduct: makePopularMcpProduct(),
       }),
       makeProduct({
         slug: "second-popular",
         title: "Second Popular",
         averageRating: 4.6,
         minPrice: 35,
+        mcpProduct: makePopularMcpProduct(),
       }),
       makeProduct({
         slug: "not-popular-no-image",

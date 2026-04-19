@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   EXPERIENCE_CARD_URI,
   EXPERIENCE_MAP_URI,
+  EXPERIENCE_TRIO_URI,
   MCP_APP_MIME_TYPE,
   TICKADOO_UI_RESOURCES,
   uiMeta,
@@ -18,12 +19,13 @@ describe("ui-resources", () => {
   });
 
   it("exposes both resources via TICKADOO_UI_RESOURCES", () => {
-    expect(TICKADOO_UI_RESOURCES).toHaveLength(2);
+    expect(TICKADOO_UI_RESOURCES).toHaveLength(3);
     const byName = Object.fromEntries(
       TICKADOO_UI_RESOURCES.map(r => [r.name, r]),
     );
     expect(byName["experience-card"].uri).toBe(EXPERIENCE_CARD_URI);
     expect(byName["experience-map"].uri).toBe(EXPERIENCE_MAP_URI);
+    expect(byName["experience-trio"].uri).toBe(EXPERIENCE_TRIO_URI);
   });
 
   it("uiMeta produces both ui.resourceUri and openai/outputTemplate keys", () => {

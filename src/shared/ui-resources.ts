@@ -20,6 +20,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export const EXPERIENCE_CARD_URI = "ui://tickadoo/experience-card.html";
 export const EXPERIENCE_MAP_URI = "ui://tickadoo/experience-map.html";
+export const EXPERIENCE_TRIO_URI = "ui://tickadoo/experience-trio.html";
 
 /**
  * Build the `_meta` payload that wires a tool to one of these UI
@@ -716,6 +717,113 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
 </body>
 </html>`;
 
+const EXPERIENCE_TRIO_HTML = String.raw`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tickadoo related experiences</title>
+<style>
+:root { --bg:#fff; --fg:#0f1115; --muted:#5a6172; --line:#e6e8ee; --card:#fff; --gold:#c69b3d; --accent:#0f1115; --accent-fg:#fff; --chip-bg:#f3f4f8; --chip-fg:#2a2f3a; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0d1016; --fg:#ecedf1; --muted:#98a0b3; --line:#1f2330; --card:#141823; --gold:#d6ad55; --accent:#ecedf1; --accent-fg:#0d1016; --chip-bg:#1d2230; --chip-fg:#d8dbe4; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+.wrap { padding: 12px; }
+.tagline { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+.trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .trio { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #11141c; }
+.body { padding: 10px; flex: 1; }
+.title { font-size: 13px; font-weight: 600; margin: 0 0 4px; line-height: 1.25; }
+.meta { font-size: 11px; color: var(--muted); margin: 0 0 6px; }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 10px; gap: 8px; }
+.price { font-weight: 700; font-size: 14px; }
+.cta { background: var(--accent); color: var(--accent-fg); padding: 5px 10px; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 11px; }
+.footer { text-align: right; padding: 6px 10px; font-size: 10px; color: var(--muted); }
+.empty { padding: 20px; text-align: center; color: var(--muted); }
+</style></head>
+<body>
+<div class="wrap">
+  <p id="tagline" class="tagline">Related experiences</p>
+  <div id="trio" class="trio"><div class="empty">Loading related experiences...</div></div>
+  <div class="footer">Powered by tickadoo®</div>
+</div>
+<script>
+(function () {
+  function emit(msg){ if (window.parent !== window) window.parent.postMessage(msg, '*'); }
+  function safeGet(obj, path){ try { return path.split('.').reduce(function(o,k){ return o ? o[k] : undefined; }, obj); } catch(e){ return undefined; } }
+  function extractPayload(raw){ if (!raw) return {}; var sc = safeGet(raw, 'params.structuredContent') || safeGet(raw, 'structuredContent') || raw; return sc || {}; }
+  function num(v){ if (v == null) return null; var n = +v; return isNaN(n) ? null : n; }
+  function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]; }); }
+  function formatPrice(exp){ var p = num(exp.price); if (p == null) return ''; var cur = exp.currency || 'GBP'; try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(p); } catch(e){ return cur + ' ' + p; } }
+  function getBookingUrl(exp){
+    var raw = exp.booking_url || exp.book_url || exp.url || exp.link || '';
+    if (!raw) return '';
+    try {
+      var u = new URL(raw, 'https://www.tickadoo.com');
+      if (!u.searchParams.has('utm_source')) {
+        u.searchParams.set('utm_source', 'mcp');
+        u.searchParams.set('utm_medium', 'mcp-app');
+        u.searchParams.set('utm_campaign', 'experience-trio');
+        var callId = exp && exp._meta && exp._meta.agent_call_id;
+        if (callId && typeof callId === 'string') u.searchParams.set('utm_content', callId.replace(/-/g,'').slice(0,8));
+      }
+      return u.toString();
+    } catch(e) { return raw; }
+  }
+
+  var rendered = false;
+  function render(payload) {
+    var root = document.getElementById('trio');
+    var tagline = document.getElementById('tagline');
+    var list = (payload && payload.results) || [];
+    if (!list.length) {
+      root.innerHTML = '<div class="empty">No related experiences yet.</div>';
+      rendered = true;
+      return;
+    }
+    var ctx = (payload && payload.context) || 'pair';
+    var taglineMap = { pair: 'Pairs well with this', after: 'After you enjoy this', nearby: 'Nearby experiences', similar: 'Similar experiences' };
+    tagline.textContent = taglineMap[ctx] || 'Related experiences';
+    root.innerHTML = list.slice(0, 3).map(function (exp) {
+      var img = exp.image_url || exp.hero_image || '';
+      var url = getBookingUrl(exp);
+      var rating = num(exp.rating);
+      return '<div class="card">' +
+        (img ? '<img alt="" loading="lazy" src="' + escapeHtml(img) + '">' : '') +
+        '<div class="body">' +
+          '<h3 class="title">' + escapeHtml(exp.title || '') + '</h3>' +
+          '<p class="meta">' + (rating != null ? '\u2b50 ' + rating.toFixed(1) : '') + '</p>' +
+        '</div>' +
+        '<div class="row">' +
+          '<span class="price">' + formatPrice(exp) + '</span>' +
+          (url ? '<a class="cta" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Book</a>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    rendered = true;
+  }
+
+  function handleMessage(event) {
+    var raw = event.data;
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) { return; } }
+    var payload = extractPayload(raw);
+    render(payload || {});
+  }
+  window.addEventListener('message', handleMessage, false);
+
+  function sendInitialize() {
+    emit({ jsonrpc: '2.0', method: 'initialize', params: { resource: 'experience-trio', protocolVersion: '2025-06-18' } });
+  }
+  sendInitialize();
+  var _retry = setInterval(function () { if (rendered) { clearInterval(_retry); return; } sendInitialize(); }, 1500);
+  setTimeout(function () { clearInterval(_retry); }, 15000);
+})();
+</script>
+</body></html>`;
+
 const UI_RESOURCES: readonly UiResourceSpec[] = [
   {
     name: "experience-card",
@@ -751,6 +859,17 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
           ],
           connectDomains: [],
         },
+      },
+    },
+  },
+  {
+    name: "experience-trio",
+    uri: EXPERIENCE_TRIO_URI,
+    description: "Three related experiences in a row. Rendered when get_related_experiences returns.",
+    html: EXPERIENCE_TRIO_HTML,
+    resourceMeta: {
+      ui: {
+        prefersBorder: false,
       },
     },
   },

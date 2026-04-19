@@ -59,9 +59,9 @@ describe("discovery routes", () => {
     expect(payload._meta["io.modelcontextprotocol.registry/publisher-provided"].tools).toHaveLength(MCP_PUBLIC_TOOL_COUNT);
     expect(payload._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool: { name: string }) => tool.name)).toEqual(
       expect.arrayContaining([
+        "search_experiences",
         "get_last_minute",
-        "recommend_experiences",
-        "plan_itinerary",
+        "get_related_experiences",
         "get_travel_tips",
         "get_transfer_info",
         "whats_on_tonight",
