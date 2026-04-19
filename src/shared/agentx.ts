@@ -19,6 +19,33 @@ export const AGENTX_HTML = `<!doctype html>
 <meta property="article:author" content="Francis Hellyer">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://mcp.tickadoo.com/agentx">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "AgentX: the playbook for being discoverable to AI agents",
+  "description": "An opinionated playbook on Agent Experience Optimization — how to make your product, catalogue, or service legible to AI agents via MCP, llms.txt, and the attribution plumbing that decides winners.",
+  "author": {
+    "@type": "Person",
+    "name": "Francis Hellyer",
+    "affiliation": {
+      "@type": "Organization",
+      "name": "tickadoo",
+      "url": "https://tickadoo.com"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "tickadoo",
+    "url": "https://tickadoo.com"
+  },
+  "datePublished": "2026-04-19",
+  "dateModified": "2026-04-19",
+  "keywords": "Agent Experience Optimization, AgentX, AEO, MCP, Model Context Protocol, AI agents, LLM discoverability, llms.txt, agent-card.json",
+  "mainEntityOfPage": "https://mcp.tickadoo.com/agentx",
+  "articleSection": "Agent Experience Optimization"
+}
+</script>
 <style>
   :root {
     --bg: #ffffff;
