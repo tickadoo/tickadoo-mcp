@@ -107,8 +107,8 @@ app.get("/admin/telemetry.json", async (c) => {
   }
 });
 
-// MCP endpoint
-app.all("/mcp", async (c) => {
+// MCP request handler (shared by /mcp and POST /)
+async function handleMcpRequest(c: any): Promise<Response> {
   const req = c.req.raw;
 
   // OPTIONS preflight
@@ -141,14 +141,28 @@ app.all("/mcp", async (c) => {
 
   await server.connect(transport);
   return transport.handleRequest(req);
-});
+}
 
-// Landing page (root) - simplified JSON for now; full HTML ported in Phase 2
+// MCP endpoint (canonical path)
+app.all("/mcp", handleMcpRequest);
+
+// Bot/crawler convenience handlers (cuts dashboard 4xx noise from indexers)
+app.get("/robots.txt", () =>
+  textResponse("User-agent: *\nDisallow: /\n", { contentType: "text/plain; charset=utf-8", cache: CACHE_1H })
+);
+app.get("/favicon.ico", () => new Response(null, { status: 204, headers: { "Cache-Control": CACHE_1H } }));
+app.get("/sitemap.xml", () =>
+  textResponse('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n',
+    { contentType: "application/xml; charset=utf-8", cache: CACHE_1H })
+);
+
+// Landing page: GET serves the JSON descriptor; POST is forwarded to the MCP handler so
+// legacy clients that POST JSON-RPC at the root still work without a 404.
 app.get("/", () =>
   jsonResponse({
     name: SERVER_NAME,
     version: SERVER_VERSION,
-    description: "tickadoo MCP Server — 14 AI-powered tools for experience discovery and booking",
+    description: "tickadoo MCP Server — AI-powered tools for experience discovery and booking",
     endpoint: "https://mcp.tickadoo.com/mcp",
     docs: {
       llms_txt: "https://mcp.tickadoo.com/llms.txt",
@@ -157,6 +171,7 @@ app.get("/", () =>
     },
   })
 );
+app.post("/", handleMcpRequest);
 
 // 404
 app.all("*", () => jsonResponse({ error: "not found" }, { status: 404 }));
