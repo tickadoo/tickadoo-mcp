@@ -547,6 +547,60 @@ const EXAMPLES_HTML = `<!doctype html>
 </body>
 </html>`;
 
+// robots.txt — /examples is INDEXABLE (public sales asset), partner iframes are NOT
+// (they carry Referer-locked keys; indexing them would be both pointless and a
+// minor privacy concern).
+const ROBOTS_TXT = [
+  "# widgets.tickadoo.com — partner iframe subdomain",
+  "User-agent: *",
+  "Allow: /examples",
+  "Allow: /health",
+  "Disallow: /map",
+  "Disallow: /card",
+  "Disallow: /trio",
+  "Disallow: /admin",
+  "",
+  "Sitemap: https://widgets.tickadoo.com/sitemap.xml",
+  "",
+  "# AI agents — explicit welcome",
+  "User-agent: GPTBot",
+  "Allow: /examples",
+  "",
+  "User-agent: OAI-SearchBot",
+  "Allow: /examples",
+  "",
+  "User-agent: ChatGPT-User",
+  "Allow: /examples",
+  "",
+  "User-agent: ClaudeBot",
+  "Allow: /examples",
+  "",
+  "User-agent: PerplexityBot",
+  "Allow: /examples",
+  "",
+  "User-agent: Googlebot",
+  "Allow: /examples",
+  "",
+  "User-agent: Bingbot",
+  "Allow: /examples",
+  "",
+  "User-agent: Applebot-Extended",
+  "Allow: /examples",
+  "",
+].join("\n") + "\n";
+
+app.get("/robots.txt", (c) => c.text(ROBOTS_TXT, 200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" }));
+
+const SITEMAP_XML = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+  '  <url><loc>https://widgets.tickadoo.com/examples</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>',
+  '</urlset>',
+  "",
+].join("\n");
+
+app.get("/sitemap.xml", (c) => c.text(SITEMAP_XML, 200, { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" }));
+
 app.get("/examples", (c) => c.html(EXAMPLES_HTML, 200, {
   "Cache-Control": "public, max-age=300",
   "Content-Security-Policy": "default-src 'self'; frame-src 'self'; style-src 'self' 'unsafe-inline'",
