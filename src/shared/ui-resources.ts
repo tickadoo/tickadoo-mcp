@@ -934,9 +934,17 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
       "Inline booking card for a single tickadoo experience. Rendered by MCP Apps-capable clients when get_experience_details returns.",
     html: EXPERIENCE_CARD_HTML,
     resourceMeta: {
+      // MCP Apps canonical (Claude, Goose, VS Code)
       ui: {
-        // Card already has its own rounded-border styling; suppress host chrome.
         prefersBorder: false,
+      },
+      // OpenAI Apps SDK compatibility keys (ChatGPT) — snake_case
+      "openai/widgetDescription":
+        "Inline booking card for a single tickadoo experience with hero image, price, rating, badges, and a booking CTA. Used by ChatGPT after get_experience_details or check_availability.",
+      "openai/widgetPrefersBorder": false,
+      "openai/widgetCSP": {
+        connect_domains: [],
+        resource_domains: [],
       },
     },
   },
@@ -947,10 +955,9 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
       "Interactive map with price-pin markers for a list of nearby tickadoo experiences. Rendered by MCP Apps-capable clients when find_nearby_experiences returns.",
     html: EXPERIENCE_MAP_HTML,
     resourceMeta: {
+      // MCP Apps canonical (Claude, Goose, VS Code)
       ui: {
         prefersBorder: true,
-        // Map iframe fetches Leaflet from cdnjs and basemap tiles from CARTO.
-        // Hosts with strict CSP (Claude, ChatGPT) block anything not listed here.
         csp: {
           resourceDomains: [
             "https://cdnjs.cloudflare.com",
@@ -962,6 +969,20 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
           connectDomains: [],
         },
       },
+      // OpenAI Apps SDK compatibility (ChatGPT) — snake_case
+      "openai/widgetDescription":
+        "Interactive map showing tickadoo experiences near a location, with price-pin markers and a booking panel on tap. Used by ChatGPT after find_nearby_experiences.",
+      "openai/widgetPrefersBorder": true,
+      "openai/widgetCSP": {
+        resource_domains: [
+          "https://cdnjs.cloudflare.com",
+          "https://a.basemaps.cartocdn.com",
+          "https://b.basemaps.cartocdn.com",
+          "https://c.basemaps.cartocdn.com",
+          "https://d.basemaps.cartocdn.com",
+        ],
+        connect_domains: [],
+      },
     },
   },
   {
@@ -970,8 +991,17 @@ const UI_RESOURCES: readonly UiResourceSpec[] = [
     description: "Three related experiences in a row. Rendered when get_related_experiences returns.",
     html: EXPERIENCE_TRIO_HTML,
     resourceMeta: {
+      // MCP Apps canonical
       ui: {
         prefersBorder: false,
+      },
+      // OpenAI Apps SDK compatibility (ChatGPT)
+      "openai/widgetDescription":
+        "Three related tickadoo experiences in a responsive 3-up grid. Used by ChatGPT after get_related_experiences to suggest pair/after/nearby/similar picks.",
+      "openai/widgetPrefersBorder": false,
+      "openai/widgetCSP": {
+        connect_domains: [],
+        resource_domains: [],
       },
     },
   },
