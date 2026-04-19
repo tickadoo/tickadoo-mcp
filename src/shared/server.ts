@@ -2876,7 +2876,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_experiences",
-    `Search for shows, theatre, events, tours and experiences in a specific city on tickadoo. Supports optional free-text query matching against titles and descriptions, optional category filtering (${formatAvailableSearchCategories()}), optional min/max price filtering in the local currency, optional date filtering with dateFrom/dateTo, and optional sorting (${formatAvailableSearchSorts()}). ${LANGUAGE_SUPPORT_NOTE} Use when a user asks what to do in a city, wants event/show recommendations, or is looking for tickets.`,
+    `Use this when a user wants to find shows, theatre, tours, attractions, or experiences in a specific city, or asks "what to do in X", "things to do in X", "shows in X tonight", or "tickets for X". Searches tickadoo's 27,000+ bookable experiences across 680+ cities with consolidated live pricing. Supports filtering by category (${formatAvailableSearchCategories()}), free-text query, date range (dateFrom/dateTo), price range, tags (e.g. WestEnd, Musical, WalkingTour), audience (Family, Couples, AdultsOnly), indoor/outdoor setting, physical level, duration, language availability, minimum rating, and free-cancellation. Sorts by ${formatAvailableSearchSorts()}. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -2949,7 +2949,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "search_by_mood",
-    `Search tickadoo experiences by emotional intent instead of category. Maps moods (${SEARCH_MOOD_OPTIONS.join(", ")}) to the most relevant audience, tag, setting, rating, and price filters, then runs a city search. ${LANGUAGE_SUPPORT_NOTE} Use when a user says things like "something romantic", "we need to relax", "kids are bored", or "luxury options in Paris".`,
+    `Use this when a user describes the FEELING or VIBE they want rather than a category, e.g. "something romantic", "chill afternoon", "fun for the kids", "adventurous day", "cultured evening", "spontaneous". Maps moods (${SEARCH_MOOD_OPTIONS.join(", ")}) to tickadoo's audience, tag, setting, rating, and price filters and returns curated experiences in the given city that match the mood. Prefer this over search_experiences when the user's language is emotional rather than taxonomic. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       mood: z.enum(SEARCH_MOOD_OPTIONS).describe(`Mood preset. Valid values: ${SEARCH_MOOD_OPTIONS.join(", ")}`),
@@ -3009,7 +3009,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_whats_on_this_week",
-    `Return a day-by-day breakdown of the top experiences happening over the next 7 days in a city, grouped into morning, afternoon, and evening slots, with weekly highlights. ${LANGUAGE_SUPPORT_NOTE} Use when a user says things like "what's on this week in Paris?" or "I'm in London for the next few days, what should I do each day?"`,
+    `Use this when a user is planning a multi-day trip and wants a week-ahead overview of things to do in a specific city. Returns a day-by-day breakdown for the next 7 days grouped by morning, afternoon, and evening, plus weekly highlights (best-selling, unique to the week, family-friendly). Prefer this over search_experiences when the user's question is temporal ("what's on this week") rather than categorical. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -3134,7 +3134,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_last_minute",
-    `Find tickadoo experiences starting within the next few hours in a city. Sorts by soonest start time, adds countdown text like "starts in 47 minutes", and flags high urgency when a start is imminent or inventory is low. ${LANGUAGE_SUPPORT_NOTE}`,
+    `Use this when a user wants something STARTING IN THE NEXT FEW HOURS, e.g. "what's happening now", "last-minute tickets", "we're stuck in the rain, what can we do", "walk-up availability", "anything we can catch in the next hour". Sorts tickadoo inventory by soonest start time, adds countdown text like "starts in 47 minutes", and flags urgency when tickets are nearly sold out. Prefer this over whats_on_tonight when the user's language signals IMMEDIATE, not just today. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug, such as 'london', 'new-york', or 'paris'."),
       hours: z.number().optional().default(DEFAULT_LAST_MINUTE_HOURS).describe(`How many hours ahead to search for imminent starts (default ${DEFAULT_LAST_MINUTE_HOURS}, max ${MAX_LAST_MINUTE_HOURS}).`),
@@ -3306,7 +3306,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "whats_on_tonight",
-    `Find bookable experiences happening later today in a city. Automatically filters to today, removes already-started events, adds "starts in" countdowns, surfaces urgency signals from inventory data, and sorts by soonest start time with evening/show/nightlife boosts. ${LANGUAGE_SUPPORT_NOTE} Use for concierge-style requests like "what's on tonight in London?" or "any shows tonight in Paris?".`,
+    `Use this when a user asks "what's on tonight", "what can we do tonight", "shows tonight in X", or anything else explicitly scoped to TODAY or THIS EVENING in a specific city. Filters tickadoo inventory to today only, removes already-started events, adds "starts in" countdowns, and flags tickets-almost-gone. Prefer get_last_minute when the user's window is under a few hours; prefer search_experiences for future-date queries. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'new-york', 'paris', 'tokyo', 'dubai')"),
       category: z.enum(AVAILABLE_SEARCH_CATEGORIES).optional().describe(`Optional category filter. Valid values: ${formatAvailableSearchCategories()}.`),
@@ -3508,7 +3508,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   const nearbyTool = server.tool(
     "find_nearby_experiences",
-    `Find shows, events and experiences near a geographic location on tickadoo. Supports optional date filtering with dateFrom/dateTo. ${LANGUAGE_SUPPORT_NOTE} Use when a user shares their location or asks for things to do near them.`,
+    `Use this when a user has SHARED A LOCATION (latitude/longitude), asks what's near their hotel, near a landmark, or within walking distance of coordinates. Returns tickadoo experiences sorted by distance from the given lat/lng. Supports optional date filtering with dateFrom/dateTo. Prefer this over search_experiences when the query is geo-anchored rather than city-level. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       latitude: z.number().describe("Latitude"),
       longitude: z.number().describe("Longitude"),
@@ -3651,7 +3651,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "list_cities",
-    "List all cities where tickadoo has bookable experiences. Use to help users discover available destinations.",
+    `Use this when a user asks "what cities do you cover", "do you have [X]", "show me all destinations", or similar. Returns all 680+ tickadoo cities with slug, country, and experience count. Prefer this over search_experiences when the user is exploring coverage rather than looking for a specific experience.`,
     {
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
       query: z.string().optional().describe("Optional city name or slug filter (e.g. 'new', 'paris', 'tokyo')"),
@@ -3719,7 +3719,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_city_guide",
-    `Return a curated city overview for trip planning. Summarises a destination with top highlights, category breakdown, price range, best_for suggestions, seasonal guidance, insider tips, and audience/tag signals. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks "tell me about things to do in Prague" or wants a pre-arrival city briefing instead of a raw search.`,
+    `Use this when a user is researching a DESTINATION rather than a specific date or activity, e.g. "tell me about London", "is Paris good for families", "what's Tokyo best known for", "planning a trip to Rome". Returns a curated overview with top highlights, category mix, price range, seasonal guidance, insider tips, audience/tag breakdowns, and best-for suggestions. Prefer this over search_experiences when the user is in discovery/research mode rather than ready to book. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'london', 'prague', 'new-york', 'rome')"),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -3819,7 +3819,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_travel_tips",
-    `Return hardcoded local insider advice for 20 launch cities. Covers transport, money, safety, culture, food, weather, language, and connectivity, plus emergency numbers and quick local phrases. ${LANGUAGE_SUPPORT_NOTE} Use when a user asks "what should I know before visiting Tokyo?" or wants a hotel pre-arrival briefing beyond generic guidebook tips.`,
+    `Use this when a user is PREPARING for a trip or asks practical questions about a specific city, e.g. "what should I know before Tokyo", "is it safe in Rome", "how much cash for Paris", "what's the weather like in London in April". Returns curated local tips on transport, money, safety, culture, food, weather, language, connectivity, emergency numbers, and quick phrases for 20 launch cities. Prefer this over get_city_guide when the user's intent is practical preparation rather than destination discovery. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug (e.g. 'tokyo', 'paris', 'new-york', 'london')"),
       topic: z.enum(TRAVEL_TIP_TOPICS).optional().describe("Optional topic filter: transport, money, safety, culture, food, weather, language, or connectivity"),
@@ -3948,7 +3948,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "check_availability",
-    `Quick date-specific availability check for a specific tickadoo experience. Returns availability for one date only, plus party total, booking URL, and Ghost Checkout intent-token payload metadata. ${LANGUAGE_SUPPORT_NOTE} Use when the user asks "is this available on Saturday?" or wants a fast price check without the full experience detail payload.`,
+    `Use this when a user has PICKED A SPECIFIC experience and asks "is it available on [date]", "can I book it for [date]", or wants a price for a specific party size. Returns live availability for a single date plus party-total price, booking URL, and Ghost Checkout intent-token metadata for fast completion. Prefer get_experience_details when the user is still exploring; use check_availability only when they've chosen. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       slug: z.string().describe("Tickadoo slug or booking path, e.g. 'london-dungeon-tickets' or '/london/london-dungeon-tickets'"),
       date: z.string().describe("Date to check in ISO format YYYY-MM-DD (e.g. '2026-04-05')"),
@@ -4028,7 +4028,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   const detailsTool = server.tool(
     "get_experience_details",
-    `Get detailed availability, venue details, and images for a specific tickadoo experience. Prefer passing the tickadoo slug or booking URL path; provider and provider_id are legacy fallback inputs. ${LANGUAGE_SUPPORT_NOTE}`,
+    `Use this when a user has a SPECIFIC experience in mind and wants full information before deciding, e.g. reviews, venue, images, duration, price, what's included, accessibility, booking urgency. Prefer passing the tickadoo slug or booking URL path; provider/provider_id are legacy fallback inputs. Includes cross-sell suggestions, intent tokens for fast booking, and accessibility metadata. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       slug: z.string().optional().describe("Preferred: tickadoo slug or path, e.g. 'london-dungeon-tickets' or '/london/london-dungeon-tickets'"),
       provider: z.string().optional().describe("Legacy fallback only: hidden provider name used internally"),
@@ -4142,7 +4142,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "compare_experiences",
-    `Compare 2 to 5 tickadoo experiences side-by-side. Returns winner callouts for best_value, highest_rated, most_popular, and best_for_families, plus key differences across price, duration, reviews, accessibility, and cancellation policy. ${LANGUAGE_SUPPORT_NOTE}`,
+    `Use this when a user is CHOOSING between 2 to 5 specific tickadoo experiences and wants them side-by-side, e.g. "compare these two", "which should we pick", "Hamilton vs Lion King". Returns winner callouts (best_value, highest_rated, most_popular, best_for_families) plus key differences across price, duration, reviews, accessibility, and tags. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       slugs: z.array(z.string().min(1)).min(2).max(5).describe("Array of 2-5 tickadoo slugs or booking paths to compare side-by-side."),
       language: z.string().optional().default(DEFAULT_LANGUAGE).describe(LANGUAGE_PARAM_DESCRIPTION),
@@ -4218,7 +4218,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   const relatedTool = server.tool(
     "get_related_experiences",
-    "Find experiences related to a given experience. Use for cross-sell, pairs with, or also nearby recommendations. Returns up to 10 related products with edge metadata.",
+    `Use this when a user has expressed interest in a specific tickadoo experience and wants SOMETHING SIMILAR, NEARBY, or TO PAIR WITH IT, e.g. "what else like this", "what should we do after the show", "anything nearby", "similar to this but cheaper". Returns up to 10 related experiences with edge metadata, blending semantic similarity (pgvector) with heuristic co-book / tag / spatial signals. Context parameter controls the relationship type: pair, after, nearby, or similar.`,
     {
       product_id: z.string().describe("Product slug of the source experience"),
       context: z.enum(["pair", "after", "nearby", "similar"]).default("pair")
@@ -4433,7 +4433,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_transfer_info",
-    `Get airport, station, or port transfer options from a city's primary arrival hub to hotel coordinates. Returns taxi, tube/metro, bus, and train estimates with durations, estimated costs, and practical directions. ${LANGUAGE_SUPPORT_NOTE} Uses known default hubs per city, for example Heathrow for London airports or Gare du Nord for Paris stations.`,
+    `Use this when a user is arriving in a city and needs to get from an AIRPORT, STATION, or PORT to a hotel, e.g. "how do I get from Heathrow to my hotel in Kensington", "taxi from CDG to Le Marais". Returns taxi, metro, bus, and train estimates with durations, costs, and directions. Uses known default hubs per city. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("Supported city, such as London, Paris, New York, Amsterdam, Barcelona, Rome, or Tokyo."),
       from_type: z.enum(TRANSFER_FROM_TYPES).describe("Arrival hub type: airport, station, or port."),
@@ -4507,7 +4507,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
   server.tool(
     "get_family_day",
-    `Build a full family day in one city with a morning activity, lunch tip, afternoon attraction, and optional evening stop. Uses kids_ages for age-aware filtering, prefers wheelchair-friendly options when toddlers make stroller access likely, and clusters the day geographically to reduce travel. ${LANGUAGE_SUPPORT_NOTE}`,
+    `Use this when a user is PLANNING A DAY OUT with children and wants a turnkey itinerary, e.g. "family day in London", "things to do with 7-year-old in Paris", "plan our day in Rome with the kids". Returns a morning activity + lunch tip + afternoon attraction + optional evening stop, age-aware via kids_ages, preferring wheelchair-friendly options when wheelchair_accessible is set. ${LANGUAGE_SUPPORT_NOTE}`,
     {
       city: z.string().describe("City name or slug, such as 'london', 'new-york', or 'paris'."),
       kids_ages: z.array(z.number().int().min(0).max(17)).optional().describe("Optional array of child ages. Under 6 prefers easy and shorter stops, ages 6-12 prefer interactive or outdoor options, teens can handle more adventurous picks, and any age under 3 requires wheelchair-accessible options for stroller-friendly planning."),
