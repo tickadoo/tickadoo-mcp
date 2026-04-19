@@ -4,6 +4,7 @@ import {
   MCP_CAPABILITY_CATEGORIES,
   MCP_PUBLIC_TOOL_COUNT,
 } from "../src/shared/discovery.js";
+import { SERVER_VERSION } from "../src/shared/config.js";
 import { buildLlmsFullTxt, buildLlmsTxt } from "../src/shared/llms.js";
 
 describe("llms docs", () => {
@@ -12,7 +13,7 @@ describe("llms docs", () => {
     const fullDoc = buildLlmsFullTxt();
 
     for (const snippet of [
-      "Version: 1.4.1",
+      `Version: ${SERVER_VERSION}`,
       `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
       `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
     ]) {
@@ -123,23 +124,23 @@ describe("llms docs", () => {
     const fullDoc = buildLlmsFullTxt();
 
     for (const snippet of [
-      "recommend_experiences",
-      "get_categories",
+      "search_experiences",
+      "get_related_experiences",
       "whats_on_tonight",
       "get_whats_on_this_week",
       "get_city_guide",
       "get_travel_tips",
       "get_transfer_info",
-      "plan_itinerary",
-      "query (required): natural-language preference prompt such as romantic evening in Paris under EUR 100",
-      "days (required): number of days to plan, from 1 to 7",
+      "get_family_day",
+      "product_id (required): source experience slug",
+      "context (optional): pair, after, nearby, or similar. Default pair",
     ]) {
       expect(fullDoc).toContain(snippet);
     }
 
     for (const snippet of [
-      "- recommend_experiences:",
-      "- plan_itinerary:",
+      "- search_experiences:",
+      "- get_related_experiences:",
       "- whats_on_tonight:",
       "- get_city_guide:",
       "- get_travel_tips:",

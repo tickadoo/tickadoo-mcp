@@ -125,6 +125,16 @@ export const TOOL_DOCS: ToolDoc[] = [
     ],
   },
   {
+    name: "get_related_experiences",
+    summary: "Find up to 10 related experiences for a source slug using graph edges such as tag_overlap and spatial proximity. Returns hydrated product cards with edge type and strength metadata for cross-sell flows.",
+    registryDescription: "Find related experiences for a source slug using relationship contexts such as pair, after, nearby, and similar.",
+    inputs: [
+      "product_id (required): source experience slug",
+      "context (optional): pair, after, nearby, or similar. Default pair",
+      "max_results (optional): maximum related experiences to return, default 6, max 10",
+    ],
+  },
+  {
     name: "whats_on_tonight",
     summary: "Find experiences happening tonight in a city with start-time-aware ranking, venue context, and urgency signals for last-minute discovery.",
     registryDescription: "Find experiences happening tonight in a city, sorted for same-day discovery with timing and urgency context.",

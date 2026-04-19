@@ -86,8 +86,11 @@ type ParsedExperienceCard = {
 };
 
 const endpoint = new URL(process.env.MCP_URL ?? "https://mcp.tickadoo.com/mcp");
+const runLiveIntegrationTests = process.env.RUN_LIVE_INTEGRATION_TESTS === "1";
 const runDateFilteringTests = Boolean(process.env.MCP_URL?.trim());
 const itWhenDateFiltering = runDateFilteringTests ? it : it.skip;
+const describeLiveSequential = runLiveIntegrationTests ? describe.sequential : describe.skip;
+const describeLive = runLiveIntegrationTests ? describe : describe.skip;
 const client = new Client({ name: "tickadoo-vitest-integration", version: "1.0.0" });
 const transport = new StreamableHTTPClientTransport(endpoint);
 const expectedCategoryEnum = [
@@ -184,7 +187,7 @@ function normalizeCategoryText(value: string): string {
   return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-describe.sequential("tickadoo MCP live integration", () => {
+describeLiveSequential("tickadoo MCP live integration", () => {
   beforeAll(async () => {
     await client.connect(transport);
   }, 30_000);
@@ -993,6 +996,7 @@ type Issue74JsonRpcEnvelope = {
     message?: string;
   };
   result?: {
+    tools?: unknown[];
     content?: Array<{
       type?: string;
       text?: string;
@@ -1009,7 +1013,7 @@ type Issue74ToolCase = {
   validate: (response: unknown) => void;
 };
 
-const issue74LiveTools = await issue74FetchLiveTools();
+const issue74LiveTools = runLiveIntegrationTests ? await issue74FetchLiveTools() : [];
 const issue74LiveToolMap = new Map(issue74LiveTools.map((tool) => [tool.name, tool] as const));
 
 function issue74IsRecord(value: unknown): value is Record<string, unknown> {
@@ -1623,7 +1627,7 @@ const issue74ToolCases: Issue74ToolCase[] = [
   },
 ];
 
-describe("issue #74 live MCP coverage", () => {
+describeLive("issue #74 live MCP coverage", () => {
   it("advertises all 21 expected tools from the issue description", () => {
     const available = Array.from(issue74LiveToolMap.keys()).sort();
     const missing = ISSUE74_EXPECTED_TOOL_NAMES.filter((name) => !issue74LiveToolMap.has(name));
