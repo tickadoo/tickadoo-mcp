@@ -211,6 +211,7 @@ export function buildLlmsFullTxt(): string {
     `MCP endpoint: ${MCP_ENDPOINT_URL}`,
     `Short profile: ${LLMS_URL}`,
     `Company profile: ${COMPANY_LLMS_URL}`,
+    `AgentX playbook: ${AGENTX_URL}`,
     `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
     `Capabilities: ${MCP_CAPABILITY_CATEGORIES.join(", ")}`,
     "",
