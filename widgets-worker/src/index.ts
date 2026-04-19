@@ -123,7 +123,8 @@ async function fetchStructured(
   const resp = await fetch(mcpUrl + "/mcp", {
     method: "POST",
     headers: {
-      "Accept": "application/json",
+      // MCP streamable HTTP transport requires BOTH json and text/event-stream in Accept.
+      "Accept": "application/json, text/event-stream",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
