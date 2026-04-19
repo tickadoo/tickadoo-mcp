@@ -9,6 +9,12 @@ import {
 } from "./ui-resources.js";
 import { neonQuery } from "./neon.js";
 import {
+  extractTopProductIds,
+  recordAgentCall,
+  stampAgentCallId,
+  type SqlClient,
+} from "./telemetry.js";
+import {
   buildAvailabilityCheckPayload,
   calculateAvailabilityWindowDays,
   CHECK_AVAILABILITY_NEXT_STEP_HINT,
@@ -201,6 +207,7 @@ type LogWriter = (message: string) => void;
 type ToolLogSummary = Record<string, boolean | number | string | undefined>;
 type CreateTickadooServerOptions = {
   logWriter?: LogWriter;
+  telemetrySql?: SqlClient | null;
 };
 const SEARCH_SORT_OPTION_SET = new Set<string>(SEARCH_SORT_OPTIONS);
 const SEARCH_MOOD_OPTION_SET = new Set<string>(SEARCH_MOOD_OPTIONS);
@@ -1138,6 +1145,16 @@ type LoggedToolExecution = {
   summary?: ToolLogSummary;
 };
 
+type ToolRequestInfo = {
+  headers: Record<string, string | string[] | undefined>;
+  url?: URL;
+};
+
+type ToolExtra = {
+  requestInfo?: ToolRequestInfo;
+  sessionId?: string;
+};
+
 function defaultLogWriter(message: string) {
   console.log(message);
 }
@@ -1203,14 +1220,14 @@ function writeInfoLog(
 function withToolLogging<TArgs>(
   toolName: string,
   logWriter: LogWriter,
-  handler: (args: TArgs) => Promise<LoggedToolExecution>,
-): (args: TArgs) => Promise<ToolResponse> {
-  return async (args: TArgs) => {
+  handler: (args: TArgs, extra: ToolExtra) => Promise<LoggedToolExecution>,
+): (args: TArgs, extra: ToolExtra) => Promise<ToolResponse> {
+  return async (args: TArgs, extra: ToolExtra) => {
     const startedAt = Date.now();
     writeDebugLog(logWriter, toolName, "request", args);
 
     try {
-      const execution = await handler(args);
+      const execution = await handler(args, extra);
       writeInfoLog(
         logWriter,
         toolName,
@@ -1227,6 +1244,63 @@ function withToolLogging<TArgs>(
       throw error;
     }
   };
+}
+
+function extractResponseErrorMessage(response: ToolResponse): string | undefined {
+  if (response.isError !== true) {
+    return undefined;
+  }
+
+  const textPart = response.content.find((item): item is { type: "text"; text: string } =>
+    item.type === "text",
+  );
+  const text = textPart?.text?.trim();
+  if (!text) {
+    return undefined;
+  }
+
+  return text.startsWith("Error: ") ? text.slice("Error: ".length) : text;
+}
+
+function getStructuredContentObject(response: ToolResponse): Record<string, unknown> {
+  return response.structuredContent && typeof response.structuredContent === "object"
+    ? response.structuredContent as Record<string, unknown>
+    : {};
+}
+
+async function recordUiToolTelemetry(
+  telemetrySql: SqlClient | null | undefined,
+  toolName: string,
+  args: unknown,
+  extra: ToolExtra | undefined,
+  execution: LoggedToolExecution,
+  startedAt: number,
+): Promise<void> {
+  if (!telemetrySql || !extra?.requestInfo) {
+    return;
+  }
+
+  const structuredContent = getStructuredContentObject(execution.response);
+  const agentCallId = await recordAgentCall(
+    {
+      sql: telemetrySql,
+      requestInfo: extra.requestInfo,
+      startedAt,
+      sessionId: extra.sessionId,
+    },
+    {
+      toolName,
+      inputArgs: args,
+      resultCount: execution.resultCount,
+      topProductIds: extractTopProductIds(structuredContent),
+      isError: execution.response.isError === true,
+      errorMessage: extractResponseErrorMessage(execution.response),
+    },
+  );
+
+  if (agentCallId && execution.response.isError !== true) {
+    stampAgentCallId(structuredContent, agentCallId);
+  }
 }
 
 function formatValue(value: unknown): string {
@@ -2793,6 +2867,7 @@ async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedTo
 }
 export function createTickadooServer(options: CreateTickadooServerOptions = {}): McpServer {
   const logWriter = options.logWriter ?? defaultLogWriter;
+  const telemetrySql = options.telemetrySql ?? null;
   const server = new McpServer({
     name: SERVER_NAME,
     version: SERVER_VERSION,
@@ -3456,106 +3531,114 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
-    withToolLogging("find_nearby_experiences", logWriter, async args => {
-      const validated = validateNearbyArgs(args);
-      if (!validated.ok) {
-        return {
-          response: validated.error,
-          resultCount: 0,
-          summary: {
-            lat: typeof args.latitude === "number" ? args.latitude : undefined,
-            lng: typeof args.longitude === "number" ? args.longitude : undefined,
-            date_from: typeof args.dateFrom === "string" ? args.dateFrom.trim() || undefined : undefined,
-            date_to: typeof args.dateTo === "string" ? args.dateTo.trim() || undefined : undefined,
-            format: typeof args.format === "string" ? args.format : undefined,
-          },
-        };
-      }
-
-      const { latitude, longitude, radiusKm, dateFrom, dateTo, language, format } = validated.data;
-      const tagsArg = typeof args.tags === "string" ? args.tags : undefined;
-
-      try {
-        let products = await getProductsByLocation(latitude, longitude, radiusKm, language, { dateFrom, dateTo });
-        if (tagsArg) {
-          products = filterProductsByTags(products, tagsArg);
+    withToolLogging("find_nearby_experiences", logWriter, async (args, extra) => {
+      const startedAt = Date.now();
+      const execution = await (async (): Promise<LoggedToolExecution> => {
+        const validated = validateNearbyArgs(args);
+        if (!validated.ok) {
+          return {
+            response: validated.error,
+            resultCount: 0,
+            summary: {
+              lat: typeof args.latitude === "number" ? args.latitude : undefined,
+              lng: typeof args.longitude === "number" ? args.longitude : undefined,
+              date_from: typeof args.dateFrom === "string" ? args.dateFrom.trim() || undefined : undefined,
+              date_to: typeof args.dateTo === "string" ? args.dateTo.trim() || undefined : undefined,
+              format: typeof args.format === "string" ? args.format : undefined,
+            },
+          };
         }
-        if (!products.length) {
-          const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
-          const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
+
+        const { latitude, longitude, radiusKm, dateFrom, dateTo, language, format } = validated.data;
+        const tagsArg = typeof args.tags === "string" ? args.tags : undefined;
+
+        try {
+          let products = await getProductsByLocation(latitude, longitude, radiusKm, language, { dateFrom, dateTo });
+          if (tagsArg) {
+            products = filterProductsByTags(products, tagsArg);
+          }
+          if (!products.length) {
+            const suggestedRadiusKm = Math.min(radiusKm * 2, MAX_RADIUS_KM);
+            const [nearestCity] = await getNearbyCitySuggestions(latitude, longitude, language);
+            return {
+              response: createFormattedResponse(
+                format,
+                formatNearbyEmptyRecovery(
+                  radiusKm,
+                  suggestedRadiusKm,
+                  nearestCity ? { name: nearestCity.city.name } : undefined,
+                ),
+                nearbyEmptyRecoveryJson(
+                  latitude,
+                  longitude,
+                  radiusKm,
+                  suggestedRadiusKm,
+                  nearestCity ? { name: nearestCity.city.name } : undefined,
+                ),
+              ),
+              resultCount: 0,
+              summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
+            };
+          }
+
+          const enrichedProducts = await getMcpEnrichedProducts();
+          let filteredProducts = mergeEnrichedProducts(products, enrichedProducts);
+          filteredProducts = filterProductsByAudience(filteredProducts, args.audience as string | undefined);
+          filteredProducts = filterProductsBySetting(filteredProducts, args.setting as string | undefined);
+          filteredProducts = filterProductsByAccessibility(filteredProducts, args.wheelchair_accessible as boolean | undefined);
+          filteredProducts = filterProductsByPhysicalLevel(filteredProducts, args.physical_level as string | undefined);
+          filteredProducts = filterProductsByDuration(filteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
+          filteredProducts = filterProductsByLanguage(filteredProducts, args.available_language as string | undefined);
+          filteredProducts = filterProductsByRating(filteredProducts, args.min_rating as number | undefined);
+          filteredProducts = filterProductsByFreeCancellation(filteredProducts, args.free_cancellation as boolean | undefined);
+          const nearbySort = (typeof args.sort === "string" ? args.sort : "relevance") as SearchSort;
+          const nearbyMax = Math.min(Math.max(typeof args.max_results === "number" ? args.max_results : DEFAULT_SEARCH_RESULT_LIMIT, 1), 50);
+          const rankedProducts = sortProductsForSearch(filteredProducts, nearbySort);
+          const topProducts = rankedProducts.slice(0, nearbyMax);
+          let nearbyCitySlug = "nearby";
+          if (topProducts.length > 0) {
+            const cities = await getCities(language);
+            const firstCityId = topProducts[0].cityId;
+            const matchedCity = cities.find(ct => ct.id === firstCityId);
+            if (matchedCity?.slug) {
+              nearbyCitySlug = matchedCity.slug;
+            }
+          }
+
           return {
             response: createFormattedResponse(
               format,
-              formatNearbyEmptyRecovery(
-                radiusKm,
-                suggestedRadiusKm,
-                nearestCity ? { name: nearestCity.city.name } : undefined,
+              appendNextStepHint(
+                `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
+                NEARBY_NEXT_STEP_HINT,
               ),
-              nearbyEmptyRecoveryJson(
-                latitude,
-                longitude,
-                radiusKm,
-                suggestedRadiusKm,
-                nearestCity ? { name: nearestCity.city.name } : undefined,
-              ),
+              { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(nearbyCitySlug, topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby"), _best_picks: buildBestPicks(topProducts as any), _price_tiers: buildPriceTiers(topProducts as any), _group_summary: buildGroupSummary(topProducts as any) },
+              {
+                structuredContent: {
+                  latitude,
+                  longitude,
+                  radiusKm,
+                  ...(dateFrom ? { dateFrom } : {}),
+                  ...(dateTo ? { dateTo } : {}),
+                  totalExperiences: products.length,
+                  experiences: topProducts.map(product => productStructuredData(product, product.slug, language)),
+                },
+              },
             ),
+            resultCount: topProducts.length,
+            summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
+          };
+        } catch (error) {
+          return {
+            response: createFormattedErrorResponse(format, getErrorMessage(error)),
             resultCount: 0,
             summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
           };
         }
+      })();
 
-        const enrichedProducts = await getMcpEnrichedProducts();
-        let filteredProducts = mergeEnrichedProducts(products, enrichedProducts);
-        filteredProducts = filterProductsByAudience(filteredProducts, args.audience as string | undefined);
-        filteredProducts = filterProductsBySetting(filteredProducts, args.setting as string | undefined);
-        filteredProducts = filterProductsByAccessibility(filteredProducts, args.wheelchair_accessible as boolean | undefined);
-        filteredProducts = filterProductsByPhysicalLevel(filteredProducts, args.physical_level as string | undefined);
-        filteredProducts = filterProductsByDuration(filteredProducts, args.min_duration as number | undefined, args.max_duration as number | undefined);
-        filteredProducts = filterProductsByLanguage(filteredProducts, args.available_language as string | undefined);
-        filteredProducts = filterProductsByRating(filteredProducts, args.min_rating as number | undefined);
-        filteredProducts = filterProductsByFreeCancellation(filteredProducts, args.free_cancellation as boolean | undefined);
-        const nearbySort = (typeof args.sort === "string" ? args.sort : "relevance") as SearchSort;
-        const nearbyMax = Math.min(Math.max(typeof args.max_results === "number" ? args.max_results : DEFAULT_SEARCH_RESULT_LIMIT, 1), 50);
-        const rankedProducts = sortProductsForSearch(filteredProducts, nearbySort);
-        const topProducts = rankedProducts.slice(0, nearbyMax);
-        // Resolve city slug for _related_searches
-        let nearbyCitySlug = "nearby";
-        if (topProducts.length > 0) {
-          const cities = await getCities(language);
-          const firstCityId = topProducts[0].cityId;
-          const matchedCity = cities.find(ct => ct.id === firstCityId);
-          if (matchedCity?.slug) nearbyCitySlug = matchedCity.slug;
-        }
-        return {
-          response: createFormattedResponse(
-            format,
-            appendNextStepHint(
-              `${buildShownResultsLabel(topProducts.length, products.length, "nearby")}\n\n${topProducts.map(product => formatProduct(product, product.slug, language)).join("\n\n")}${formatAvailableFiltersHint(topProducts as any)}`,
-              NEARBY_NEXT_STEP_HINT,
-            ),
-            { ...nearbyJsonPayload(latitude, longitude, radiusKm, products.length, topProducts, language, { dateFrom, dateTo }), _available_filters: buildAvailableFilters(topProducts as any), _related_searches: buildRelatedSearches(nearbyCitySlug, topProducts as any), _conversation_starters: buildConversationStarters(topProducts as any, "nearby"), _best_picks: buildBestPicks(topProducts as any), _price_tiers: buildPriceTiers(topProducts as any), _group_summary: buildGroupSummary(topProducts as any) },
-            {
-              structuredContent: {
-                latitude,
-                longitude,
-                radiusKm,
-                ...(dateFrom ? { dateFrom } : {}),
-                ...(dateTo ? { dateTo } : {}),
-                totalExperiences: products.length,
-                experiences: topProducts.map(product => productStructuredData(product, product.slug, language)),
-              },
-            },
-          ),
-          resultCount: topProducts.length,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
-        };
-      } catch (error) {
-        return {
-          response: createFormattedErrorResponse(format, getErrorMessage(error)),
-          resultCount: 0,
-          summary: { lat: latitude, lng: longitude, radius_km: radiusKm, date_from: dateFrom, date_to: dateTo, format },
-        };
-      }
+      await recordUiToolTelemetry(telemetrySql, "find_nearby_experiences", args, extra, execution, startedAt);
+      return execution;
     }),
   );
 
@@ -3955,80 +4038,98 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       format: z.enum(RESPONSE_FORMATS).optional().default("text").describe("Response format: text (default) or json"),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
-    withToolLogging("get_experience_details", logWriter, async args => {
-      const validated = validateExperienceDetailsArgs(args);
-      if (!validated.ok) {
-        return {
-          response: validated.error,
-          resultCount: 0,
-          summary: {
-            slug: typeof args.slug === "string" ? args.slug.trim() || "(empty)" : undefined,
-            format: typeof args.format === "string" ? args.format : undefined,
-          },
-        };
-      }
-
-      const {
-        slug,
-        provider,
-        providerId,
-        days,
-        language,
-        format,
-      } = validated.data;
-
-      try {
-        let resolved: ResolvedProduct | undefined;
-        let providerName = provider;
-        let detailsProviderId = providerId;
-
-        if (slug) {
-          resolved = await resolveProductBySlug(slug, language);
-          providerName = resolved.product.provider;
-          detailsProviderId = resolved.product.providerId;
+    withToolLogging("get_experience_details", logWriter, async (args, extra) => {
+      const startedAt = Date.now();
+      const execution = await (async (): Promise<LoggedToolExecution> => {
+        const validated = validateExperienceDetailsArgs(args);
+        if (!validated.ok) {
+          return {
+            response: validated.error,
+            resultCount: 0,
+            summary: {
+              slug: typeof args.slug === "string" ? args.slug.trim() || "(empty)" : undefined,
+              format: typeof args.format === "string" ? args.format : undefined,
+            },
+          };
         }
 
-        const [details, enrichedProducts] = await Promise.all([
-          getExperienceDetails(providerName!, detailsProviderId!, days),
-          resolved?.product.slug ? getMcpEnrichedProducts() : Promise.resolve(new Map<string, McpProduct>()),
-        ]);
-        const enrichedDetails = mergeEnrichedDetails(details, resolved?.product.slug, enrichedProducts);
-        const bookingPath = resolved?.bookingPath;
-        return {
-          response: createFormattedResponse(
-            format,
-            appendNextStepHint([
-              resolved ? `🎭 ${resolved.product.title}` : "",
-              formatExperienceDetails(days, enrichedDetails),
-              resolved ? `   🔗 ${buildBookingUrl(resolved.bookingPath, language)}` : "",
-            ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
-            experienceDetailsJsonPayload(days, enrichedDetails, {
-              title: resolved?.product.title,
-              slug: resolved?.product.slug,
-              bookingPath,
-              language,
-            }),
-            {
-              structuredContent: {
-                source: "tickadoo",
-                slug: resolved?.product.slug,
-                tickadooProductId: resolved?.product.id,
-                bookingUrl: resolved ? buildBookingUrl(resolved.bookingPath, language) : undefined,
-                days,
-                details: enrichedDetails,
+        const {
+          slug,
+          provider,
+          providerId,
+          days,
+          language,
+          format,
+        } = validated.data;
+
+        try {
+          let resolved: ResolvedProduct | undefined;
+          let providerName = provider;
+          let detailsProviderId = providerId;
+
+          if (slug) {
+            resolved = await resolveProductBySlug(slug, language);
+            providerName = resolved.product.provider;
+            detailsProviderId = resolved.product.providerId;
+          }
+
+          const [details, enrichedProducts] = await Promise.all([
+            getExperienceDetails(providerName!, detailsProviderId!, days),
+            resolved?.product.slug ? getMcpEnrichedProducts() : Promise.resolve(new Map<string, McpProduct>()),
+          ]);
+          const enrichedDetails = mergeEnrichedDetails(details, resolved?.product.slug, enrichedProducts);
+          const bookingPath = resolved?.bookingPath;
+          const bookingUrl = resolved ? buildBookingUrl(resolved.bookingPath, language) : undefined;
+          const detailJson = experienceDetailsJsonPayload(days, enrichedDetails, {
+            title: resolved?.product.title,
+            slug: resolved?.product.slug,
+            bookingPath,
+            language,
+          });
+          const primaryVariant = enrichedDetails.mcpProduct?.variants?.[0];
+
+          return {
+            response: createFormattedResponse(
+              format,
+              appendNextStepHint([
+                resolved ? `🎭 ${resolved.product.title}` : "",
+                formatExperienceDetails(days, enrichedDetails),
+                resolved ? `   🔗 ${bookingUrl}` : "",
+              ].filter(Boolean).join("\n"), resolved ? DETAILS_NEXT_STEP_HINT : undefined),
+              detailJson,
+              {
+                structuredContent: {
+                  source: "tickadoo",
+                  title: resolved?.product.title,
+                  slug: resolved?.product.slug,
+                  tickadooProductId: resolved?.product.id,
+                  bookingUrl,
+                  booking_url: bookingUrl,
+                  imageUrl: enrichedDetails.desktopFeatureImageUrl ?? undefined,
+                  image_url: enrichedDetails.desktopFeatureImageUrl ?? undefined,
+                  duration_text: formatDuration(primaryVariant?.duration ?? null) ?? undefined,
+                  review_rating: enrichedDetails.mcpProduct?.reviewRating ?? null,
+                  review_count: enrichedDetails.mcpProduct?.reviewCount ?? null,
+                  tags: enrichedDetails.mcpProduct?.tags ?? [],
+                  days,
+                  details: enrichedDetails,
+                },
               },
-            },
-          ),
-          resultCount: 1,
-          summary: { slug: slug ?? `${providerName}:${detailsProviderId}`, format },
-        };
-      } catch (error) {
-        return {
-          response: createFormattedErrorResponse(format, getErrorMessage(error)),
-          resultCount: 0,
-          summary: { slug: slug ?? `${provider ?? ""}:${providerId ?? ""}`, format },
-        };
-      }
+            ),
+            resultCount: 1,
+            summary: { slug: slug ?? `${providerName}:${detailsProviderId}`, format },
+          };
+        } catch (error) {
+          return {
+            response: createFormattedErrorResponse(format, getErrorMessage(error)),
+            resultCount: 0,
+            summary: { slug: slug ?? `${provider ?? ""}:${providerId ?? ""}`, format },
+          };
+        }
+      })();
+
+      await recordUiToolTelemetry(telemetrySql, "get_experience_details", args, extra, execution, startedAt);
+      return execution;
     }),
   );
 
@@ -4125,144 +4226,150 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
       max_results: z.number().int().min(1).max(10).default(6),
     },
     READ_ONLY_TOOL_ANNOTATIONS,
-    withToolLogging("get_related_experiences", logWriter, async args => {
-      const edgeTypePreference: Record<"pair" | "after" | "nearby" | "similar", string[]> = {
-        pair: ["co_booked", "tag_overlap", "spatial"],
-        after: ["co_booked", "spatial"],
-        nearby: ["spatial"],
-        similar: ["similar", "tag_overlap"],
-      };
-      const productId = typeof args.product_id === "string" ? args.product_id.trim() : "";
-      const context = (args.context ?? "pair") as "pair" | "after" | "nearby" | "similar";
-      const maxResults = typeof args.max_results === "number" ? args.max_results : 6;
-
-      if (!productId) {
-        return {
-          response: createErrorResponse("product_id is required."),
-          resultCount: 0,
-          summary: {
-            context,
-            max_results: maxResults,
-          },
+    withToolLogging("get_related_experiences", logWriter, async (args, extra) => {
+      const startedAt = Date.now();
+      const execution = await (async (): Promise<LoggedToolExecution> => {
+        const edgeTypePreference: Record<"pair" | "after" | "nearby" | "similar", string[]> = {
+          pair: ["co_booked", "tag_overlap", "spatial"],
+          after: ["co_booked", "spatial"],
+          nearby: ["spatial"],
+          similar: ["similar", "tag_overlap"],
         };
-      }
+        const productId = typeof args.product_id === "string" ? args.product_id.trim() : "";
+        const context = (args.context ?? "pair") as "pair" | "after" | "nearby" | "similar";
+        const maxResults = typeof args.max_results === "number" ? args.max_results : 6;
 
-      try {
-        const edgeTypes = edgeTypePreference[context];
-        const edges = await neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
-          `SELECT target_id, edge_type, strength, metadata
-           FROM product_edges
-           WHERE source_id = $1
-             AND edge_type = ANY($2::text[])
-           ORDER BY strength DESC
-           LIMIT $3`,
-          [productId, edgeTypes, maxResults * 3],
-        );
-
-        const byTarget = new Map<string, { edge_type: string; strength: number; metadata: unknown }>();
-        for (const edge of edges) {
-          const prev = byTarget.get(edge.target_id);
-          if (!prev || Number(edge.strength) > prev.strength) {
-            byTarget.set(edge.target_id, {
-              edge_type: edge.edge_type,
-              strength: Number(edge.strength),
-              metadata: edge.metadata,
-            });
-          }
+        if (!productId) {
+          return {
+            response: createErrorResponse("product_id is required."),
+            resultCount: 0,
+            summary: {
+              context,
+              max_results: maxResults,
+            },
+          };
         }
 
-        const topTargets = Array.from(byTarget.entries())
-          .sort((a, b) => b[1].strength - a[1].strength)
-          .slice(0, maxResults);
+        try {
+          const edgeTypes = edgeTypePreference[context];
+          const edges = await neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
+            `SELECT target_id, edge_type, strength, metadata
+             FROM product_edges
+             WHERE source_id = $1
+               AND edge_type = ANY($2::text[])
+             ORDER BY strength DESC
+             LIMIT $3`,
+            [productId, edgeTypes, maxResults * 3],
+          );
 
-        const targetSlugs = topTargets.map(([slug]) => slug);
-        const products = targetSlugs.length > 0
-          ? await neonQuery<Array<{
-            slug: string;
-            title: string;
-            description: string | null;
-            image_url: string | null;
-            booking_url: string | null;
-            price: number | null;
-            currency: string | null;
-            rating: number | null;
-            review_count: number | null;
-            city_slug: string;
-            latitude: number | null;
-            longitude: number | null;
-          }>[number]>(
-            `SELECT DISTINCT ON (slug)
-               slug,
-               name AS title,
-               description,
-               COALESCE(image_url, desktop_image_url, vertical_image_url) AS image_url,
-               checkout_url AS booking_url,
-               price_from AS price,
-               currency_code AS currency,
-               rating,
-               review_count,
-               city_slug,
-               latitude,
-               longitude
-             FROM products
-             WHERE slug = ANY($1::text[])
-             ORDER BY slug, rating DESC NULLS LAST, review_count DESC NULLS LAST, updated_at DESC NULLS LAST, created_at DESC NULLS LAST`,
-            [targetSlugs],
-          )
-          : [];
-
-        const bySlug = new Map(products.map(product => [product.slug, product]));
-        const results = topTargets
-          .map(([slug, edge]) => {
-            const product = bySlug.get(slug);
-            if (!product) {
-              return null;
+          const byTarget = new Map<string, { edge_type: string; strength: number; metadata: unknown }>();
+          for (const edge of edges) {
+            const prev = byTarget.get(edge.target_id);
+            if (!prev || Number(edge.strength) > prev.strength) {
+              byTarget.set(edge.target_id, {
+                edge_type: edge.edge_type,
+                strength: Number(edge.strength),
+                metadata: edge.metadata,
+              });
             }
+          }
 
-            return {
-              ...product,
-              booking_url: product.booking_url || buildBookingUrl(`${product.city_slug}/${product.slug}`),
-              price: product.price == null ? null : Number(product.price),
-              rating: product.rating == null ? null : Number(product.rating),
-              review_count: product.review_count == null ? null : Number(product.review_count),
-              location: product.latitude != null && product.longitude != null
-                ? { latitude: Number(product.latitude), longitude: Number(product.longitude) }
-                : null,
-              edge_type: edge.edge_type,
-              edge_strength: edge.strength,
-              edge_metadata: edge.metadata,
-            };
-          })
-          .filter((value): value is NonNullable<typeof value> => value !== null);
+          const topTargets = Array.from(byTarget.entries())
+            .sort((a, b) => b[1].strength - a[1].strength)
+            .slice(0, maxResults);
 
-        const payload = {
-          source_id: productId,
-          context,
-          results,
-          total: results.length,
-        };
+          const targetSlugs = topTargets.map(([slug]) => slug);
+          const products = targetSlugs.length > 0
+            ? await neonQuery<Array<{
+              slug: string;
+              title: string;
+              description: string | null;
+              image_url: string | null;
+              booking_url: string | null;
+              price: number | null;
+              currency: string | null;
+              rating: number | null;
+              review_count: number | null;
+              city_slug: string;
+              latitude: number | null;
+              longitude: number | null;
+            }>[number]>(
+              `SELECT DISTINCT ON (slug)
+                 slug,
+                 name AS title,
+                 description,
+                 COALESCE(image_url, desktop_image_url, vertical_image_url) AS image_url,
+                 checkout_url AS booking_url,
+                 price_from AS price,
+                 currency_code AS currency,
+                 rating,
+                 review_count,
+                 city_slug,
+                 latitude,
+                 longitude
+               FROM products
+               WHERE slug = ANY($1::text[])
+               ORDER BY slug, rating DESC NULLS LAST, review_count DESC NULLS LAST, updated_at DESC NULLS LAST, created_at DESC NULLS LAST`,
+              [targetSlugs],
+            )
+            : [];
 
-        return {
-          response: createTextResponse(formatRelatedAsText(payload), { structuredContent: payload }),
-          resultCount: results.length,
-          summary: {
-            product_id: productId,
+          const bySlug = new Map(products.map(product => [product.slug, product]));
+          const results = topTargets
+            .map(([slug, edge]) => {
+              const product = bySlug.get(slug);
+              if (!product) {
+                return null;
+              }
+
+              return {
+                ...product,
+                booking_url: product.booking_url || buildBookingUrl(`${product.city_slug}/${product.slug}`),
+                price: product.price == null ? null : Number(product.price),
+                rating: product.rating == null ? null : Number(product.rating),
+                review_count: product.review_count == null ? null : Number(product.review_count),
+                location: product.latitude != null && product.longitude != null
+                  ? { latitude: Number(product.latitude), longitude: Number(product.longitude) }
+                  : null,
+                edge_type: edge.edge_type,
+                edge_strength: edge.strength,
+                edge_metadata: edge.metadata,
+              };
+            })
+            .filter((value): value is NonNullable<typeof value> => value !== null);
+
+          const payload = {
+            source_id: productId,
             context,
-            max_results: maxResults,
-            returned: results.length,
-          },
-        };
-      } catch (error) {
-        return {
-          response: createErrorResponse(getErrorMessage(error)),
-          resultCount: 0,
-          summary: {
-            product_id: productId,
-            context,
-            max_results: maxResults,
-          },
-        };
-      }
+            results,
+            total: results.length,
+          };
+
+          return {
+            response: createTextResponse(formatRelatedAsText(payload), { structuredContent: payload }),
+            resultCount: results.length,
+            summary: {
+              product_id: productId,
+              context,
+              max_results: maxResults,
+              returned: results.length,
+            },
+          };
+        } catch (error) {
+          return {
+            response: createErrorResponse(getErrorMessage(error)),
+            resultCount: 0,
+            summary: {
+              product_id: productId,
+              context,
+              max_results: maxResults,
+            },
+          };
+        }
+      })();
+
+      await recordUiToolTelemetry(telemetrySql, "get_related_experiences", args, extra, execution, startedAt);
+      return execution;
     }),
   );
 

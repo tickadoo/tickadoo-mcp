@@ -37,6 +37,22 @@ function makeProduct(overrides: Partial<Product>): Product {
     currency: "GBP",
     address: null,
     minPrice: 25,
+    mcpProduct: {
+      niceId: 1,
+      name: "Product",
+      url: "product-slug",
+      minPrice: 25,
+      reviewRating: 4.8,
+      reviewCount: 500,
+      indoorOutdoor: "Indoor",
+      physicalLevel: "Easy",
+      audience: ["Couples"],
+      tags: ["Evening"],
+      wheelchairAccessible: true,
+      strollerFriendly: false,
+      languageOptions: ["en"],
+      variants: [],
+    },
     ...overrides,
   };
 }

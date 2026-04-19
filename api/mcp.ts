@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { SERVER_VERSION } from "../src/shared/config.js";
 import { buildHealthPayload, CONTENT_SECURITY_POLICY, RESPONSE_CACHE_CONTROL, writeJson } from "./_shared.js";
 import { createTickadooServer } from "../src/shared/server.js";
+import { createTelemetrySql } from "../src/shared/telemetry.js";
 
 type BodyCapableRequest = IncomingMessage & { body?: unknown };
 
@@ -51,7 +52,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
-  const server = createTickadooServer();
+  const server = createTickadooServer({
+    telemetrySql: createTelemetrySql(process.env.NEON_URL),
+  });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

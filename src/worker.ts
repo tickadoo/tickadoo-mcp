@@ -12,12 +12,15 @@ import { createTickadooServer } from "./shared/server.js";
 import { SERVER_VERSION, SERVER_NAME } from "./shared/config.js";
 import { buildServerManifest, buildAgentCard } from "./shared/discovery.js";
 import { buildLlmsTxt, buildLlmsFullTxt } from "./shared/llms.js";
+import { createTelemetrySql } from "./shared/telemetry.js";
+import { fetchTelemetryDashboard, TELEMETRY_DASHBOARD_HTML } from "./shared/telemetry-dashboard.js";
 
 /* ---------- helpers ---------- */
 
 const CACHE_1H = "public, max-age=3600";
 const CACHE_5M = "public, max-age=300, stale-while-revalidate=300";
 const CACHE_1M = "public, max-age=60, stale-while-revalidate=300";
+const CACHE_NO_STORE = "no-store";
 
 function jsonResponse(data: unknown, opts?: { status?: number; cache?: string }) {
   return new Response(JSON.stringify(data), {
@@ -61,7 +64,7 @@ function buildHealthPayload() {
 
 /* ---------- Hono app ---------- */
 
-const app = new Hono();
+const app = new Hono<{ Bindings: { NEON_URL?: string } }>();
 
 app.use("*", cors({ origin: "*" }));
 
@@ -79,6 +82,30 @@ app.get("/.well-known/mcp.json", () => jsonResponse(buildServerManifest(), { cac
 
 // .well-known/agent-card.json
 app.get("/.well-known/agent-card.json", () => jsonResponse(buildAgentCard(), { cache: CACHE_1H }));
+
+// TODO: Gate these admin telemetry routes behind the shared admin auth middleware once one exists in this repo.
+app.get("/admin/telemetry", () =>
+  textResponse(TELEMETRY_DASHBOARD_HTML, {
+    contentType: "text/html; charset=utf-8",
+    cache: CACHE_NO_STORE,
+  })
+);
+
+app.get("/admin/telemetry.json", async (c) => {
+  const sql = createTelemetrySql(c.env.NEON_URL ?? process.env.NEON_URL);
+  if (!sql) {
+    return jsonResponse({ error: "NEON_URL is not configured" }, { status: 500, cache: CACHE_NO_STORE });
+  }
+
+  try {
+    return jsonResponse(await fetchTelemetryDashboard(sql), { cache: CACHE_NO_STORE });
+  } catch (error) {
+    return jsonResponse(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500, cache: CACHE_NO_STORE },
+    );
+  }
+});
 
 // MCP endpoint
 app.all("/mcp", async (c) => {
@@ -104,7 +131,9 @@ app.all("/mcp", async (c) => {
   }
 
   // MCP transport (stateless, JSON response mode)
-  const server = createTickadooServer();
+  const server = createTickadooServer({
+    telemetrySql: createTelemetrySql(c.env.NEON_URL ?? process.env.NEON_URL),
+  });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
