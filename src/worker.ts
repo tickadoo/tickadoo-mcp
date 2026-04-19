@@ -155,13 +155,100 @@ async function handleMcpRequest(c: any): Promise<Response> {
 app.all("/mcp", handleMcpRequest);
 
 // Bot/crawler convenience handlers (cuts dashboard 4xx noise from indexers)
+//
+// robots.txt strategy: the MCP JSON-RPC endpoint at /mcp is not indexable
+// (POST only, no HTML) so crawlers wouldn't get anything useful there anyway.
+// But the HTML routes we DO want indexed are /agentx, /llms.txt, /llms-full.txt,
+// /.well-known/mcp.json, /.well-known/agent-card.json. Previously this file
+// returned a blanket Disallow: /, which silently removed tickadoo from every
+// AI crawler's index — that was AgentX self-sabotage. The new policy:
+// explicitly allow major AI bots, list the sitemap, and disallow only /mcp
+// (which isn't meant to be crawled).
+const ROBOTS_TXT = [
+  "# Default — allow discovery, disallow the JSON-RPC endpoint",
+  "User-agent: *",
+  "Allow: /",
+  "Disallow: /mcp",
+  "",
+  "# Sitemap",
+  "Sitemap: https://mcp.tickadoo.com/sitemap.xml",
+  "",
+  "# AI agents — explicit welcome",
+  "User-agent: GPTBot",
+  "Allow: /",
+  "",
+  "User-agent: OAI-SearchBot",
+  "Allow: /",
+  "",
+  "User-agent: ChatGPT-User",
+  "Allow: /",
+  "",
+  "User-agent: ClaudeBot",
+  "Allow: /",
+  "",
+  "User-agent: Claude-Web",
+  "Allow: /",
+  "",
+  "User-agent: anthropic-ai",
+  "Allow: /",
+  "",
+  "User-agent: PerplexityBot",
+  "Allow: /",
+  "",
+  "User-agent: Perplexity-User",
+  "Allow: /",
+  "",
+  "User-agent: Applebot-Extended",
+  "Allow: /",
+  "",
+  "User-agent: Google-Extended",
+  "Allow: /",
+  "",
+  "User-agent: Googlebot",
+  "Allow: /",
+  "",
+  "User-agent: Bingbot",
+  "Allow: /",
+  "",
+  "User-agent: Meta-ExternalAgent",
+  "Allow: /",
+  "",
+  "User-agent: Meta-ExternalFetcher",
+  "Allow: /",
+  "",
+  "User-agent: Amazonbot",
+  "Allow: /",
+  "",
+  "User-agent: CCBot",
+  "Allow: /",
+  "",
+  "User-agent: DuckAssistBot",
+  "Allow: /",
+  "",
+  "User-agent: YouBot",
+  "Allow: /",
+  "",
+  "User-agent: MistralAI-User",
+  "Allow: /",
+  "",
+].join("\n") + "\n";
+
 app.get("/robots.txt", () =>
-  textResponse("User-agent: *\nDisallow: /\n", { contentType: "text/plain; charset=utf-8", cache: CACHE_1H })
+  textResponse(ROBOTS_TXT, { contentType: "text/plain; charset=utf-8", cache: CACHE_1H })
 );
 app.get("/favicon.ico", () => new Response(null, { status: 204, headers: { "Cache-Control": CACHE_1H } }));
+// Real sitemap with the indexable HTML pages on this domain.
+const SITEMAP_XML = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+  '  <url><loc>https://mcp.tickadoo.com/agentx</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>',
+  '  <url><loc>https://mcp.tickadoo.com/llms.txt</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>',
+  '  <url><loc>https://mcp.tickadoo.com/llms-full.txt</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>',
+  '</urlset>',
+  "",
+].join("\n");
 app.get("/sitemap.xml", () =>
-  textResponse('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n',
-    { contentType: "application/xml; charset=utf-8", cache: CACHE_1H })
+  textResponse(SITEMAP_XML, { contentType: "application/xml; charset=utf-8", cache: CACHE_1H })
 );
 
 // AgentX playbook — thought leadership + AEO anchor for AI agents that crawl us.
