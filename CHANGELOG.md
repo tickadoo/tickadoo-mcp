@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.0] - 2026-04-18
+### Added
+- MCP Apps support (GRO-229): `experience-card` and `experience-map` UI resources wired into `get_experience_details` and `find_nearby_experiences` via `_meta.ui.resourceUri`, with `openai/outputTemplate` fallback for ChatGPT Apps. Conforming clients (Claude, ChatGPT Apps, Goose, VS Code) render interactive booking cards and price-pin maps inline; non-conforming clients see the normal text and structured response. Zero new npm dependencies; Leaflet 1.9.4 is loaded from cdnjs with SRI hashes only inside the experience-map iframe.
+- Resources served with the MCP Apps standard MIME type `text/html;profile=mcp-app` (exported as `MCP_APP_MIME_TYPE`). Hosts only enable the sandbox bridge for this exact MIME, so plain `text/html` would not render inline.
+- Per-resource `_meta.ui` metadata: `prefersBorder: false` on the card (it styles its own border), `prefersBorder: true` plus a CSP `resourceDomains` allowlist on the map for `https://cdnjs.cloudflare.com` and the four CARTO basemap subdomains.
+- Optional ChatGPT `openai/toolInvocation/invoking` and `openai/toolInvocation/invoked` hints on both tool descriptors (ignored safely by conforming MCP Apps clients).
+- UTM attribution on every booking URL emitted by the widgets (`utm_source=mcp`, `utm_medium=mcp-app`, `utm_campaign=experience-card|experience-map`) so bookings originating in Claude / ChatGPT / Goose are attributable in web analytics.
+- `tests/ui-resources.test.ts` covering URI exports, standard MIME type, registration shape, dual-key `uiMeta` payload, optional invocation hints, CSP allowlist, UTM markers, and required HTML markers.
+
 ## [1.4.1] - 2026-03-30
 ### Added
 - `get_travel_tips` MCP tool for local insider advice across 20 launch cities
