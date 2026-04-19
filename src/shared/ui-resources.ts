@@ -204,8 +204,8 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
 
   function isPopular(exp) {
     if (exp.popular === true) return true;
-    var rating = num(exp.review_rating || exp.rating);
-    var reviews = num(exp.review_count || exp.reviews);
+    var rating = num(exp.review_rating || exp.reviewRating || exp.rating);
+    var reviews = num(exp.review_count || exp.reviewCount || exp.reviews);
     return rating != null && reviews != null && rating >= 4.5 && reviews >= 100;
   }
 
@@ -222,9 +222,12 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
   }
 
   function formatPrice(exp) {
-    var p = num(exp.minimal_price != null ? exp.minimal_price : exp.price);
+    var rawPrice = exp.minimal_price != null
+      ? exp.minimal_price
+      : (exp.priceAmount != null ? exp.priceAmount : (exp.price && typeof exp.price === "object" ? exp.price.amount : exp.price));
+    var p = num(rawPrice);
     if (p == null) return "";
-    var ccy = exp.currency || exp.currency_code || "USD";
+    var ccy = exp.currency || exp.currency_code || exp.priceCurrency || (exp.price && exp.price.currency) || "USD";
     try {
       return new Intl.NumberFormat(undefined, {
         style: "currency",
@@ -237,7 +240,7 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
   }
 
   function getBookingUrl(exp) {
-    var raw = exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    var raw = exp.booking_url || exp.bookingUrl || exp.book_url || exp.url || exp.link || "";
     if (!raw) return "";
     try {
       var u = new URL(raw, "https://www.tickadoo.com");
@@ -245,6 +248,10 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
         u.searchParams.set("utm_source", "mcp");
         u.searchParams.set("utm_medium", "mcp-app");
         u.searchParams.set("utm_campaign", "experience-card");
+      }
+      var agentCallId = safeGet(exp, ["_meta", "agent_call_id"]) || exp.agent_call_id;
+      if (agentCallId && !u.searchParams.has("utm_content")) {
+        u.searchParams.set("utm_content", String(agentCallId));
       }
       return u.toString();
     } catch (e) {
@@ -255,11 +262,11 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
   function metaParts(exp) {
     var parts = [];
     if (exp.city || exp.city_name) parts.push("📍 " + escapeHtml(exp.city || exp.city_name));
-    if (exp.duration_text) parts.push("⏱ " + escapeHtml(exp.duration_text));
+    if (exp.duration_text || exp.duration) parts.push("⏱ " + escapeHtml(exp.duration_text || exp.duration));
     else if (exp.duration_minutes) parts.push("⏱ " + Math.round(exp.duration_minutes) + " min");
-    var rating = num(exp.review_rating || exp.rating);
+    var rating = num(exp.review_rating || exp.reviewRating || exp.rating);
     if (rating != null) {
-      var rc = num(exp.review_count || exp.reviews);
+      var rc = num(exp.review_count || exp.reviewCount || exp.reviews);
       parts.push("⭐ " + rating.toFixed(1) + (rc != null ? " (" + rc + ")" : ""));
     }
     return parts;
@@ -305,7 +312,7 @@ const EXPERIENCE_CARD_HTML = String.raw`<!doctype html>
     }
     var title = exp.title || exp.name || "Untitled";
     var desc = exp.short_description || exp.description || exp.summary || "";
-    var img = exp.hero_image || exp.image || exp.image_url || exp.thumbnail || "";
+    var img = exp.hero_image || exp.image || exp.image_url || exp.imageUrl || exp.thumbnail || "";
     var price = formatPrice(exp);
     var url = getBookingUrl(exp);
     var meta = metaParts(exp);
@@ -523,8 +530,8 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
 
   function isPopular(exp) {
     if (exp.popular === true) return true;
-    var rating = num(exp.review_rating || exp.rating);
-    var reviews = num(exp.review_count || exp.reviews);
+    var rating = num(exp.review_rating || exp.reviewRating || exp.rating);
+    var reviews = num(exp.review_count || exp.reviewCount || exp.reviews);
     return rating != null && reviews != null && rating >= 4.5 && reviews >= 100;
   }
 
@@ -537,18 +544,24 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
   }
 
   function priceShort(exp) {
-    var p = num(exp.minimal_price != null ? exp.minimal_price : exp.price);
+    var rawPrice = exp.minimal_price != null
+      ? exp.minimal_price
+      : (exp.priceAmount != null ? exp.priceAmount : (exp.price && typeof exp.price === "object" ? exp.price.amount : exp.price));
+    var p = num(rawPrice);
     if (p == null) return "";
-    var ccy = exp.currency || exp.currency_code || "USD";
+    var ccy = exp.currency || exp.currency_code || exp.priceCurrency || (exp.price && exp.price.currency) || "USD";
     var sym = ccy === "USD" ? "$" : (ccy === "EUR" ? "€" : (ccy === "GBP" ? "£" : ""));
     var rounded = Math.round(p);
     return sym ? sym + rounded : ccy + " " + rounded;
   }
 
   function priceLong(exp) {
-    var p = num(exp.minimal_price != null ? exp.minimal_price : exp.price);
+    var rawPrice = exp.minimal_price != null
+      ? exp.minimal_price
+      : (exp.priceAmount != null ? exp.priceAmount : (exp.price && typeof exp.price === "object" ? exp.price.amount : exp.price));
+    var p = num(rawPrice);
     if (p == null) return "";
-    var ccy = exp.currency || exp.currency_code || "USD";
+    var ccy = exp.currency || exp.currency_code || exp.priceCurrency || (exp.price && exp.price.currency) || "USD";
     try {
       return new Intl.NumberFormat(undefined, {
         style: "currency", currency: ccy,
@@ -560,7 +573,7 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
   }
 
   function getBookingUrl(exp) {
-    var raw = exp.booking_url || exp.book_url || exp.url || exp.link || "";
+    var raw = exp.booking_url || exp.bookingUrl || exp.book_url || exp.url || exp.link || "";
     if (!raw) return "";
     try {
       var u = new URL(raw, "https://www.tickadoo.com");
@@ -568,6 +581,10 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
         u.searchParams.set("utm_source", "mcp");
         u.searchParams.set("utm_medium", "mcp-app");
         u.searchParams.set("utm_campaign", "experience-map");
+      }
+      var agentCallId = safeGet(exp, ["_meta", "agent_call_id"]) || exp.agent_call_id;
+      if (agentCallId && !u.searchParams.has("utm_content")) {
+        u.searchParams.set("utm_content", String(agentCallId));
       }
       return u.toString();
     } catch (e) {
@@ -577,14 +594,14 @@ const EXPERIENCE_MAP_HTML = String.raw`<!doctype html>
 
   function panelMeta(exp) {
     var parts = [];
-    var rating = num(exp.review_rating || exp.rating);
+    var rating = num(exp.review_rating || exp.reviewRating || exp.rating);
     if (rating != null) {
-      var rc = num(exp.review_count || exp.reviews);
+      var rc = num(exp.review_count || exp.reviewCount || exp.reviews);
       parts.push("⭐ " + rating.toFixed(1) + (rc != null ? " (" + rc + ")" : ""));
     }
     if (exp.distance_text) parts.push("📍 " + escapeHtml(exp.distance_text));
     else if (exp.distance_km != null) parts.push("📍 " + Number(exp.distance_km).toFixed(1) + " km");
-    if (exp.duration_text) parts.push("⏱ " + escapeHtml(exp.duration_text));
+    if (exp.duration_text || exp.duration) parts.push("⏱ " + escapeHtml(exp.duration_text || exp.duration));
     return parts.join(" · ");
   }
 

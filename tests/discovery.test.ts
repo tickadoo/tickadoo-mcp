@@ -60,7 +60,10 @@ describe("discovery routes", () => {
     expect(payload._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool: { name: string }) => tool.name)).toEqual(
       expect.arrayContaining([
         "search_experiences",
+        "search_by_mood",
         "get_last_minute",
+        "find_nearby_experiences",
+        "check_availability",
         "get_related_experiences",
         "get_travel_tips",
         "get_transfer_info",

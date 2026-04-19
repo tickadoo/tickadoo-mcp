@@ -19,6 +19,14 @@
       "destination": "/api/health"
     },
     {
+      "source": "/admin/telemetry",
+      "destination": "/api/admin-telemetry-page"
+    },
+    {
+      "source": "/admin/telemetry.json",
+      "destination": "/api/admin-telemetry"
+    },
+    {
       "source": "/llms.txt",
       "destination": "/api/llms"
     },

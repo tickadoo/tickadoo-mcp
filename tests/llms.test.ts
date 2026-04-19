@@ -125,6 +125,9 @@ describe("llms docs", () => {
 
     for (const snippet of [
       "search_experiences",
+      "search_by_mood",
+      "find_nearby_experiences",
+      "compare_experiences",
       "get_related_experiences",
       "whats_on_tonight",
       "get_whats_on_this_week",
@@ -134,12 +137,15 @@ describe("llms docs", () => {
       "get_family_day",
       "product_id (required): source experience slug",
       "context (optional): pair, after, nearby, or similar. Default pair",
+      "mood (required): valid enum adventurous, romantic, relaxing, family_fun, cultural, thrill_seeking, foodie, budget_friendly, luxury, rainy_day",
+      "city (required): city name or slug such as london, new-york, paris, tokyo, or dubai",
     ]) {
       expect(fullDoc).toContain(snippet);
     }
 
     for (const snippet of [
       "- search_experiences:",
+      "- search_by_mood:",
       "- get_related_experiences:",
       "- whats_on_tonight:",
       "- get_city_guide:",
