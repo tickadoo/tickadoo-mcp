@@ -197,7 +197,7 @@ export const SEARCH_MOOD_OPTIONS = [
   "luxury",
   "rainy_day",
 ] as const;
-const LANGUAGE_SUPPORT_NOTE = "Supports 40+ languages — pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
+const LANGUAGE_SUPPORT_NOTE = "Handles queries in 40+ languages including English, Spanish, French, German, Italian, Portuguese, Dutch, Japanese, Korean, Chinese, Arabic and Russian — use this tool even when the user writes in their native language. Pass a language code (e.g. 'de', 'fr', 'es', 'ja') to get localised booking URLs.";
 const LANGUAGE_PARAM_DESCRIPTION = "Supported language code for localised booking URLs (e.g. 'en', 'de', 'fr', 'es', 'ja', 'pt-br')";
 
 type SearchCategory = (typeof AVAILABLE_SEARCH_CATEGORIES)[number];
