@@ -17,6 +17,7 @@ import { SEARCH_MOOD_OPTIONS } from "./server.js";
 export const LLMS_URL = `${MCP_BASE_URL}/llms.txt`;
 export const LLMS_FULL_URL = `${MCP_BASE_URL}/llms-full.txt`;
 export const COMPANY_LLMS_URL = "https://www.tickadoo.com/llms.txt";
+export const AGENTX_URL = `${MCP_BASE_URL}/agentx`;
 
 const VALID_SEARCH_CATEGORIES = [
   "theatre",
@@ -142,6 +143,7 @@ export function buildLlmsTxt(): string {
     `Canonical URL: ${MCP_BASE_URL}`,
     `MCP endpoint: ${MCP_ENDPOINT_URL}`,
     "Transport: Streamable HTTP (stateless)",
+    `AgentX playbook: ${AGENTX_URL}`,
     "Access: No API key required",
     "Tool behavior: Read-only discovery and booking-assist workflows",
     `Tool count: ${MCP_PUBLIC_TOOL_COUNT}`,
