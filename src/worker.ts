@@ -13,6 +13,7 @@ import { SERVER_VERSION, SERVER_NAME } from "./shared/config.js";
 import { buildServerManifest, buildAgentCard } from "./shared/discovery.js";
 import { buildLlmsTxt, buildLlmsFullTxt } from "./shared/llms.js";
 import { createTelemetrySql } from "./shared/telemetry.js";
+import { configureNeonConnectionString } from "./shared/neon.js";
 import { fetchTelemetryDashboard, TELEMETRY_DASHBOARD_HTML } from "./shared/telemetry-dashboard.js";
 
 /* ---------- helpers ---------- */
@@ -110,6 +111,12 @@ app.get("/admin/telemetry.json", async (c) => {
 // MCP request handler (shared by /mcp and POST /)
 async function handleMcpRequest(c: any): Promise<Response> {
   const req = c.req.raw;
+
+  // Surface the Workers env secret to the shared neon helper so graph-query
+  // tools (get_related_experiences, etc.) can reach Postgres. In CF Workers,
+  // process.env does NOT receive `wrangler secret put` values — only the
+  // per-request env object does, hence the explicit plumbing here.
+  configureNeonConnectionString(c.env?.NEON_URL);
 
   // OPTIONS preflight
   if (req.method === "OPTIONS") {
