@@ -46,6 +46,122 @@ export const AGENTX_HTML = `<!doctype html>
   "articleSection": "Agent Experience Optimization"
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "tickadoo",
+  "legalName": "tickadoo Inc",
+  "url": "https://www.tickadoo.com",
+  "logo": "https://raw.githubusercontent.com/tickadoo/howard/main/brand/apps-directory-icon.svg",
+  "description": "Agent-native experiences and theatre distribution platform. 27,000+ bookable experiences across 680+ cities worldwide.",
+  "founder": {
+    "@type": "Person",
+    "name": "Francis Hellyer"
+  },
+  "sameAs": [
+    "https://github.com/tickadoo",
+    "https://www.linkedin.com/company/tickadoo",
+    "https://x.com/tickadoo"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@tickadoo.com",
+    "availableLanguage": ["en", "es", "fr", "de", "it", "pt", "nl", "ja", "ko", "zh", "ar", "ru"]
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "tickadoo MCP Server",
+  "applicationCategory": "TravelApplication",
+  "operatingSystem": "Web, MCP-compatible AI agents",
+  "description": "MCP server exposing 15 tools for discovering and booking 27,000+ experiences across 680+ cities. Compatible with ChatGPT, Claude, Goose, VS Code, and any MCP Apps client.",
+  "url": "https://mcp.tickadoo.com/mcp",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Search by city, category, mood, date, price, audience, accessibility",
+    "Geo-anchored nearby discovery",
+    "Last-minute and tonight-only filtering",
+    "Side-by-side comparison of 2-5 experiences",
+    "City destination guides and travel tips",
+    "Family day itineraries",
+    "Airport/station transfer directions",
+    "Live pricing from Tiqets, Ingresso, Headout, Broadway Inbound",
+    "40+ language support",
+    "Three inline widgets: experience card, nearby map, related trio"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "tickadoo Inc"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is Agent Experience Optimization (AgentX)?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "AgentX is the methodology for making sure AI agents discover and correctly route users to your product when they ask relevant questions. It covers tool metadata, structured responses with intelligence signals like best_picks and next_step, widget design for inline rendering, multilingual descriptions, and observability for continuous tuning. tickadoo pioneered the AgentX approach and publishes the 9-step playbook openly."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does tickadoo work inside ChatGPT?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "tickadoo is available in the ChatGPT Apps Directory. When a user asks about things to do, shows, tours, or attractions in a city, ChatGPT calls tickadoo's MCP tools, receives structured results with live pricing and availability from multiple suppliers, and renders inline widgets (experience card, nearby map, related trio). The user completes the booking on tickadoo.com with full merchant protections."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What makes tickadoo different from Viator or GetYourGuide?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "tickadoo is agent-native: built for AI discovery first, web second. It consolidates inventory from four major suppliers (Tiqets, Ingresso, Headout, Broadway Inbound) and returns best-price-wins results. It holds seat-level West End and Broadway theatre inventory that Viator and GetYourGuide do not. And it distributes across ChatGPT, Claude, Mews-powered hotels, and the tickadoo.com direct channel via a single MCP backend."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does tickadoo charge merchants or hotels?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No integration fee. tickadoo earns on net rates from suppliers and a booking fee on each transaction. Hotel and partner integrations are free."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What languages does tickadoo support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "40+ languages including English, Spanish, French, German, Italian, Portuguese, Dutch, Japanese, Korean, Chinese, Arabic, and Russian. Tool descriptions are engineered to route non-English queries correctly, and booking URLs localise via ISO language codes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do AI agents authenticate with tickadoo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No authentication required. The tickadoo MCP endpoint at https://mcp.tickadoo.com/mcp is public. Discovery happens through the model's tool metadata matching, and booking completes on tickadoo.com where user authentication is standard."
+      }
+    }
+  ]
+}
+</script>
+
 <style>
   :root {
     --bg: #ffffff;
