@@ -1,0 +1,24 @@
+startCommand:
+  type: http
+  url: https://mcp.tickadoo.com/mcp
+build:
+  dockerfile: null
+metadata:
+  name: "@tickadoo/mcp-server"
+  displayName: "tickadoo — Experiences & Theatre"
+  description: "27,000+ bookable shows, theatre, tours, and attractions across 680+ cities. Agent-native with best-picks, price-tiers, and conversation-starter intelligence."
+  category: travel
+  tags:
+    - experiences
+    - theatre
+    - tours
+    - attractions
+    - travel
+    - booking
+    - sightseeing
+  icon: https://raw.githubusercontent.com/tickadoo/howard/main/brand/apps-directory-icon.svg
+  website: https://www.tickadoo.com
+  documentation: https://mcp.tickadoo.com/agentx
+  author: "tickadoo Inc"
+  license: "Commercial (free to use via the MCP endpoint)"
+  contactEmail: support@tickadoo.com
