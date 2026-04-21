@@ -72,7 +72,7 @@ describe("check_availability helpers", () => {
       },
       booking_url: "https://www.tickadoo.com/de/london/london-dungeon-tickets?utm_source=mcp&utm_medium=ai&utm_campaign=tickadoo-mcp&date=2026-04-05&adults=2&lang=de",
       _intent_token: {
-        endpoint: "https://howard-api.francis-348.workers.dev/api/intent-token",
+        endpoint: "https://concierge.tickadoo.com/api/intent-token",
         payload: {
           productSlug: "london-dungeon-tickets",
           date: "2026-04-05",

@@ -16,6 +16,7 @@
 - `SERVER_VERSION` synced to `1.5.0` (was `1.4.2`); `server.json` version synced; `.claude-plugin/plugin.json` version synced.
 - Tool-count drift fixed across docs, package.json, skill, plugin: `14` → `15`. `discovery.ts` description now interpolates `MCP_PUBLIC_TOOL_COUNT`.
 - `server.json` tools list trimmed to the 15 actually-registered tools (dropped phantom `recommend_experiences`, `get_categories`, `plan_itinerary`).
+- Howard backend base URL swapped from the non-existent personal `howard-api.francis-348.workers.dev` / `howard-api.mark-e43.workers.dev` to the production custom domain `concierge.tickadoo.com`. Affects `GHOST_CHECKOUT_INTENT_ENDPOINT`, the `_accessibility` hint in `get_experience_details`, llms.txt / llms-full.txt docs, and the check-availability test fixture.
 
 ### Removed
 - Legacy Vercel surface: `vercel.json`, `tsconfig.vercel.json`, `scripts/sync-html.mjs`, `public/index.html`, `Dockerfile`.

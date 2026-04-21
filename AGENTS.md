@@ -101,7 +101,7 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 - **Tests**: vitest (`npm test` or `npm run test`)
 - **Build**: `npm run build` (esbuild → `dist/index.js` for npm stdio); Worker bundling runs inside `wrangler deploy`.
 - **Key dirs**: `src/` (shared MCP server + worker entrypoint), `widgets-worker/` (separate embeds Worker), `tests/` (vitest), `scripts/` (e2e smoke utilities).
-- **Product data source**: Howard backend (`howard-api.mark-e43.workers.dev`) — this server queries Howard for product/city data and exposes MCP tools on top.
+- **Product data source**: Howard backend at `concierge.tickadoo.com` — this server queries Howard for product/city data and exposes MCP tools on top.
 - **MCP registries**: published to npm, MCP Marketplace (`io-github-tickadoo-tickadoo-mcp` canonical, `io-github-francistickadoo-tickadoo-mcp` duplicate pending removal).
 
 ## Related repos

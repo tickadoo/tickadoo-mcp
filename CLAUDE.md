@@ -15,7 +15,7 @@ As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — 
   - `src/index.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`)
   - `widgets-worker/` — separate Worker serving embeddable widgets at `widgets.tickadoo.com`
 - **Deploys via**: Cloudflare Workers (`wrangler.jsonc` + `.github/workflows/deploy-cf.yml`). GRO-214 migration complete.
-- **Data source**: Howard backend (`https://howard-api.mark-e43.workers.dev`) for products, cities, availability, pricing. Telemetry to Neon via `NEON_URL` Worker secret.
+- **Data source**: Howard backend at `https://concierge.tickadoo.com` for products, cities, availability, pricing, intent tokens, accessibility. Telemetry to Neon via `NEON_URL` Worker secret.
 - **Testing**: vitest (`npm test`) + smoke suites (`npm run e2e:stdio`, `npm run e2e:http`)
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm); Workers build happens in-flight via `wrangler deploy`.
 - **Local dev**: `npm run dev:worker` (wrangler dev).
