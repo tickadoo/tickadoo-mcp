@@ -21,7 +21,13 @@ Run the local stdio transport:
 node dist/index.js
 ```
 
-For local HTTP development:
+For local HTTP development, run the production Cloudflare Worker locally (recommended):
+
+```bash
+npm run dev:worker
+```
+
+Or run a plain Node HTTP dev server (uses the legacy `api/*.ts` handlers):
 
 ```bash
 npm run dev:http
@@ -47,7 +53,7 @@ MCP_URL=https://mcp.tickadoo.com/mcp npm run e2e:http
 
 - Use TypeScript for application code and tests.
 - Keep shared MCP behavior in `src/shared/*`.
-- Keep `src/index.ts` and `api/mcp.ts` as thin transport wrappers.
+- Keep `src/index.ts` (stdio) and `src/worker.ts` (Cloudflare Worker) as thin transport wrappers.
 - When changing tool behavior, update tests and user-facing docs in the same pull request.
 - Prefer small, focused changes over broad refactors.
 

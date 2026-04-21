@@ -10,11 +10,15 @@ As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — 
 
 ## Architecture at a glance
 
-- **Runtime**: Node.js MCP server (TypeScript)
-- **Deploys via**: Vercel (`vercel.json`)
-- **Data source**: queries Howard backend (`https://howard-api.mark-e43.workers.dev`) for products, cities, availability, pricing
-- **Testing**: vitest (`npm test`)
-- **Build**: `npm run build` → `dist/`
+- **Runtime**: TypeScript MCP server
+  - `src/worker.ts` — Cloudflare Worker (Hono + `WebStandardStreamableHTTPServerTransport`) serves `mcp.tickadoo.com`
+  - `src/index.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`)
+  - `widgets-worker/` — separate Worker serving embeddable widgets at `widgets.tickadoo.com`
+- **Deploys via**: Cloudflare Workers (`wrangler.jsonc` + `.github/workflows/deploy-cf.yml`). GRO-214 migration complete.
+- **Data source**: Howard backend (`https://howard-api.mark-e43.workers.dev`) for products, cities, availability, pricing. Telemetry to Neon via `NEON_URL` Worker secret.
+- **Testing**: vitest (`npm test`) + smoke suites (`npm run e2e:stdio`, `npm run e2e:http`)
+- **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm); Workers build happens in-flight via `wrangler deploy`.
+- **Local dev**: `npm run dev:worker` (wrangler dev, preferred) or `npm run dev:http` (plain Node HTTP, uses the legacy `api/*.ts` handlers).
 
 Customer never sees supplier names; everything is presented as tickadoo.
 
@@ -48,11 +52,11 @@ COORDINATION:
 
 **Opus 4.7** is the current CC default. Better long-session context retention and cross-session memory. Default effort is xhigh.
 
-**Auto mode** (research preview, Shift+Tab in Claude Code) handles permission decisions via classifiers instead of prompting per file-write or bash. Use it for long autonomous tasks with upfront context. **For GRO-214 specifically (this repo's Vercel → CF Workers migration), howardmcp should run the task in auto mode** — the full multi-phase plan is pre-written in the Linear issue.
+**Auto mode** (research preview, Shift+Tab in Claude Code) handles permission decisions via classifiers instead of prompting per file-write or bash. Use it for long autonomous tasks with upfront context.
 
 **Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the Howard repo today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post to `#ai-activity` on start/progress/done, commit trailer `Claude-Chat: routine-{name}`).
 
-**`/ultrareview`** spins up a careful-review pass in the terminal. Three free runs per account. For this repo, use one on the diff of ported tool handlers before the Vercel → CF Workers cutover.
+**`/ultrareview`** spins up a careful-review pass in the terminal. Three free runs per account.
 
 **Dispatch** (research preview, Pro/Max) kicks off tasks from your phone, running locally via the desktop app.
 

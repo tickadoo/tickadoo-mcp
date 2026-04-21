@@ -80,7 +80,7 @@ See `.claude/active-chats.md` for current status of each.
 Anthropic shipped several new Claude Code capabilities on 17 April. Short version:
 
 - **Opus 4.7** is the current CC default. Default effort is xhigh. Switch to `/effort high` for cost/intelligence balance on simpler tasks.
-- **Auto mode** (Shift+Tab in CC, research preview) — classifier-based permission handling for long autonomous tasks. Use it when the plan is pre-written. Example: GRO-214 (this repo: Vercel → CF Workers migration) — howardmcp should run this task in auto mode.
+- **Auto mode** (Shift+Tab in CC, research preview) — classifier-based permission handling for long autonomous tasks. Use it when the plan is pre-written.
 - **Routines** (research preview) — prompts in `.claude/routines/`, run on CC web infrastructure (no laptop needed), triggered by schedule / API / GitHub webhook. Each routine is an AI agent under this convention: it must post to `#ai-activity` on start / progress / done, and every routine commit carries `Claude-Chat: routine-{routine-name}`. See GRO-196 (setup) and GRO-216 (Slack wiring). Note: most routines live in the Howard repo, but this repo may gain its own over time.
 - **`/ultrareview`** — careful-review pass, 3 free runs per account. For this repo, save one for the pre-deploy review of the full 14-tool port in GRO-214 Phase 3.
 - **Dispatch** (Pro/Max, research preview) — kick off tasks from phone, runs locally via desktop app.
@@ -97,10 +97,10 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 ## Repo specifics
 
 - **Package name**: `@tickadoo/mcp-server`
-- **Deploys via**: Vercel (`vercel.json` at repo root)
+- **Deploys via**: Cloudflare Workers — `wrangler.jsonc` (main MCP worker at `mcp.tickadoo.com`) + `widgets-worker/wrangler.jsonc` (widgets at `widgets.tickadoo.com`). CI in `.github/workflows/deploy-cf.yml`.
 - **Tests**: vitest (`npm test` or `npm run test`)
-- **Build**: `npm run build` (outputs to `dist/`)
-- **Key dirs**: `src/` (TypeScript server), `api/` (Vercel serverless functions), `tests/` (vitest), `scripts/` (dev utilities)
+- **Build**: `npm run build` (esbuild → `dist/index.js` for npm stdio); Worker bundling runs inside `wrangler deploy`.
+- **Key dirs**: `src/` (shared MCP server + worker entrypoint), `widgets-worker/` (separate embeds Worker), `api/` (legacy Node HTTP handlers, still used by `scripts/dev-http.ts` and one test), `tests/` (vitest), `scripts/` (dev/e2e utilities).
 - **Product data source**: Howard backend (`howard-api.mark-e43.workers.dev`) — this server queries Howard for product/city data and exposes MCP tools on top.
 - **MCP registries**: published to npm, MCP Marketplace (`io-github-tickadoo-tickadoo-mcp` canonical, `io-github-francistickadoo-tickadoo-mcp` duplicate pending removal).
 

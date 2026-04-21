@@ -48,25 +48,20 @@ Current release: `v1.4.2`
 | Tool | Description |
 |------|-------------|
 | `search_experiences` | Search 13,090+ experiences across 681 cities with 11 filters (audience, setting, wheelchair, physical level, duration, language, rating, cancellation, price, tags, category) + 6 sort options (incl. best_value) |
-| `search_by_mood` | Search by emotional intent instead of category. Maps moods like `romantic`, `relaxing`, `budget_friendly`, and `rainy_day` to optimized tags, audience, rating, setting, and price filters before returning booking-ready results |
-| `find_nearby_experiences` | Find experiences near lat/lng with same 11 filters, configurable radius, and date filtering |
+| `search_by_mood` | Search by emotional intent (romantic, relaxing, budget_friendly, rainy_day, adventurous, foodie) — maps mood to tags, audience, rating, setting, and price filters |
+| `find_nearby_experiences` | Find experiences near lat/lng with the same 11 filters, configurable radius, and date filtering |
 | `list_cities` | Browse supported cities with optional filtering and result limits |
-| `check_availability` | Fast date-specific availability check for a single experience. Returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
-| `get_experience_details` | Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path |
-| `check_availability` | Fast date-specific availability check with party-size-aware pricing |
-| `compare_experiences` | Side-by-side comparison of 2-5 experiences with winner callouts |
-| `search_by_mood` | Search by emotional intent (romantic, adventurous, foodie, rainy_day) |
+| `check_availability` | Fast date-specific availability check for a single experience — returns matching slots, price-per-person, cheapest total for `party_size`, booking URL, and Ghost Checkout payload metadata |
+| `get_experience_details` | Detailed availability, pricing, venue, and image information for a specific tickadoo experience by slug or booking path |
+| `compare_experiences` | Side-by-side comparison of 2-5 experiences with winner callouts for best value, highest rated, most popular, and family fit |
 | `get_whats_on_this_week` | 7-day city planner with morning/afternoon/evening breakdown |
 | `whats_on_tonight` | Tonight's experiences with start-time ranking and urgency signals |
 | `get_last_minute` | Experiences starting within hours, sorted by soonest |
-| `get_city_guide` | Curated city overview with highlights, tips, and category breakdown |
-| `get_travel_tips` | Local insider advice: transport, money, safety, culture, food |
-| `get_transfer_info` | Airport/station transfer estimates with taxi, metro, bus options |
+| `get_city_guide` | Curated city overview: top highlights, category mix, pricing ranges, best-for suggestions, insider tips |
+| `get_travel_tips` | Local insider advice for 20 launch cities: transport, money, safety, culture, food, emergency numbers, quick phrases |
+| `get_transfer_info` | Taxi, tube/metro, bus, and train transfer estimates from a city's default airport, station, or port to hotel coordinates |
 | `get_family_day` | Family day planner with age-aware filtering and geographic clustering |
-| `compare_experiences` | Compare 2-5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit |
-| `get_city_guide` | Return a curated city overview with top highlights, category mix, pricing ranges, best-for suggestions, and insider tips |
-| `get_travel_tips` | Return local insider advice for 20 launch cities with transport, money, safety, culture, food, emergency numbers, and quick phrases |
-| `get_transfer_info` | Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates |
+| `get_related_experiences` | Blended semantic + heuristic "you might also like" results for a given experience |
 
 All tools expose MCP tool annotations for `readOnlyHint`, `destructiveHint`, and `openWorldHint`.
 
@@ -113,6 +108,22 @@ Example remote MCP config:
   }
 }
 ```
+
+### Claude Code
+
+Remote HTTP MCP (recommended — no API key, no local install):
+
+```bash
+claude mcp add --transport http tickadoo https://mcp.tickadoo.com/mcp
+```
+
+Or add as local stdio from npm:
+
+```bash
+claude mcp add tickadoo -- npx -y @tickadoo/mcp-server
+```
+
+See https://code.claude.com/docs/en/mcp for full Claude Code MCP docs.
 
 ### Claude Dispatch
 
@@ -232,20 +243,31 @@ Example stdio config:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run build` | Compile the TypeScript server |
+| `npm run build` | Bundle the stdio server (`dist/index.js`) via esbuild |
+| `npm test` | Run the unit test suite (vitest) |
 | `npm run e2e:stdio` | Run the MCP smoke suite against the local stdio server |
 | `npm run e2e:http` | Run the MCP smoke suite against an HTTP endpoint |
-| `npm run dev:http` | Start the local HTTP development server |
-| `npm run sync:html` | Sync `public/index.html` into the Vercel landing page handler |
+| `npm run dev:worker` | Run the production Worker locally via `wrangler dev` |
+| `npm run dev:http` | Run a plain Node HTTP dev server (uses the legacy `api/*.ts` handlers) |
+| `npm run deploy` | Deploy the main MCP Worker (`wrangler deploy`) |
+| `npm run deploy:widgets` | Deploy the widgets Worker under `widgets-worker/` |
 
 ## Architecture
 
-Shared server logic lives in `src/shared/*`, including the API client, formatting, tool definitions, and resource registration. The two entrypoints are intentionally thin transport wrappers:
+Shared server logic lives in `src/shared/*` — API client, formatting, tool definitions, resource registration. Transport wrappers:
 
-- `src/index.ts` for local stdio usage
-- `api/mcp.ts` for hosted HTTP usage
+- `src/index.ts` — local stdio transport (published on npm as `@tickadoo/mcp-server`)
+- `src/worker.ts` — Cloudflare Worker (Hono + `WebStandardStreamableHTTPServerTransport`) serving `https://mcp.tickadoo.com`
+- `widgets-worker/` — separate Cloudflare Worker serving embeddable widgets at `https://widgets.tickadoo.com`
 
-This keeps stdio and HTTP behavior aligned while supporting both local and remote MCP clients.
+## Deployment
+
+Both workers deploy via Cloudflare Workers:
+
+- Main MCP worker: `wrangler.jsonc` → `mcp.tickadoo.com`
+- Widgets worker: `widgets-worker/wrangler.jsonc` → `widgets.tickadoo.com`
+
+CI: `.github/workflows/deploy-cf.yml` runs on every push to `main` and deploys both workers.
 
 ## Environment Variables
 

@@ -14,10 +14,10 @@ Track what each AI agent (Claude chat, Claude Code session, Codex task) is worki
 ## howardmcp
 - **Status**: active (primary driver of this repo)
 - **Scope**: development of `@tickadoo/mcp-server` — MCP tool design, agent intelligence layer, distribution (Marketplace, npm, Anthropic Connectors Directory). Recent: v1.4.2 release shipped 16 Apr with `_best_picks`, `_price_tiers`, `_group_summary`, smart `_conversation_starters`.
-- **Files typically changed**: `src/**`, `api/**`, `package.json`, `server.json`, `README.md`, `.well-known/mcp.json`, deploy configs
-- **Last commit**: `81cb823` (npm audit fix, 0 vulnerabilities)
-- **Last active**: 2026-04-17
-- **Current task**: GRO-214 Vercel -> CF Workers migration. Phases 0-4 complete. CF Worker live at tickadoo-mcp.mark-e43.workers.dev. 12/14 tools verified. Blocked on: DNS cutover, API token secret, GH Actions secrets.
+- **Files typically changed**: `src/**`, `widgets-worker/**`, `package.json`, `server.json`, `README.md`, `.well-known/mcp.json`, `wrangler.jsonc`, deploy configs
+- **Last commit**: `4ab32b0` (feat(seo): enrich /agentx with Organization + SoftwareApplication + FAQPage JSON-LD, GRO-240)
+- **Last active**: 2026-04-21
+- **Current task**: SEO/AEO polish + agent-intelligence tuning. GRO-214 (Vercel → CF Workers migration) is complete — `mcp.tickadoo.com` is served by `src/worker.ts` on Cloudflare Workers, widgets worker is live at `widgets.tickadoo.com`. Vercel config has been removed from the repo.
 - **Notes**: Already uses `Claude-Chat: howardmcp` trailer (has since before the convention was formalised). Already posts to `#ai-activity`. This file and `AGENTS.md` newly added 17 Apr to formalise the convention at repo level.
 
 ## howardops
