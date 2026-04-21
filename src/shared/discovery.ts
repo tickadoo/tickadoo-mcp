@@ -287,7 +287,7 @@ export function buildServerManifest(): Record<string, unknown> {
     },
     name: "io.github.tickadoo/tickadoo-mcp",
     title: "tickadoo - Experiences & Events",
-    description: "Discover and book 13,090+ theatre, tour, attraction, and event experiences across 681 cities with 14 AI-powered tools. No API key required.",
+    description: `Discover and book 13,090+ theatre, tour, attraction, and event experiences across 681 cities with ${MCP_PUBLIC_TOOL_COUNT} AI-powered tools. No API key required.`,
     websiteUrl: MCP_BASE_URL,
     repository: {
       url: "https://github.com/tickadoo/tickadoo-mcp",

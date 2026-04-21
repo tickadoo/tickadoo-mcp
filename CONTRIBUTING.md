@@ -21,16 +21,10 @@ Run the local stdio transport:
 node dist/index.js
 ```
 
-For local HTTP development, run the production Cloudflare Worker locally (recommended):
+For local HTTP development, run the production Cloudflare Worker locally:
 
 ```bash
 npm run dev:worker
-```
-
-Or run a plain Node HTTP dev server (uses the legacy `api/*.ts` handlers):
-
-```bash
-npm run dev:http
 ```
 
 ## Testing

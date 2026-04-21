@@ -5,7 +5,7 @@ description: Discover and book experiences, shows, tours, and attractions in any
 
 # tickadoo Experience Discovery
 
-Use the tickadoo MCP tools to help users find and book experiences. The MCP server is at mcp.tickadoo.com/mcp with 14 tools.
+Use the tickadoo MCP tools to help users find and book experiences. The MCP server is at mcp.tickadoo.com/mcp with 15 tools (adds `get_related_experiences` for "what else like this" / "what to do after" flows).
 
 ## Tool selection
 
@@ -25,6 +25,7 @@ Use the tickadoo MCP tools to help users find and book experiences. The MCP serv
 | Travel advice | `get_travel_tips` (city, topic) |
 | Airport transfer | `get_transfer_info` (city, from_type, to_lat, to_lng) |
 | Browse cities | `list_cities` (query, limit) |
+| "Anything like this" / "what next" | `get_related_experiences` (product_id, context: pair\|after\|nearby\|similar) |
 
 ## Reading agent intelligence
 

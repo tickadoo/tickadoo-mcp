@@ -2,7 +2,7 @@
 
 This file is automatically read by Codex CLI (and some other AI coding tools) at task start. It's the shared ruleset for every AI agent that does work on this repo: Claude chats, Claude Code sessions, and Codex tasks.
 
-This repo is **`@tickadoo/mcp-server`** — the public MCP server package (14 tools, 13,090 products, 681 cities as of v1.4.2). Not to be confused with Howard (the separate internal backend at `github.com/tickadoo/howard`), which this server queries for product data.
+This repo is **`@tickadoo/mcp-server`** — the public MCP server package (15 tools, 13,090 products, 681 cities as of v1.5.0). Not to be confused with Howard (the separate internal backend at `github.com/tickadoo/howard`), which this server queries for product data.
 
 ## Before you do anything
 
@@ -100,7 +100,7 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 - **Deploys via**: Cloudflare Workers — `wrangler.jsonc` (main MCP worker at `mcp.tickadoo.com`) + `widgets-worker/wrangler.jsonc` (widgets at `widgets.tickadoo.com`). CI in `.github/workflows/deploy-cf.yml`.
 - **Tests**: vitest (`npm test` or `npm run test`)
 - **Build**: `npm run build` (esbuild → `dist/index.js` for npm stdio); Worker bundling runs inside `wrangler deploy`.
-- **Key dirs**: `src/` (shared MCP server + worker entrypoint), `widgets-worker/` (separate embeds Worker), `api/` (legacy Node HTTP handlers, still used by `scripts/dev-http.ts` and one test), `tests/` (vitest), `scripts/` (dev/e2e utilities).
+- **Key dirs**: `src/` (shared MCP server + worker entrypoint), `widgets-worker/` (separate embeds Worker), `tests/` (vitest), `scripts/` (e2e smoke utilities).
 - **Product data source**: Howard backend (`howard-api.mark-e43.workers.dev`) — this server queries Howard for product/city data and exposes MCP tools on top.
 - **MCP registries**: published to npm, MCP Marketplace (`io-github-tickadoo-tickadoo-mcp` canonical, `io-github-francistickadoo-tickadoo-mcp` duplicate pending removal).
 

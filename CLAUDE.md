@@ -4,7 +4,7 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 ## What is this repo?
 
-`@tickadoo/mcp-server` — the public MCP (Model Context Protocol) server for tickadoo. Exposes 14 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, and recommend tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm.
+`@tickadoo/mcp-server` — the public MCP (Model Context Protocol) server for tickadoo. Exposes 15 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, and recommend tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm.
 
 As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — `_best_picks`, `_price_tiers`, `_group_summary`, smart `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`. Details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
 
@@ -18,7 +18,7 @@ As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — 
 - **Data source**: Howard backend (`https://howard-api.mark-e43.workers.dev`) for products, cities, availability, pricing. Telemetry to Neon via `NEON_URL` Worker secret.
 - **Testing**: vitest (`npm test`) + smoke suites (`npm run e2e:stdio`, `npm run e2e:http`)
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm); Workers build happens in-flight via `wrangler deploy`.
-- **Local dev**: `npm run dev:worker` (wrangler dev, preferred) or `npm run dev:http` (plain Node HTTP, uses the legacy `api/*.ts` handlers).
+- **Local dev**: `npm run dev:worker` (wrangler dev).
 
 Customer never sees supplier names; everything is presented as tickadoo.
 

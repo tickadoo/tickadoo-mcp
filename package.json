@@ -1,7 +1,7 @@
 {
   "name": "@tickadoo/mcp-server",
   "version": "1.5.0",
-  "description": "tickadoo MCP Server -- 14 AI-powered tools for discovering and booking 13,090+ experiences across 700+ cities. Agent intelligence layer with best picks, price tiers, mood search, city guides, family planners, and booking urgency signals. No API key required.",
+  "description": "tickadoo MCP Server -- 15 AI-powered tools for discovering and booking 13,090+ experiences across 700+ cities. Agent intelligence layer with best picks, price tiers, mood search, city guides, family planners, and booking urgency signals. No API key required.",
   "type": "module",
   "main": "dist/index.js",
   "bin": "./dist/index.js",
@@ -19,7 +19,6 @@
     "build": "node -e \"const fs = require('node:fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });\" && ./node_modules/.bin/esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --target=node22 --outfile=dist/index.js",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "dev:http": "tsx scripts/dev-http.ts",
     "dev:worker": "wrangler dev",
     "deploy": "wrangler deploy",
     "deploy:widgets": "wrangler deploy --config widgets-worker/wrangler.jsonc",

@@ -248,7 +248,6 @@ Example stdio config:
 | `npm run e2e:stdio` | Run the MCP smoke suite against the local stdio server |
 | `npm run e2e:http` | Run the MCP smoke suite against an HTTP endpoint |
 | `npm run dev:worker` | Run the production Worker locally via `wrangler dev` |
-| `npm run dev:http` | Run a plain Node HTTP dev server (uses the legacy `api/*.ts` handlers) |
 | `npm run deploy` | Deploy the main MCP Worker (`wrangler deploy`) |
 | `npm run deploy:widgets` | Deploy the widgets Worker under `widgets-worker/` |
 
