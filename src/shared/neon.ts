@@ -1,61 +1,42 @@
-type NeonSqlResponse<Row> = {
-  rows?: Row[];
-  message?: string;
-};
+import { neon } from "@neondatabase/serverless";
 
-// Cloudflare Workers do not surface secrets via `process.env`. Secrets pushed
-// via `wrangler secret put` or the CF API only show up on the `env` parameter
-// of handlers. The worker entrypoint calls configureNeonConnectionString()
-// with the per-request env.NEON_URL so graph queries can find it.
-let cachedConnectionString: string | undefined;
+// Per-request Neon client used by graph-query tools (get_related_experiences).
+// Cloudflare Workers do not surface secrets via `process.env` — secrets pushed
+// via `wrangler secret put` only appear on the handler's `env` argument. The
+// Worker entrypoint constructs a client from `env.NEON_URL` and plumbs it
+// through `createTickadooServer({ neonClient })` on every request, so there
+// is no module-level mutable state and no risk of one request's connection
+// string leaking into another's.
+//
+// The official `neon()` tagged-template client handles Postgres auth over
+// HTTPS internally (SNI + bearer-style auth on the Neon compute endpoint).
+// Do NOT reimplement the HTTP protocol — a prior custom wrapper leaked the
+// connection string (password included) as a request header.
 
-export function configureNeonConnectionString(url: string | undefined): void {
-  if (url && url.trim()) cachedConnectionString = url.trim();
-}
+export type NeonClient = <Row = Record<string, unknown>>(
+  query: string,
+  params?: unknown[],
+) => Promise<Row[]>;
 
-function resolveConnectionString(): string | undefined {
-  return cachedConnectionString ?? process.env.NEON_URL?.trim();
-}
+export function createNeonClient(url: string | null | undefined): NeonClient | null {
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
 
-function getNeonEndpoint(): string {
-  const connectionString = resolveConnectionString();
-  if (!connectionString) {
-    throw new Error("NEON_URL is required for graph queries.");
-  }
-
-  let parsed: URL;
   try {
-    parsed = new URL(connectionString);
-  } catch (error) {
-    throw new Error(`Invalid NEON_URL: ${error instanceof Error ? error.message : String(error)}`);
+    // Fail-fast URL sanity check before we hand the string to the driver.
+    // Any parse error is surfaced as a generic message so tool responses
+    // don't echo internal URL structure back to callers.
+    new URL(trimmed);
+  } catch {
+    throw new Error("Database configuration error.");
   }
 
-  if (!parsed.host) {
-    throw new Error("NEON_URL is missing a host.");
-  }
-
-  return `https://${parsed.host}/sql`;
-}
-
-export async function neonQuery<Row>(query: string, params: unknown[] = []): Promise<Row[]> {
-  const connectionString = resolveConnectionString();
-  if (!connectionString) {
-    throw new Error("NEON_URL is required for graph queries.");
-  }
-
-  const response = await fetch(getNeonEndpoint(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Neon-Connection-String": connectionString,
-    },
-    body: JSON.stringify({ query, params }),
-  });
-
-  const payload = await response.json() as NeonSqlResponse<Row>;
-  if (!response.ok) {
-    throw new Error(payload.message || `Neon query failed with status ${response.status}`);
-  }
-
-  return Array.isArray(payload.rows) ? payload.rows : [];
+  const sql = neon(trimmed);
+  return async <Row = Record<string, unknown>>(
+    query: string,
+    params: unknown[] = [],
+  ): Promise<Row[]> => {
+    const rows = await sql.query(query, params);
+    return (Array.isArray(rows) ? rows : []) as Row[];
+  };
 }

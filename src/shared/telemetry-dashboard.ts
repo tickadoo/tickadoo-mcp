@@ -82,7 +82,10 @@ fetch('/admin/telemetry.json').then(function (response) { return response.json()
   data.byCity.forEach(function (row) { addRow('#byCity', [row.city || '(unknown)', row.calls]); });
   data.topProducts.forEach(function (row) { addRow('#topProducts', [row.slug, row.shown]); });
 }).catch(function (error) {
-  document.body.insertAdjacentHTML('beforeend', '<p class="muted">Failed to load telemetry: ' + String(error) + '</p>');
+  var p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = 'Failed to load telemetry: ' + String(error);
+  document.body.appendChild(p);
 });
 </script></body></html>`;
 

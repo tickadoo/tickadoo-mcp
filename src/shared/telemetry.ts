@@ -30,6 +30,71 @@ export interface TelemetryRecord {
   errorMessage?: string;
 }
 
+// Whitelist of tool input keys that are safe to persist for analytics.
+// Anything outside this set is dropped before it reaches agent_calls.input_args
+// so freetext fields (search `query` strings, open-ended prompts, etc.) never
+// land in a Neon row that could later leak via the admin dashboard.
+const ALLOWED_TELEMETRY_KEYS = new Set([
+  // city / location
+  "city", "country", "citySlug", "city_slug",
+  "latitude", "longitude", "radius_km",
+  // pagination + sort
+  "max_results", "offset", "limit", "sort",
+  // dates
+  "dateFrom", "dateTo", "date_from", "date_to",
+  // product references (slug-like identifiers, not PII)
+  "slug", "product_id", "productId", "booking_path", "bookingPath",
+  // filters
+  "category", "tags", "audience", "setting",
+  "physical_level", "physicalLevel",
+  "duration_min", "duration_max", "durationMin", "durationMax",
+  "min_price", "max_price", "minPrice", "maxPrice", "price_min", "price_max",
+  "min_rating", "minRating",
+  "languages", "language",
+  "free_cancellation", "freeCancellation",
+  "wheelchair", "wheelchair_accessible",
+  // tool-specific knobs
+  "mood", "context", "party_size", "partySize", "date",
+  "ids", "slugs",
+  // booking/transfer
+  "from", "to",
+  // formatting
+  "format",
+]);
+
+const MAX_TELEMETRY_STRING_LENGTH = 120;
+const MAX_TELEMETRY_ARRAY_LENGTH = 10;
+
+function scrubTelemetryValue(value: unknown): unknown {
+  if (value === null) return null;
+  if (typeof value === "string") {
+    return value.length > MAX_TELEMETRY_STRING_LENGTH
+      ? value.slice(0, MAX_TELEMETRY_STRING_LENGTH)
+      : value;
+  }
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, MAX_TELEMETRY_ARRAY_LENGTH)
+      .map(scrubTelemetryValue)
+      .filter((v) => v !== undefined);
+  }
+  // Drop nested objects, functions, symbols, bigints, etc.
+  return undefined;
+}
+
+export function scrubInputArgs(args: unknown): Record<string, unknown> {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args as Record<string, unknown>)) {
+    if (!ALLOWED_TELEMETRY_KEYS.has(key)) continue;
+    const scrubbed = scrubTelemetryValue(value);
+    if (scrubbed !== undefined) out[key] = scrubbed;
+  }
+  return out;
+}
+
 const HOST_HINT_PATTERNS: Array<[RegExp, string]> = [
   [/claude/i, "claude"],
   [/anthropic/i, "claude"],
@@ -108,7 +173,7 @@ export async function recordAgentCall(
         latency_ms, is_error, error_message
       ) VALUES (
         ${record.toolName},
-        ${JSON.stringify(record.inputArgs ?? {})}::jsonb,
+        ${JSON.stringify(scrubInputArgs(record.inputArgs))}::jsonb,
         ${record.resultCount ?? null},
         ${record.topProductIds ?? []},
         ${getHeaderValue(headers, "x-request-id") ?? null},
