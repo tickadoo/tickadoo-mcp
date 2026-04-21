@@ -3,6 +3,9 @@ import app from "../src/worker.js";
 
 const ADMIN_TOKEN = "test-admin-token-123456";
 
+// Worker reads NEON_URL only from the request-scoped env binding, never
+// from process.env. Tests therefore don't need to mutate process.env —
+// whatever the host environment has is irrelevant to route behaviour.
 function env(overrides: Record<string, unknown> = {}) {
   return { ADMIN_TOKEN, ...overrides };
 }
@@ -45,21 +48,41 @@ describe("worker routes", () => {
     });
   });
 
-  describe("/admin/* auth", () => {
-    it("returns 503 when ADMIN_TOKEN is not configured", async () => {
+  describe("/admin/telemetry dashboard HTML", () => {
+    it("serves the login-prompt shell publicly with CSP (no data leak)", async () => {
+      // The dashboard HTML itself is a static shell — no telemetry data
+      // is embedded — so it is intentionally unauthenticated and prompts
+      // for the bearer token in-browser, then fetches the gated JSON.
+      const res = await app.request("/admin/telemetry", {}, env());
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type") ?? "").toContain("text/html");
+      expect(res.headers.get("content-security-policy")).toMatch(/default-src 'none'/);
+      const body = await res.text();
+      expect(body).toContain("tickadoo agent telemetry");
+      expect(body).toContain("Enter admin token");
+    });
+
+    it("serves the HTML shell even when ADMIN_TOKEN is unset (no data inside)", async () => {
       const res = await app.request("/admin/telemetry", {}, {});
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("/admin/telemetry.json auth", () => {
+    it("returns 503 when ADMIN_TOKEN is not configured", async () => {
+      const res = await app.request("/admin/telemetry.json", {}, {});
       expect(res.status).toBe(503);
     });
 
     it("returns 401 with WWW-Authenticate when token is missing", async () => {
-      const res = await app.request("/admin/telemetry", {}, env());
+      const res = await app.request("/admin/telemetry.json", {}, env());
       expect(res.status).toBe(401);
       expect(res.headers.get("www-authenticate") ?? "").toContain("Bearer");
     });
 
     it("returns 401 when token is wrong", async () => {
       const res = await app.request(
-        "/admin/telemetry",
+        "/admin/telemetry.json",
         { headers: { Authorization: "Bearer wrong-token" } },
         env(),
       );
@@ -68,31 +91,20 @@ describe("worker routes", () => {
 
     it("returns 401 when token length differs (constant-time guard)", async () => {
       const res = await app.request(
-        "/admin/telemetry",
+        "/admin/telemetry.json",
         { headers: { Authorization: "Bearer x" } },
         env(),
       );
       expect(res.status).toBe(401);
     });
 
-    it("serves the dashboard HTML with CSP when token is valid", async () => {
-      const res = await app.request(
-        "/admin/telemetry",
-        { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` } },
-        env(),
-      );
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type") ?? "").toContain("text/html");
-      expect(res.headers.get("content-security-policy")).toMatch(/default-src 'none'/);
-      const body = await res.text();
-      expect(body).toContain("tickadoo agent telemetry");
-    });
-
-    it("returns 500 for telemetry.json when NEON_URL is absent (auth passed)", async () => {
+    it("returns 500 when NEON_URL is absent (auth passed)", async () => {
+      // Explicitly omit NEON_URL from the request-scoped env so this is
+      // deterministic regardless of the host process environment.
       const res = await app.request(
         "/admin/telemetry.json",
         { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` } },
-        env(),
+        { ADMIN_TOKEN },
       );
       expect(res.status).toBe(500);
     });

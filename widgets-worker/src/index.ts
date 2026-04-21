@@ -29,9 +29,10 @@ const app = new Hono<{ Bindings: Env }>();
 // are normalised the same way via `normaliseCitySlug` but we defence-in-depth
 // re-check here. 200-char cap guards against amplification of whatever the
 // MCP server decides to do with an oversized input.
-const SLUG_REGEX = /^[a-z0-9-]{1,200}$/;
-const VALID_TRIO_CONTEXTS = new Set(["pair", "after", "nearby", "similar"] as const);
-type TrioContext = "pair" | "after" | "nearby" | "similar";
+// Exported so tests exercise the exact same constants enforced at the edge.
+export const SLUG_REGEX = /^[a-z0-9-]{1,200}$/;
+export const VALID_TRIO_CONTEXTS = new Set(["pair", "after", "nearby", "similar"] as const);
+export type TrioContext = "pair" | "after" | "nearby" | "similar";
 
 async function validatePartner(
   sql: NeonQueryFunction<false, false>,

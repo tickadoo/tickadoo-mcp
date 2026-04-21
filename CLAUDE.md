@@ -1,6 +1,6 @@
 # CLAUDE.md — tickadoo-mcp
 
-This file is read automatically by Claude Code at session start. Lightweight project doc; defers to [`AGENTS.md`](AGENTS.md) for the shared AI-agent coordination conventions and to `github.com/tickadoo/howard` → `CLAUDE.md` for the broader tickadoo project context (architecture, deploy workflows, environment variables, supplier integrations, team, Slack IDs, etc.).
+This file is read automatically by Claude Code at session start. Lightweight project doc; defers to [`AGENTS.md`](AGENTS.md) for the shared AI-agent coordination conventions and to the HowardOS repo (`github.com/tickadoo/howard` → `CLAUDE.md`) for the broader tickadoo project context (architecture, deploy workflows, environment variables, supplier integrations, team, Slack IDs, etc.).
 
 ## What is this repo?
 
@@ -15,7 +15,7 @@ As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — 
   - `src/index.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`)
   - `widgets-worker/` — separate Worker serving embeddable widgets at `widgets.tickadoo.com`
 - **Deploys via**: Cloudflare Workers (`wrangler.jsonc` + `.github/workflows/deploy-cf.yml`). GRO-214 migration complete.
-- **Data source**: Howard backend at `https://concierge.tickadoo.com` for products, cities, availability, pricing, intent tokens, accessibility. Telemetry to Neon via `NEON_URL` Worker secret.
+- **Data source**: HowardOS backend at `https://concierge.tickadoo.com` for products, cities, availability, pricing, intent tokens, accessibility. Telemetry to Neon via `NEON_URL` Worker secret.
 - **Testing**: vitest (`npm test`) + smoke suites (`npm run e2e:stdio`, `npm run e2e:http`)
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm); Workers build happens in-flight via `wrangler deploy`.
 - **Local dev**: `npm run dev:worker` (wrangler dev).
@@ -54,7 +54,7 @@ COORDINATION:
 
 **Auto mode** (research preview, Shift+Tab in Claude Code) handles permission decisions via classifiers instead of prompting per file-write or bash. Use it for long autonomous tasks with upfront context.
 
-**Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the Howard repo today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post to `#ai-activity` on start/progress/done, commit trailer `Claude-Chat: routine-{name}`).
+**Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the HowardOS repo (`howard`) today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post to `#ai-activity` on start/progress/done, commit trailer `Claude-Chat: routine-{name}`).
 
 **`/ultrareview`** spins up a careful-review pass in the terminal. Three free runs per account.
 
@@ -64,10 +64,10 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. 
 
 ## Cross-repo links
 
-- Howard backend: `github.com/tickadoo/howard`
+- HowardOS backend: `github.com/tickadoo/howard`
 - Shared conventions: `github.com/tickadoo/howard/blob/main/CLAUDE.md` (section "Multi-chat coordination") and `github.com/tickadoo/howard/blob/main/AGENTS.md`
 - Slack `#ai-activity` (`C0ATET93PQV`) for all AI agent activity across all repos
 
 ## This is a living document
 
-When significant state changes happen (v1.4.3+ features, new tools added, distribution updates, cross-repo coordination patterns that prove useful), update this file and commit. Keep it lightweight; detailed context lives in Howard's CLAUDE.md.
+When significant state changes happen (v1.5.x+ features, new tools added, distribution updates, cross-repo coordination patterns that prove useful), update this file and commit. Keep it lightweight; detailed context lives in the HowardOS repo's `CLAUDE.md`.

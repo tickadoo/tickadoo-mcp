@@ -104,11 +104,16 @@ const app = new Hono<{ Bindings: WorkerEnv }>();
 
 app.use("*", cors({ origin: "*" }));
 
-// Admin auth. Gates /admin/* behind a bearer token set via
-// `wrangler secret put ADMIN_TOKEN`. When the secret is absent the
-// routes return 503 so a misconfigured deploy never silently exposes
-// the telemetry dashboard.
-app.use("/admin/*", async (c, next) => {
+// Admin auth. The sensitive surface is the telemetry JSON feed — the
+// dashboard HTML is a static shell that fetches data via browser JS, so
+// it gets a public login form and the actual auth happens on the JSON
+// endpoint. Token is set via `wrangler secret put ADMIN_TOKEN`; an
+// unset secret returns 503 (fail closed) so a misconfigured deploy never
+// silently exposes data.
+async function adminAuth(
+  c: Context<{ Bindings: WorkerEnv }>,
+  next: () => Promise<void>,
+): Promise<Response | void> {
   const expected = c.env?.ADMIN_TOKEN;
   if (!expected) {
     return new Response(
@@ -132,7 +137,7 @@ app.use("/admin/*", async (c, next) => {
     );
   }
   await next();
-});
+}
 
 // Health
 app.get("/health", (c) => c.json(buildHealthPayload()));
@@ -149,6 +154,9 @@ app.get("/.well-known/mcp.json", () => jsonResponse(buildServerManifest(), { cac
 // .well-known/agent-card.json
 app.get("/.well-known/agent-card.json", () => jsonResponse(buildAgentCard(), { cache: CACHE_1H }));
 
+// Dashboard HTML is public — it is a static shell with a token prompt.
+// No data is in the HTML itself; the browser prompts for the token and
+// uses it as a Bearer header on the JSON fetch, which is gated by adminAuth.
 app.get("/admin/telemetry", () =>
   new Response(TELEMETRY_DASHBOARD_HTML, {
     status: 200,
@@ -161,8 +169,8 @@ app.get("/admin/telemetry", () =>
   })
 );
 
-app.get("/admin/telemetry.json", async (c) => {
-  const sql = createTelemetrySql(c.env.NEON_URL ?? process.env.NEON_URL);
+app.get("/admin/telemetry.json", adminAuth, async (c) => {
+  const sql = createTelemetrySql(c.env?.NEON_URL);
   if (!sql) {
     return jsonResponse({ error: "NEON_URL is not configured" }, { status: 500, cache: CACHE_NO_STORE });
   }
@@ -203,8 +211,9 @@ async function handleMcpRequest(c: Context<{ Bindings: WorkerEnv }>): Promise<Re
   // Build the MCP server fresh per request (stateless JSON mode). Both the
   // telemetry SQL client and the graph-query Neon client are constructed
   // from the request-scoped env binding — no module-level mutable state,
-  // no leakage between requests or isolates.
-  const neonUrl = c.env?.NEON_URL ?? (typeof process !== "undefined" ? process.env?.NEON_URL : undefined);
+  // no leakage between requests or isolates, no silent dependency on the
+  // host process environment.
+  const neonUrl = c.env?.NEON_URL;
   const server = createTickadooServer({
     telemetrySql: createTelemetrySql(neonUrl),
     neonClient: createNeonClient(neonUrl),

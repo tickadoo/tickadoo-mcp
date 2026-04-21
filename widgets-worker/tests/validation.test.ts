@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-
-// Re-declare the guards inline so the test exercises the exact shape
-// enforced at the worker edge. If these ever drift from src/index.ts
-// the CI failure points directly at the handler that needs updating.
-const SLUG_REGEX = /^[a-z0-9-]{1,200}$/;
-const VALID_TRIO_CONTEXTS = new Set(["pair", "after", "nearby", "similar"]);
+import { SLUG_REGEX, VALID_TRIO_CONTEXTS } from "../src/index.js";
 
 describe("widgets-worker input validation", () => {
   describe("SLUG_REGEX", () => {
-    it("accepts typical product slugs", () => {
+    it("accepts typical product and city slugs", () => {
       expect(SLUG_REGEX.test("harry-potter-studio-tour")).toBe(true);
       expect(SLUG_REGEX.test("tickets-wicked-the-musical-london")).toBe(true);
       expect(SLUG_REGEX.test("london")).toBe(true);
@@ -42,9 +37,11 @@ describe("widgets-worker input validation", () => {
 
     it("rejects arbitrary values", () => {
       expect(VALID_TRIO_CONTEXTS.has("pair")).toBe(true);
-      expect(VALID_TRIO_CONTEXTS.has("hacked")).toBe(false);
-      expect(VALID_TRIO_CONTEXTS.has("")).toBe(false);
-      expect(VALID_TRIO_CONTEXTS.has("../pair")).toBe(false);
+      // Cast-through-any is the expected shape since the set is a const union —
+      // the runtime `.has()` check must still reject non-member strings.
+      expect(VALID_TRIO_CONTEXTS.has("hacked" as never)).toBe(false);
+      expect(VALID_TRIO_CONTEXTS.has("" as never)).toBe(false);
+      expect(VALID_TRIO_CONTEXTS.has("../pair" as never)).toBe(false);
     });
   });
 });

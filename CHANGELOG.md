@@ -16,7 +16,7 @@
 - `SERVER_VERSION` synced to `1.5.0` (was `1.4.2`); `server.json` version synced; `.claude-plugin/plugin.json` version synced.
 - Tool-count drift fixed across docs, package.json, skill, plugin: `14` → `15`. `discovery.ts` description now interpolates `MCP_PUBLIC_TOOL_COUNT`.
 - `server.json` tools list trimmed to the 15 actually-registered tools (dropped phantom `recommend_experiences`, `get_categories`, `plan_itinerary`).
-- Howard backend base URL swapped from the non-existent personal `howard-api.francis-348.workers.dev` / `howard-api.mark-e43.workers.dev` to the production custom domain `concierge.tickadoo.com`. Affects `GHOST_CHECKOUT_INTENT_ENDPOINT`, the `_accessibility` hint in `get_experience_details`, llms.txt / llms-full.txt docs, and the check-availability test fixture.
+- HowardOS backend base URL swapped from the non-existent personal `howard-api.francis-348.workers.dev` / `howard-api.mark-e43.workers.dev` to the production custom domain `concierge.tickadoo.com`. Affects `GHOST_CHECKOUT_INTENT_ENDPOINT`, the `_accessibility` hint in `get_experience_details`, llms.txt / llms-full.txt docs, and the check-availability test fixture.
 
 ### Removed
 - Legacy Vercel surface: `vercel.json`, `tsconfig.vercel.json`, `scripts/sync-html.mjs`, `public/index.html`, `Dockerfile`.
@@ -25,10 +25,17 @@
 - `dev:http` npm script.
 
 ### Added
-- Worker route tests (`tests/worker-routes.test.ts`): /health, /robots.txt, /sitemap.xml, /agentx CSP, /.well-known/mcp.json, /mcp OPTIONS + GET fallback, 404 for unknown paths, full /admin auth matrix.
+- Worker route tests (`tests/worker-routes.test.ts`): /health, /robots.txt, /sitemap.xml, /agentx CSP, /.well-known/mcp.json, /mcp OPTIONS + GET fallback, 404 for unknown paths, full `/admin/telemetry.json` auth matrix, public `/admin/telemetry` HTML shell.
 - Telemetry scrub tests (`tests/telemetry-scrub.test.ts`).
-- Widgets input-validation tests (`widgets-worker/tests/validation.test.ts`).
+- Widgets input-validation tests (`widgets-worker/tests/validation.test.ts`), now importing the exported `SLUG_REGEX` + `VALID_TRIO_CONTEXTS` directly from `widgets-worker/src/index.ts` so drift in the edge guard fails the test.
+- Neon client unit tests (`tests/neon.test.ts`) covering null/empty/invalid/valid connection strings and the generic-error contract.
+- Admin dashboard in-browser login flow: the HTML shell prompts for the bearer token, stores it in `sessionStorage`, and sends it as `Authorization: Bearer` on the fetch to `/admin/telemetry.json`. 401 responses clear the stored token and re-prompt.
 - `npm run deploy` and `npm run deploy:widgets` scripts.
+
+### Changed (review follow-ups)
+- `/admin/telemetry` HTML shell is now public (no data embedded — login form only); auth continues to gate `/admin/telemetry.json`. Fixes the "dashboard can't load data" regression from the initial auth middleware.
+- `handleMcpRequest` no longer falls back to `process.env.NEON_URL`; the Worker reads NEON_URL exclusively from the request-scoped `c.env` binding, so test + prod behaviour no longer drifts based on the host process environment.
+- Prose renamed across docs: "Howard" (platform) → "HowardOS" per the 21 April naming update. Repo name (`howard`), CF Worker name (`howard-api`), and URL paths remain as literal infra identifiers.
 
 ## [1.5.0] - 2026-04-18
 ### Added

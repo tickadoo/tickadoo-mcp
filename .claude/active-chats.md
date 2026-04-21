@@ -21,7 +21,7 @@ Track what each AI agent (Claude chat, Claude Code session, Codex task) is worki
 - **Notes**: Already uses `Claude-Chat: howardmcp` trailer (has since before the convention was formalised). Already posts to `#ai-activity`. This file and `AGENTS.md` newly added 17 Apr to formalise the convention at repo level.
 
 ## howardops
-- **Status**: intermittent — primarily works on the Howard repo, occasionally touches this one for cross-repo work (convention replication, coordination doc updates)
+- **Status**: intermittent — primarily works on the HowardOS repo, occasionally touches this one for cross-repo work (convention replication, coordination doc updates)
 - **Scope**: multi-agent coordination, PR reviews, convention docs, small surgical fixes
 - **Files typically changed**: `CLAUDE.md`, `AGENTS.md`, `.claude/**`, occasional cross-repo alignment work
 - **Last commit**: (cross-repo — this file and surrounding convention docs)
@@ -44,7 +44,7 @@ Track what each AI agent (Claude chat, Claude Code session, Codex task) is worki
 
 ## Other team members
 
-Mark and other engineers (Marek, Radoš, Dominik) mostly work on the Howard repo via Cursor / VS Code / embedded AI tooling rather than dedicated Claude chats on this repo. If any of them start doing tickadoo-mcp work through a Claude chat, they should follow the `firstname-<scope>` naming pattern (e.g. `mark-mcp`).
+Mark and other engineers (Marek, Radoš, Dominik) mostly work on the HowardOS repo via Cursor / VS Code / embedded AI tooling rather than dedicated Claude chats on this repo. If any of them start doing tickadoo-mcp work through a Claude chat, they should follow the `firstname-<scope>` naming pattern (e.g. `mark-mcp`).
 
 ---
 
