@@ -7,6 +7,7 @@ type Env = {
   NEON_URL: string;
   MCP_INTERNAL_URL: string;
   ADMIN_API_KEY: string;
+  ASSETS: Fetcher;
 };
 
 type Partner = {
@@ -23,6 +24,70 @@ type StructuredResults = {
 };
 
 const app = new Hono<{ Bindings: Env }>();
+
+const BASE_CSP = [
+  "default-src 'none'",
+  "script-src 'self' https://cdn.openai.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' https://*.tickadoo.com https://*.cloudfront.net data:",
+  "connect-src 'self' https://api.openai.com",
+  "frame-ancestors https://chatgpt.com https://*.chatgpt.com",
+].join("; ");
+
+const HTML_SECURITY_HEADERS = {
+  "Content-Type": "text/html; charset=utf-8",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Cache-Control": "public, max-age=300, s-maxage=300",
+};
+
+async function sha256Base64(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  const bytes = Array.from(new Uint8Array(digest), (byte) => String.fromCharCode(byte)).join("");
+  return btoa(bytes);
+}
+
+async function cspForHtml(html: string): Promise<string> {
+  const hashes: string[] = [];
+  for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+    const script = match[1] ?? "";
+    if (script.trim()) hashes.push(`'sha256-${await sha256Base64(script)}'`);
+  }
+  if (!hashes.length) return BASE_CSP;
+  return BASE_CSP.replace(
+    "script-src 'self' https://cdn.openai.com",
+    `script-src 'self' https://cdn.openai.com ${hashes.join(" ")}`,
+  );
+}
+
+function assetRequest(request: Request, pathname: string): Request {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  return new Request(url, request);
+}
+
+async function serveHtmlAsset(request: Request, env: Env, pathname: string): Promise<Response> {
+  const response = await env.ASSETS.fetch(assetRequest(request, pathname));
+  if (!response.ok) {
+    return new Response("Not found", { status: 404, headers: HTML_SECURITY_HEADERS });
+  }
+  const html = await response.text();
+  return new Response(html, {
+    status: response.status,
+    headers: {
+      ...HTML_SECURITY_HEADERS,
+      "Content-Security-Policy": await cspForHtml(html),
+    },
+  });
+}
+
+const CARDS_API_HEADERS = {
+  "Content-Type": "application/json; charset=utf-8",
+  "Cache-Control": "public, max-age=300, s-maxage=300",
+  "Access-Control-Allow-Origin": "https://widgets.tickadoo.com",
+  "X-Content-Type-Options": "nosniff",
+};
 
 // Tight allowlist for any user-controlled identifier we forward upstream
 // to the MCP server. Slugs are lowercase alphanumerics + `-` only; cities
@@ -216,6 +281,29 @@ async function resolvePartnerByKey(
   ` as Partner[];
   return rows[0] ?? null;
 }
+
+app.get("/cards.html", async (c) => {
+  return serveHtmlAsset(c.req.raw, c.env, "/cards.html");
+});
+
+app.get("/cards-empty.html", async (c) => {
+  return serveHtmlAsset(c.req.raw, c.env, "/cards-empty.html");
+});
+
+app.get("/api/widget/cards", async (c) => {
+  const upstream = new URL("/api/widget/cards", c.env.MCP_INTERNAL_URL);
+  const ids = c.req.query("ids");
+  if (ids) upstream.searchParams.set("ids", ids);
+
+  const response = await fetch(upstream, {
+    headers: { accept: "application/json" },
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: CARDS_API_HEADERS,
+  });
+});
 
 app.get("/health", (c) => c.text("ok"));
 
@@ -533,6 +621,22 @@ const EXAMPLES_HTML = `<!doctype html>
     </div>
   </section>
 
+  <section class="example">
+    <div class="example-head">
+      <div class="kicker">Widget 4 &middot; /cards.html</div>
+      <h2>OpenAI Apps SDK cards</h2>
+      <p class="lede">The ChatGPT component bundle for rendering experience cards inside the Apps SDK iframe.</p>
+    </div>
+    <div class="preview-frame" style="height: 720px;">
+      <div class="preview-label">widgets.tickadoo.com/cards.html</div>
+      <iframe src="/cards.html?test=1" width="100%" height="720" loading="lazy" title="Live tickadoo cards widget for ChatGPT Apps SDK"></iframe>
+    </div>
+    <div class="code-block">
+<span class="tag">&lt;iframe</span> <span class="attr">src</span>=<span class="str">"https://widgets.tickadoo.com/cards.html?test=1"</span>
+        <span class="attr">width</span>=<span class="str">"100%"</span> <span class="attr">height</span>=<span class="str">"720"</span> <span class="attr">loading</span>=<span class="str">"lazy"</span><span class="tag">&gt;&lt;/iframe&gt;</span>
+    </div>
+  </section>
+
   <div class="faq">
     <h3>Common questions</h3>
     <details>
@@ -575,6 +679,9 @@ const ROBOTS_TXT = [
   "Disallow: /map",
   "Disallow: /card",
   "Disallow: /trio",
+  "Disallow: /cards.html",
+  "Disallow: /cards-empty.html",
+  "Disallow: /api",
   "Disallow: /admin",
   "",
   "Sitemap: https://widgets.tickadoo.com/sitemap.xml",
