@@ -296,8 +296,16 @@ app.get("/api/widget/cards", async (c) => {
   if (ids) upstream.searchParams.set("ids", ids);
 
   const response = await fetch(upstream, {
-    headers: { accept: "application/json" },
-    cf: { cacheTtl: 0, cacheEverything: false },
+    headers: {
+      accept: "application/json",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+    },
+    cf: {
+      cacheTtl: 0,
+      cacheEverything: false,
+      cacheKey: `widget-cards-${ids ?? "empty"}-${Date.now()}`,
+    },
   });
 
   return new Response(response.body, {
