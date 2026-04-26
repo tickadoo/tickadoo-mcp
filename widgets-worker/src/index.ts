@@ -24,6 +24,16 @@ type StructuredResults = {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Tight allowlist for any user-controlled identifier we forward upstream
+// to the MCP server. Slugs are lowercase alphanumerics + `-` only; cities
+// are normalised the same way via `normaliseCitySlug` but we defence-in-depth
+// re-check here. 200-char cap guards against amplification of whatever the
+// MCP server decides to do with an oversized input.
+// Exported so tests exercise the exact same constants enforced at the edge.
+export const SLUG_REGEX = /^[a-z0-9-]{1,200}$/;
+export const VALID_TRIO_CONTEXTS = new Set(["pair", "after", "nearby", "similar"] as const);
+export type TrioContext = "pair" | "after" | "nearby" | "similar";
+
 async function validatePartner(
   sql: NeonQueryFunction<false, false>,
   key: string,
@@ -215,6 +225,8 @@ app.get("/map", async (c) => {
   const maxResults = Math.min(parseInt(c.req.query("max_results") || "10", 10) || 10, 20);
   if (!key) return c.text("Missing key", 400);
   if (!city) return c.text("Missing city", 400);
+  const citySlugInput = normaliseCitySlug(city);
+  if (!SLUG_REGEX.test(citySlugInput)) return c.text("Invalid city", 400);
 
   const sql = neon(c.env.NEON_URL);
   const partner = await validatePartner(sql, key, c.req.header("Referer") || "");
@@ -223,7 +235,7 @@ app.get("/map", async (c) => {
   // Resolve city -> coords. Known cities use find_nearby_experiences
   // (returns lat/lng per product, great for a map). Unknown cities fall
   // back to search_experiences (list-only, no markers).
-  const citySlug = normaliseCitySlug(city);
+  const citySlug = citySlugInput;
   const coords = CITY_COORDS[citySlug];
   let data: StructuredResults | null;
   if (coords) {
@@ -268,6 +280,7 @@ app.get("/card", async (c) => {
   const slug = c.req.query("slug") || "";
   if (!key) return c.text("Missing key", 400);
   if (!slug) return c.text("Missing slug", 400);
+  if (!SLUG_REGEX.test(slug)) return c.text("Invalid slug", 400);
 
   const sql = neon(c.env.NEON_URL);
   const partner = await validatePartner(sql, key, c.req.header("Referer") || "");
@@ -301,9 +314,13 @@ app.get("/card", async (c) => {
 app.get("/trio", async (c) => {
   const key = c.req.query("key") || "";
   const slug = c.req.query("slug") || "";
-  const context = (c.req.query("context") as "pair" | "after" | "nearby" | "similar" | undefined) ?? "pair";
+  const rawContext = c.req.query("context");
+  const context: TrioContext = rawContext && VALID_TRIO_CONTEXTS.has(rawContext as TrioContext)
+    ? (rawContext as TrioContext)
+    : "pair";
   if (!key) return c.text("Missing key", 400);
   if (!slug) return c.text("Missing slug", 400);
+  if (!SLUG_REGEX.test(slug)) return c.text("Invalid slug", 400);
 
   const sql = neon(c.env.NEON_URL);
   const partner = await validatePartner(sql, key, c.req.header("Referer") || "");

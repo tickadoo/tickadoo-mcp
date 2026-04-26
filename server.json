@@ -45,14 +45,6 @@
           "description": "Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates."
         },
         {
-          "name": "recommend_experiences",
-          "description": "Get personalized experience recommendations from natural-language preferences such as audience, mood, occasion, budget, weather, and time of day."
-        },
-        {
-          "name": "get_categories",
-          "description": "List available experience categories with optional city scoping and per-category counts."
-        },
-        {
           "name": "whats_on_tonight",
           "description": "Find experiences happening tonight in a city, sorted for same-day discovery with timing and urgency context."
         },
@@ -71,10 +63,6 @@
         {
           "name": "get_family_day",
           "description": "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering and geographic clustering."
-        },
-        {
-          "name": "plan_itinerary",
-          "description": "Plan a multi-day itinerary with morning, afternoon, and evening slots, balancing geography, category variety, and budget."
         }
       ]
     }
@@ -87,7 +75,7 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "1.4.1",
+  "version": "1.5.0",
   "remotes": [
     {
       "type": "streamable-http",

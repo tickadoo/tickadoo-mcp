@@ -1168,7 +1168,7 @@ export function experienceDetailsJsonPayload(
         stroller_friendly: details.mcpProduct.strollerFriendly ?? null,
         ...(googlePlaceId ? { google_place_id: googlePlaceId } : {}),
         hint: "For full venue accessibility data (hearing loop, captioned performances, companion seats, step-free access), query the accessibility API.",
-        api: "https://howard-api.francis-348.workers.dev/api/accessibility/{venue-slug}",
+        api: "https://concierge.tickadoo.com/api/accessibility/{venue-slug}",
       },
     } : {}),
     ...(details.mcpProduct?.tags?.length ? {

@@ -10,8 +10,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * fully additive.
  *
  * HTML is kept as inline `String.raw` template literals so the module
- * works identically under Node, Cloudflare Workers, and Vercel Edge with
- * no bundler plugin and no runtime fs access. The only external asset
+ * works identically under Node and Cloudflare Workers with no bundler
+ * plugin and no runtime fs access. The only external asset
  * is Leaflet 1.9.4, pinned to a specific cdnjs URL with SRI hashes, and
  * loaded only inside the experience-map iframe.
  *

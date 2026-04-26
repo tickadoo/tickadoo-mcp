@@ -48,8 +48,19 @@ export const TELEMETRY_DASHBOARD_HTML = String.raw`<!doctype html>
   th{background:#f6f6f7;font-weight:600}
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .muted{color:#888}
+  #login{display:none;margin:40px 0;padding:20px;border:1px solid #eee;border-radius:6px;max-width:420px}
+  #login input{padding:8px 10px;font:inherit;width:100%;box-sizing:border-box;margin:8px 0}
+  #login button{padding:8px 16px;font:inherit;cursor:pointer}
+  #main{display:none}
 </style></head><body>
 <h1>tickadoo agent telemetry <span class="muted">last 24h</span></h1>
+<div id="login">
+  <p>Enter admin token to view telemetry.</p>
+  <input id="tokenInput" type="password" autocomplete="current-password" placeholder="admin token">
+  <button id="tokenSubmit" type="button">Unlock</button>
+  <p id="loginError" class="muted"></p>
+</div>
+<div id="main">
 <h2>Volume</h2>
 <table id="volume"><thead><tr><th>metric</th><th class="num">value</th></tr></thead><tbody></tbody></table>
 <h2>Calls by tool (24h)</h2>
@@ -60,9 +71,30 @@ export const TELEMETRY_DASHBOARD_HTML = String.raw`<!doctype html>
 <table id="byCity"><thead><tr><th>city</th><th class="num">calls</th></tr></thead><tbody></tbody></table>
 <h2>Top products shown (7d)</h2>
 <table id="topProducts"><thead><tr><th>slug</th><th class="num">shown</th></tr></thead><tbody></tbody></table>
+</div>
 <script>
-fetch('/admin/telemetry.json').then(function (response) { return response.json(); }).then(function (data) {
-  var addRow = function (selector, cells) {
+(function () {
+  var TOKEN_KEY = 'tickadoo_admin_token';
+  var login = document.getElementById('login');
+  var main = document.getElementById('main');
+  var loginError = document.getElementById('loginError');
+  var tokenInput = document.getElementById('tokenInput');
+  var tokenSubmit = document.getElementById('tokenSubmit');
+
+  function showLogin(message) {
+    login.style.display = 'block';
+    main.style.display = 'none';
+    loginError.textContent = message || '';
+    tokenInput.value = '';
+    tokenInput.focus();
+  }
+
+  function showDashboard() {
+    login.style.display = 'none';
+    main.style.display = 'block';
+  }
+
+  function addRow(selector, cells) {
     var tr = document.createElement('tr');
     cells.forEach(function (cell, index) {
       var td = document.createElement('td');
@@ -71,19 +103,74 @@ fetch('/admin/telemetry.json').then(function (response) { return response.json()
       tr.appendChild(td);
     });
     document.querySelector(selector + ' tbody').appendChild(tr);
-  };
-  addRow('#volume', ['total calls 24h', data.volume.total24h]);
-  addRow('#volume', ['bookings 24h', data.volume.bookings24h]);
-  addRow('#volume', ['conversion 24h', (data.volume.conversion * 100).toFixed(2) + '%']);
-  data.byTool.forEach(function (row) {
-    addRow('#byTool', [row.tool_name, row.calls, row.errors, row.avg_latency_ms + 'ms', (row.conversion * 100).toFixed(1) + '%']);
+  }
+
+  function clearTables() {
+    ['#volume', '#byTool', '#byHost', '#byCity', '#topProducts'].forEach(function (selector) {
+      var tbody = document.querySelector(selector + ' tbody');
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    });
+  }
+
+  function renderDashboard(data) {
+    clearTables();
+    addRow('#volume', ['total calls 24h', data.volume.total24h]);
+    addRow('#volume', ['bookings 24h', data.volume.bookings24h]);
+    addRow('#volume', ['conversion 24h', (data.volume.conversion * 100).toFixed(2) + '%']);
+    data.byTool.forEach(function (row) {
+      addRow('#byTool', [row.tool_name, row.calls, row.errors, row.avg_latency_ms + 'ms', (row.conversion * 100).toFixed(1) + '%']);
+    });
+    data.byHost.forEach(function (row) { addRow('#byHost', [row.host_hint, row.calls]); });
+    data.byCity.forEach(function (row) { addRow('#byCity', [row.city || '(unknown)', row.calls]); });
+    data.topProducts.forEach(function (row) { addRow('#topProducts', [row.slug, row.shown]); });
+  }
+
+  function load(token) {
+    fetch('/admin/telemetry.json', {
+      headers: { 'Authorization': 'Bearer ' + token },
+      cache: 'no-store',
+    }).then(function (response) {
+      if (response.status === 401) {
+        try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+        showLogin('Invalid token.');
+        return null;
+      }
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.json();
+    }).then(function (data) {
+      if (data) {
+        showDashboard();
+        renderDashboard(data);
+      }
+    }).catch(function (error) {
+      var p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = 'Failed to load telemetry: ' + String(error);
+      main.appendChild(p);
+      showDashboard();
+    });
+  }
+
+  tokenSubmit.addEventListener('click', function () {
+    var token = tokenInput.value.trim();
+    if (!token) return;
+    try { sessionStorage.setItem(TOKEN_KEY, token); } catch (e) {}
+    load(token);
   });
-  data.byHost.forEach(function (row) { addRow('#byHost', [row.host_hint, row.calls]); });
-  data.byCity.forEach(function (row) { addRow('#byCity', [row.city || '(unknown)', row.calls]); });
-  data.topProducts.forEach(function (row) { addRow('#topProducts', [row.slug, row.shown]); });
-}).catch(function (error) {
-  document.body.insertAdjacentHTML('beforeend', '<p class="muted">Failed to load telemetry: ' + String(error) + '</p>');
-});
+  tokenInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') tokenSubmit.click();
+  });
+
+  var stored = null;
+  try { stored = sessionStorage.getItem(TOKEN_KEY); } catch (e) {}
+  if (stored) {
+    load(stored);
+  } else {
+    showLogin('');
+  }
+})();
 </script></body></html>`;
 
 export async function fetchTelemetryDashboard(sql: SqlClient): Promise<TelemetryDashboardPayload> {

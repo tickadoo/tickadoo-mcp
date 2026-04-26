@@ -5,7 +5,7 @@ export const MCP_ENDPOINT_URL = `${MCP_BASE_URL}/mcp`;
 export const MCP_API_TOKEN = process.env.TICKADOO_MCP_API_TOKEN ?? "";
 export const MCP_PRODUCTS_ENDPOINT = "/integrations-api/v1.0/mcp/products";
 export const PRODUCT_FEED_URL = "https://content.tickadoo.com/openai/ProductFeed.jsonl.gz";
-export const GHOST_CHECKOUT_INTENT_ENDPOINT = process.env.TICKADOO_GHOST_CHECKOUT_INTENT_ENDPOINT ?? "https://howard-api.francis-348.workers.dev/api/intent-token";
+export const GHOST_CHECKOUT_INTENT_ENDPOINT = process.env.TICKADOO_GHOST_CHECKOUT_INTENT_ENDPOINT ?? "https://concierge.tickadoo.com/api/intent-token";
 export const DEFAULT_LANGUAGE = "en";
 export const SUPPORTED_LANGUAGE_CODES = [
   "en",
@@ -67,8 +67,8 @@ export const TICKADOO_LOG_LEVEL: TickadooLogLevel = RAW_TICKADOO_LOG_LEVEL === "
   : "info";
 
 export const SERVER_NAME = "tickadoo";
-export const SERVER_VERSION = "1.4.2";
-export const SERVER_DESCRIPTION = "Discover and book 13,090+ theatre, tour, attraction, and event experiences across 681 cities with 14 AI-powered tools. No API key required.";
+export const SERVER_VERSION = "1.5.0";
+export const SERVER_DESCRIPTION = "Discover and book 13,090+ theatre, tour, attraction, and event experiences across 681 cities with 15 AI-powered tools. No API key required.";
 
 export const REQUEST_TIMEOUT_MS = 10_000;
 export const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);

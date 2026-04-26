@@ -2,7 +2,8 @@ node_modules/
 dist/
 .env
 *.tgz
-.vercel
+.wrangler/
+.dev.vars
 
 # Internal files
 # AGENTS.md — un-ignored 17 April 2026. Now a committed shared ruleset (Codex auto-reads on task start). Ephemeral status files still ignored below.

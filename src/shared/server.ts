@@ -7,7 +7,7 @@ import {
   registerTickadooUiResources,
   uiMeta,
 } from "./ui-resources.js";
-import { neonQuery } from "./neon.js";
+import type { NeonClient } from "./neon.js";
 import {
   extractTopProductIds,
   recordAgentCall,
@@ -208,6 +208,7 @@ type ToolLogSummary = Record<string, boolean | number | string | undefined>;
 type CreateTickadooServerOptions = {
   logWriter?: LogWriter;
   telemetrySql?: SqlClient | null;
+  neonClient?: NeonClient | null;
 };
 const SEARCH_SORT_OPTION_SET = new Set<string>(SEARCH_SORT_OPTIONS);
 const SEARCH_MOOD_OPTION_SET = new Set<string>(SEARCH_MOOD_OPTIONS);
@@ -2868,6 +2869,7 @@ async function executeSearchTool(request: SearchExecutionArgs): Promise<LoggedTo
 export function createTickadooServer(options: CreateTickadooServerOptions = {}): McpServer {
   const logWriter = options.logWriter ?? defaultLogWriter;
   const telemetrySql = options.telemetrySql ?? null;
+  const neonClient = options.neonClient ?? null;
   const server = new McpServer({
     name: SERVER_NAME,
     version: SERVER_VERSION,
@@ -4257,8 +4259,16 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
           // edges (product_embeddings via pgvector cosine similarity) in
           // parallel. Semantic returns empty until embeddings are computed,
           // which degrades gracefully to heuristic-only behaviour.
+          if (!neonClient) {
+            return {
+              response: createErrorResponse("Related experiences are not available in this environment."),
+              resultCount: 0,
+              summary: { context, max_results: maxResults },
+            };
+          }
+
           const [edges, semanticEdges] = await Promise.all([
-            neonQuery<Array<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>[number]>(
+            neonClient<{ target_id: string; edge_type: string; strength: number; metadata: unknown }>(
               `SELECT target_id, edge_type, strength, metadata
                FROM product_edges
                WHERE source_id = $1
@@ -4273,7 +4283,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
             // extension or schema drift never breaks the tool.
             (async () => {
               try {
-                return await neonQuery<Array<{ target_id: string; cosine_similarity: number }>[number]>(
+                return await neonClient<{ target_id: string; cosine_similarity: number }>(
                   `WITH source AS (SELECT embedding FROM product_embeddings WHERE product_id = $1)
                    SELECT pe.product_id AS target_id,
                           1 - (pe.embedding <=> source.embedding) AS cosine_similarity
@@ -4331,7 +4341,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
 
           const targetSlugs = topTargets.map(([slug]) => slug);
           const products = targetSlugs.length > 0
-            ? await neonQuery<Array<{
+            ? await neonClient<{
               slug: string;
               title: string;
               description: string | null;
@@ -4344,7 +4354,7 @@ export function createTickadooServer(options: CreateTickadooServerOptions = {}):
               city_slug: string;
               latitude: number | null;
               longitude: number | null;
-            }>[number]>(
+            }>(
               `SELECT DISTINCT ON (slug)
                  slug,
                  name AS title,

@@ -1,11 +1,11 @@
 /**
- * Cloudflare Workers entrypoint for tickadoo MCP server (GRO-214).
- * Replaces the Vercel serverless functions in api/*.ts.
+ * Cloudflare Workers entrypoint for tickadoo MCP server.
  *
  * Uses Hono for routing and the MCP SDK's WebStandardStreamableHTTPServerTransport
  * for native Workers compatibility (no Node.js shims needed).
  */
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
+import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createTickadooServer } from "./shared/server.js";
@@ -13,7 +13,7 @@ import { SERVER_VERSION, SERVER_NAME } from "./shared/config.js";
 import { buildServerManifest, buildAgentCard } from "./shared/discovery.js";
 import { buildLlmsTxt, buildLlmsFullTxt } from "./shared/llms.js";
 import { createTelemetrySql } from "./shared/telemetry.js";
-import { configureNeonConnectionString } from "./shared/neon.js";
+import { createNeonClient } from "./shared/neon.js";
 import { AGENTX_HTML } from "./shared/agentx.js";
 import { fetchTelemetryDashboard, TELEMETRY_DASHBOARD_HTML } from "./shared/telemetry-dashboard.js";
 
@@ -23,6 +23,40 @@ const CACHE_1H = "public, max-age=3600";
 const CACHE_5M = "public, max-age=300, stale-while-revalidate=300";
 const CACHE_1M = "public, max-age=60, stale-while-revalidate=300";
 const CACHE_NO_STORE = "no-store";
+
+// CSP applied to every HTML route we serve (/agentx, /admin/telemetry, any
+// landing HTML). `script-src`/`style-src 'unsafe-inline'` is deliberate — the
+// admin dashboard and AgentX playbook both ship inline scripts/styles and
+// have no external origins to trust. `connect-src 'self'` covers the
+// admin dashboard's fetch to /admin/telemetry.json.
+const CSP_HTML = [
+  "default-src 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+].join("; ");
+
+// Equal-length constant-time string compare. Prevents a timing oracle on the
+// admin bearer-token check. Short-circuits on length mismatch — this only
+// leaks whether lengths differ, which is an acceptable trade.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+type WorkerEnv = {
+  NEON_URL?: string;
+  ADMIN_TOKEN?: string;
+  OPENAI_DOMAIN_VERIFY_TOKEN?: string;
+};
 
 function jsonResponse(data: unknown, opts?: { status?: number; cache?: string }) {
   return new Response(JSON.stringify(data), {
@@ -66,9 +100,44 @@ function buildHealthPayload() {
 
 /* ---------- Hono app ---------- */
 
-const app = new Hono<{ Bindings: { NEON_URL?: string } }>();
+const app = new Hono<{ Bindings: WorkerEnv }>();
 
 app.use("*", cors({ origin: "*" }));
+
+// Admin auth. The sensitive surface is the telemetry JSON feed — the
+// dashboard HTML is a static shell that fetches data via browser JS, so
+// it gets a public login form and the actual auth happens on the JSON
+// endpoint. Token is set via `wrangler secret put ADMIN_TOKEN`; an
+// unset secret returns 503 (fail closed) so a misconfigured deploy never
+// silently exposes data.
+async function adminAuth(
+  c: Context<{ Bindings: WorkerEnv }>,
+  next: () => Promise<void>,
+): Promise<Response | void> {
+  const expected = c.env?.ADMIN_TOKEN;
+  if (!expected) {
+    return new Response(
+      JSON.stringify({ error: "admin auth is not configured" }),
+      { status: 503, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } },
+    );
+  }
+  const header = c.req.header("authorization") ?? "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match || !timingSafeEqual(match[1], expected)) {
+    return new Response(
+      JSON.stringify({ error: "unauthorized" }),
+      {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+          "WWW-Authenticate": 'Bearer realm="tickadoo-admin"',
+        },
+      },
+    );
+  }
+  await next();
+}
 
 // Health
 app.get("/health", (c) => c.json(buildHealthPayload()));
@@ -85,16 +154,23 @@ app.get("/.well-known/mcp.json", () => jsonResponse(buildServerManifest(), { cac
 // .well-known/agent-card.json
 app.get("/.well-known/agent-card.json", () => jsonResponse(buildAgentCard(), { cache: CACHE_1H }));
 
-// TODO: Gate these admin telemetry routes behind the shared admin auth middleware once one exists in this repo.
+// Dashboard HTML is public — it is a static shell with a token prompt.
+// No data is in the HTML itself; the browser prompts for the token and
+// uses it as a Bearer header on the JSON fetch, which is gated by adminAuth.
 app.get("/admin/telemetry", () =>
-  textResponse(TELEMETRY_DASHBOARD_HTML, {
-    contentType: "text/html; charset=utf-8",
-    cache: CACHE_NO_STORE,
+  new Response(TELEMETRY_DASHBOARD_HTML, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": CACHE_NO_STORE,
+      "Content-Security-Policy": CSP_HTML,
+      "X-MCP-Server-Version": SERVER_VERSION,
+    },
   })
 );
 
-app.get("/admin/telemetry.json", async (c) => {
-  const sql = createTelemetrySql(c.env.NEON_URL ?? process.env.NEON_URL);
+app.get("/admin/telemetry.json", adminAuth, async (c) => {
+  const sql = createTelemetrySql(c.env?.NEON_URL);
   if (!sql) {
     return jsonResponse({ error: "NEON_URL is not configured" }, { status: 500, cache: CACHE_NO_STORE });
   }
@@ -110,14 +186,8 @@ app.get("/admin/telemetry.json", async (c) => {
 });
 
 // MCP request handler (shared by /mcp and POST /)
-async function handleMcpRequest(c: any): Promise<Response> {
+async function handleMcpRequest(c: Context<{ Bindings: WorkerEnv }>): Promise<Response> {
   const req = c.req.raw;
-
-  // Surface the Workers env secret to the shared neon helper so graph-query
-  // tools (get_related_experiences, etc.) can reach Postgres. In CF Workers,
-  // process.env does NOT receive `wrangler secret put` values — only the
-  // per-request env object does, hence the explicit plumbing here.
-  configureNeonConnectionString(c.env?.NEON_URL);
 
   // OPTIONS preflight
   if (req.method === "OPTIONS") {
@@ -138,9 +208,15 @@ async function handleMcpRequest(c: any): Promise<Response> {
     return jsonResponse(buildHealthPayload());
   }
 
-  // MCP transport (stateless, JSON response mode)
+  // Build the MCP server fresh per request (stateless JSON mode). Both the
+  // telemetry SQL client and the graph-query Neon client are constructed
+  // from the request-scoped env binding — no module-level mutable state,
+  // no leakage between requests or isolates, no silent dependency on the
+  // host process environment.
+  const neonUrl = c.env?.NEON_URL;
   const server = createTickadooServer({
-    telemetrySql: createTelemetrySql(c.env.NEON_URL ?? process.env.NEON_URL),
+    telemetrySql: createTelemetrySql(neonUrl),
+    neonClient: createNeonClient(neonUrl),
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -238,15 +314,15 @@ const ROBOTS_TXT = [
 // token that must be served at a specific path as plain text (not JSON/HTML).
 // Set OPENAI_DOMAIN_VERIFY_TOKEN as a worker secret and this route answers.
 // Until the token is issued, the route 404s (identical to the default).
-app.get("/.well-known/openai-domain-verify", (c: Context<{ Bindings: Env }>) => {
-  const token = (c.env as Env & { OPENAI_DOMAIN_VERIFY_TOKEN?: string }).OPENAI_DOMAIN_VERIFY_TOKEN;
+app.get("/.well-known/openai-domain-verify", (c) => {
+  const token = c.env?.OPENAI_DOMAIN_VERIFY_TOKEN;
   if (!token) return c.text("", 404);
   return c.text(token, 200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" });
 });
 
 // Legacy path variant some OpenAI documentation references.
-app.get("/openai-domain-verification.txt", (c: Context<{ Bindings: Env }>) => {
-  const token = (c.env as Env & { OPENAI_DOMAIN_VERIFY_TOKEN?: string }).OPENAI_DOMAIN_VERIFY_TOKEN;
+app.get("/openai-domain-verification.txt", (c) => {
+  const token = c.env?.OPENAI_DOMAIN_VERIFY_TOKEN;
   if (!token) return c.text("", 404);
   return c.text(token, 200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" });
 });
@@ -276,6 +352,7 @@ app.get("/agentx", () => new Response(AGENTX_HTML, {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "public, max-age=600, stale-while-revalidate=3600",
     "Access-Control-Allow-Origin": "*",
+    "Content-Security-Policy": CSP_HTML,
     "Link": "<https://mcp.tickadoo.com/agentx>; rel=\"canonical\"",
   },
 }));
