@@ -11,6 +11,12 @@
 	"observability": {
 		"enabled": true
 	},
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		"run_worker_first": ["/cards.html", "/cards-empty.html", "/api/*"],
+		"html_handling": "none"
+	},
 	"routes": [
 		{
 			"pattern": "widgets.tickadoo.com/*",
