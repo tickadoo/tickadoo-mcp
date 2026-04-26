@@ -297,6 +297,7 @@ app.get("/api/widget/cards", async (c) => {
 
   const response = await fetch(upstream, {
     headers: { accept: "application/json" },
+    cf: { cacheTtl: 0, cacheEverything: false },
   });
 
   return new Response(response.body, {
