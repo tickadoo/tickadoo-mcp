@@ -13,8 +13,8 @@
 	},
 	"routes": [
 		{
-			"pattern": "widgets.tickadoo.com",
-			"custom_domain": true
+			"pattern": "widgets.tickadoo.com/*",
+			"zone_id": "9e257d33dcd351708e4614d712f62f29"
 		}
 	],
 	"vars": {
