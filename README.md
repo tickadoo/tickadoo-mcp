@@ -2,6 +2,8 @@
 
 tickadoo® MCP Server brings live experience discovery to AI assistants through the Model Context Protocol (MCP). It gives compatible clients access to bookable theatre, shows, tours, attractions, and events across 680+ cities worldwide.
 
+> **Internal note:** This is the **public, agent-facing** MCP at `mcp.tickadoo.com` — the surface that supports Claude, ChatGPT, Cursor, Smithery and other MCP clients. A separate, internal `/mcp-db` endpoint that read the production database for ad-hoc team investigations was retired post-flip; it has been replaced by the `db-investigate` Claude skill in the howard repo. When tickadoo team docs say "MCP" with no qualifier, they mean **this server**.
+
 🌐 Languages: Landing page available in: EN · JA · 中文 · 한국어 · DE · FR · ES · IT · PT · tlhIngan Hol 🖖
 
 ### 日本語
