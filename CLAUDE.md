@@ -6,7 +6,7 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 `@tickadoo/mcp-server` — the public MCP (Model Context Protocol) server for tickadoo. Exposes 15 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, and recommend tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm.
 
-As of v1.4.2 (16 April 2026): agent intelligence layer on both search tools — `_best_picks`, `_price_tiers`, `_group_summary`, smart `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`. Details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
+As of v1.4.3: agent intelligence layer on both search tools — `_best_picks`, `_price_tiers`, `_group_summary`, smart `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`. Details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
 
 ## Architecture at a glance
 
