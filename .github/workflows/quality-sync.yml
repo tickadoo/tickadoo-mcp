@@ -1,0 +1,53 @@
+# GRO-407: verify vendored quality helpers haven't drifted from howard source.
+# Runs on every PR + nightly. Fails CI if drift is detected.
+# Mirrors the vendoring contract documented in src/shared/quality/SYNC.md.
+
+name: Quality module sync check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/shared/quality/**'
+  pull_request:
+    paths:
+      - 'src/shared/quality/**'
+  schedule:
+    - cron: '0 7 * * *'  # 07:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  check-quality-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch howard source and diff vendored copies
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOWARD_REPO_READ_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=("seasonal-variants.ts")
+          DRIFT_FOUND=0
+          for f in "${FILES[@]}"; do
+            # Fetch howard source
+            curl -sS -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.raw" \
+              "https://api.github.com/repos/tickadoo/howard/contents/src/quality/$f?ref=main" \
+              -o "/tmp/howard-$f"
+
+            # Strip the vendoring header from our copy (first 5 lines + blank line)
+            tail -n +7 "src/shared/quality/$f" > "/tmp/vendor-$f"
+
+            if ! diff -q "/tmp/howard-$f" "/tmp/vendor-$f" > /dev/null; then
+              echo "DRIFT detected in $f:"
+              diff "/tmp/howard-$f" "/tmp/vendor-$f" | head -50
+              DRIFT_FOUND=1
+            else
+              echo "OK: $f matches howard source"
+            fi
+          done
+          if [ "$DRIFT_FOUND" -eq 1 ]; then
+            echo ""
+            echo "Run 'scripts/sync-quality.sh' to refresh the vendored copies."
+            exit 1
+          fi
