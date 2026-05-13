@@ -1,6 +1,16 @@
 # GRO-407: verify vendored quality helpers haven't drifted from howard source.
-# Runs on every PR + nightly. Fails CI if drift is detected.
-# Mirrors the vendoring contract documented in src/shared/quality/SYNC.md.
+# Runs on every PR + nightly. Reports drift but does NOT fail CI (yet).
+#
+# Currently non-blocking because cross-repo access to tickadoo/howard requires
+# a PAT secret (`HOWARD_REPO_READ_TOKEN`) that isn't configured in this repo.
+# Once Francis configures the secret (a fine-grained PAT with Contents:Read
+# access to tickadoo/howard), this workflow flips to gate-mode by removing
+# `continue-on-error`.
+#
+# Until then, the vendoring contract is enforced by the SYNC.md human process
+# plus the sha-named header at the top of each vendored file. Operators
+# refreshing the copy via scripts/sync-quality.sh see the new sha; reviewers
+# can compare against the howard source manually.
 
 name: Quality module sync check
 
@@ -20,22 +30,30 @@ jobs:
   check-quality-sync:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    continue-on-error: true  # non-blocking until HOWARD_REPO_READ_TOKEN is configured
     steps:
       - uses: actions/checkout@v4
       - name: Fetch howard source and diff vendored copies
         env:
           GITHUB_TOKEN: ${{ secrets.HOWARD_REPO_READ_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
+          if [ -z "${{ secrets.HOWARD_REPO_READ_TOKEN }}" ]; then
+            echo "::warning::HOWARD_REPO_READ_TOKEN not configured — this check is in advisory mode."
+            echo "::warning::Configure a fine-grained PAT with Contents:Read on tickadoo/howard to enforce sync."
+          fi
           FILES=("seasonal-variants.ts")
           DRIFT_FOUND=0
           for f in "${FILES[@]}"; do
-            # Fetch howard source
-            curl -sS -H "Authorization: token $GITHUB_TOKEN" \
+            HTTP_CODE=$(curl -sS -o "/tmp/howard-$f" -w "%{http_code}" \
+              -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github.raw" \
-              "https://api.github.com/repos/tickadoo/howard/contents/src/quality/$f?ref=main" \
-              -o "/tmp/howard-$f"
+              "https://api.github.com/repos/tickadoo/howard/contents/src/quality/$f?ref=main")
 
-            # Strip the vendoring header from our copy (first 5 lines + blank line)
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "::warning::Could not fetch howard source for $f (HTTP $HTTP_CODE). Skipping check."
+              continue
+            fi
+
             tail -n +7 "src/shared/quality/$f" > "/tmp/vendor-$f"
 
             if ! diff -q "/tmp/howard-$f" "/tmp/vendor-$f" > /dev/null; then
@@ -48,6 +66,6 @@ jobs:
           done
           if [ "$DRIFT_FOUND" -eq 1 ]; then
             echo ""
-            echo "Run 'scripts/sync-quality.sh' to refresh the vendored copies."
+            echo "::warning::Run 'scripts/sync-quality.sh' to refresh the vendored copies."
             exit 1
           fi
