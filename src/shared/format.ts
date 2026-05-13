@@ -5,6 +5,10 @@ import {
 } from "./config.js";
 import { buildBookingUrl } from "./api.js";
 import type { McpProduct, McpProductVariant, Product, StructuredDataDatePrice, StructuredDataResponse } from "./types.js";
+// GRO-407: cross-surface seasonal-variant review-count suppression. Vendored
+// from howard/src/quality/. Same predicate used by the OpenAI Commerce feed.
+// See src/shared/quality/SYNC.md for the vendoring contract.
+import { shouldSuppressReviews } from "./quality/index.js";
 
 /** Strip supplier-specific promotional prefixes from product titles to protect supply chain details. */
 function sanitizeProductTitle(title: string): string {
@@ -907,10 +911,12 @@ export function cityDirectoryJsonPayload(
 }
 
 export function formatProduct(product: Product, bookingPath = product.slug, language = "en"): string {
+  // GRO-407: skip review prose for venue-inherited seasonal-variant counts.
+  const suppressReviewsText = shouldSuppressReviews(product.title, product.mcpProduct?.reviewCount);
   const description = summarizeProductDescription(product.description);
   const primaryVariant = getPrimaryVariant(product.mcpProduct);
   const duration = formatDuration(primaryVariant?.duration ?? null);
-  const reviewCount = formatReviewCount(product.mcpProduct?.reviewCount);
+  const reviewCount = suppressReviewsText ? null : formatReviewCount(product.mcpProduct?.reviewCount);
   const tags = formatJoinedValues(product.mcpProduct?.tags, { humanize: true });
   const audience = formatJoinedValues(product.mcpProduct?.audience);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
@@ -919,7 +925,7 @@ export function formatProduct(product: Product, bookingPath = product.slug, lang
   if (description) lines.push(`   ${description}`);
   if (product.slug) lines.push(`   🔖 Slug: ${product.slug}`);
   if (product.minPrice != null) lines.push(`   💰 From ${product.currency} ${product.minPrice.toFixed(2)}`);
-  if (product.averageRating != null && product.averageRating > 0) lines.push(`   ⭐ ${product.averageRating.toFixed(1)}/5`);
+  if (!suppressReviewsText && product.averageRating != null && product.averageRating > 0) lines.push(`   ⭐ ${product.averageRating.toFixed(1)}/5`);
   if (duration) lines.push(`   ⏱️ Duration: ${duration}`);
   if (reviewCount) lines.push(`   🗳️ ${reviewCount}`);
   if (tags) lines.push(`   🏷️ Tags: ${tags}`);
@@ -974,7 +980,9 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   const uniqueDates = new Set(details.dates.map(item => item.date)).size;
   const primaryVariant = getPrimaryVariant(details.mcpProduct);
   const duration = formatDuration(primaryVariant?.duration ?? null);
-  const reviewCount = formatReviewCount(details.mcpProduct?.reviewCount);
+  // GRO-407: skip review prose for venue-inherited seasonal-variant counts.
+  const suppressReviewsDetails = shouldSuppressReviews(details.mcpProduct?.name, details.mcpProduct?.reviewCount);
+  const reviewCount = suppressReviewsDetails ? null : formatReviewCount(details.mcpProduct?.reviewCount);
   const tags = formatJoinedValues(details.mcpProduct?.tags, { humanize: true });
   const audience = formatJoinedValues(details.mcpProduct?.audience);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
@@ -990,7 +998,7 @@ export function formatExperienceDetails(days: number, details: StructuredDataRes
   ];
 
   if (duration) lines.push(`   ⏱️ Duration: ${duration}`);
-  if (details.mcpProduct?.reviewRating != null && details.mcpProduct.reviewRating > 0) {
+  if (!suppressReviewsDetails && details.mcpProduct?.reviewRating != null && details.mcpProduct.reviewRating > 0) {
     const ratingLine = reviewCount
       ? `   ⭐ ${details.mcpProduct.reviewRating.toFixed(1)}/5 (${reviewCount})`
       : `   ⭐ ${details.mcpProduct.reviewRating.toFixed(1)}/5`;
@@ -1087,6 +1095,9 @@ export function experienceDetailsJsonPayload(
   const duration = formatDuration(primaryVariant?.duration ?? null);
   const cancellation = formatCancellation(primaryVariant?.cancellationPolicy, primaryVariant?.cancellationPeriod ?? null);
   const googlePlaceId = normalizeGooglePlaceId(details.mcpProduct?.googlePlaceId);
+  // GRO-407: gate venue-inherited seasonal-variant review counts (mirrors
+  // formatExperienceDetails for the JSON shape).
+  const suppressReviewsDetailsJson = shouldSuppressReviews(options?.title ?? details.mcpProduct?.name, details.mcpProduct?.reviewCount);
 
   return {
     title: options?.title ?? null,
@@ -1107,9 +1118,9 @@ export function experienceDetailsJsonPayload(
     ...(details.mcpProduct
       ? {
           duration,
-          review_rating: details.mcpProduct.reviewRating ?? null,
-          review_count: details.mcpProduct.reviewCount ?? null,
-          ...(details.mcpProduct.reviewRating != null && details.mcpProduct.reviewRating > 0
+          review_rating: suppressReviewsDetailsJson ? null : (details.mcpProduct.reviewRating ?? null),
+          review_count: suppressReviewsDetailsJson ? null : (details.mcpProduct.reviewCount ?? null),
+          ...(!suppressReviewsDetailsJson && details.mcpProduct.reviewRating != null && details.mcpProduct.reviewRating > 0
             ? {
                 social_proof: details.mcpProduct.reviewCount
                   ? `${details.mcpProduct.reviewRating.toFixed(1)}/5 (${details.mcpProduct.reviewCount.toLocaleString()} reviews)`
