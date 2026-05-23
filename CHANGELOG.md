@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- `uiMeta()` now sets `openai/widgetAccessible: true` on the experience-card, experience-map, and experience-trio descriptors. Without it ChatGPT blocks the widget from calling `tools/call` back into the server (card -> `check_availability`, map pin -> `get_experience_details`), so the inline callback chain was dead. Matches the HowardOS render tool (GRO-496a). New optional `accessible` flag on `uiMeta` defaults to `true`; pass `false` to opt a static widget out. (GRO-502 parity)
+
 ### Security
 - Admin telemetry routes (`/admin/telemetry`, `/admin/telemetry.json`) now require `Authorization: Bearer $ADMIN_TOKEN` with a constant-time compare. Missing secret returns 503 to fail closed.
 - Scrub telemetry `input_args` against a whitelist of tool-parameter keys before persisting to Neon; freetext dropped, strings capped at 120 chars, arrays at 10, nested objects dropped.

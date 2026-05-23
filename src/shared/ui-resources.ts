@@ -32,21 +32,29 @@ export const EXPERIENCE_TRIO_URI = "ui://tickadoo/experience-trio.html";
  */
 export function uiMeta(
   uri: string,
-  hints?: { invoking?: string; invoked?: string },
+  hints?: { invoking?: string; invoked?: string; accessible?: boolean },
 ): {
   ui: { resourceUri: string };
   "openai/outputTemplate": string;
+  "openai/widgetAccessible": boolean;
   "openai/toolInvocation/invoking"?: string;
   "openai/toolInvocation/invoked"?: string;
 } {
+  // widgetAccessible defaults true: every tool that renders one of these
+  // resources needs its widget to call tools/call back into the server (card
+  // -> check_availability, map pin -> get_experience_details, etc.). Without
+  // it ChatGPT blocks the callback. Matches the HowardOS render tool (GRO-496a).
+  const accessible = hints?.accessible ?? true;
   const meta: {
     ui: { resourceUri: string };
     "openai/outputTemplate": string;
+    "openai/widgetAccessible": boolean;
     "openai/toolInvocation/invoking"?: string;
     "openai/toolInvocation/invoked"?: string;
   } = {
     ui: { resourceUri: uri },
     "openai/outputTemplate": uri,
+    "openai/widgetAccessible": accessible,
   };
   if (hints?.invoking) meta["openai/toolInvocation/invoking"] = hints.invoking;
   if (hints?.invoked) meta["openai/toolInvocation/invoked"] = hints.invoked;

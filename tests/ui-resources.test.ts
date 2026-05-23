@@ -45,6 +45,18 @@ describe("ui-resources", () => {
     expect(meta["openai/toolInvocation/invoked"]).toBe("Done");
   });
 
+  it("uiMeta marks the widget accessible by default (GRO-496a parity)", () => {
+    // Required so the rendered widget can call tools/call back into the server
+    // (card -> check_availability, map pin -> get_experience_details).
+    const meta = uiMeta(EXPERIENCE_CARD_URI);
+    expect(meta["openai/widgetAccessible"]).toBe(true);
+  });
+
+  it("uiMeta allows opting a widget out of callbacks", () => {
+    const meta = uiMeta(EXPERIENCE_CARD_URI, { accessible: false });
+    expect(meta["openai/widgetAccessible"]).toBe(false);
+  });
+
   it("experience-card HTML carries the required markers and UTM attribution", () => {
     const card = TICKADOO_UI_RESOURCES.find(r => r.name === "experience-card");
     expect(card).toBeDefined();
