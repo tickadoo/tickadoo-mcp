@@ -1,7 +1,7 @@
 {
   "name": "@tickadoo/mcp-server",
-  "version": "1.5.0",
-  "description": "tickadoo MCP Server -- 15 AI-powered tools for discovering and booking 13,090+ experiences across 700+ cities. Agent intelligence layer with best picks, price tiers, mood search, city guides, family planners, and booking urgency signals. No API key required.",
+  "version": "2.0.0",
+  "description": "tickadoo MCP Server: a thin stdio bridge to the live remote MCP server at https://mcp.tickadoo.com/mcp. No API key required.",
   "type": "module",
   "main": "dist/index.js",
   "bin": "./dist/index.js",
@@ -16,17 +16,10 @@
     "access": "public"
   },
   "scripts": {
-    "prebuild": "npm run build:widget-cards",
     "build": "node -e \"const fs = require('node:fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });\" && ./node_modules/.bin/esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --target=node22 --outfile=dist/index.js",
-    "build:widget-cards": "cd widgets-worker/widget-source/cards && npm install && npm run build",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "dev:worker": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "predeploy:widgets": "npm run build:widget-cards",
-    "deploy:widgets": "wrangler deploy --config widgets-worker/wrangler.jsonc",
-    "e2e:http": "node scripts/e2e-http.mjs",
-    "e2e:stdio": "node scripts/e2e-stdio.mjs",
+    "sync:server-json": "node scripts/sync-server-json.mjs",
     "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
@@ -43,26 +36,21 @@
     "attractions",
     "ai-agent",
     "model-context-protocol",
-    "city-guide",
-    "family",
-    "mood-search",
-    "availability"
+    "remote",
+    "stdio",
+    "bridge"
   ],
   "author": "tickadoo Inc.",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@neondatabase/serverless": "^1.1.0",
-    "hono": "^4.7.0",
-    "zod": "^3.23.8"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.15",
     "esbuild": "^0.27.4",
     "tsx": "^4.19.4",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0",
-    "wrangler": "^4.14.0"
+    "vitest": "^4.1.0"
   },
   "repository": {
     "type": "git",
