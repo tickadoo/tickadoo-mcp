@@ -6,76 +6,108 @@
       "tools": [
         {
           "name": "search_experiences",
-          "description": "Search for bookable experiences in a specific city with optional category, price, date, audience, accessibility, and duration filtering."
+          "description": "Use this when the user names a city plus a category, query, or filter set and wants a ranked list of bookable experiences. Returns products each with a stable product_id, plus name, slug, city, category, price, rating, review count, and tags. To show the results as visual cards, pass the product_id values from these results into render_experience_cards (experience_ids). Pair with get_experience_details for richer fields."
         },
         {
-          "name": "search_by_mood",
-          "description": "Search by emotional intent, mapping moods like romantic, relaxing, foodie, or rainy_day to optimized filters before running a city search."
-        },
-        {
-          "name": "get_last_minute",
-          "description": "Find experiences starting within the next few hours, sorted by soonest start with countdown text and urgency signals."
+          "name": "search_local_experiences",
+          "description": "Use this when the user mentions a place, neighbourhood, landmark, or area but does not give exact coordinates. Examples: 'near the Louvre', 'in Trastevere', 'around Times Square', \"walking distance from St Paul's Cathedral\". Returns experiences matched first by exact venue/neighbourhood, then by city centre fallback. Do not use for general city-wide search; use search_experiences for that."
         },
         {
           "name": "find_nearby_experiences",
-          "description": "Find experiences near a geographic location using latitude, longitude, radius, and optional date filtering."
-        },
-        {
-          "name": "list_cities",
-          "description": "Browse supported cities with optional filtering and result limits."
-        },
-        {
-          "name": "check_availability",
-          "description": "Quick date-specific availability check for one experience, including party pricing, booking URL, and Ghost Checkout payload metadata."
-        },
-        {
-          "name": "get_experience_details",
-          "description": "Get detailed availability, pricing, venue, and image information for a specific tickadoo experience using a slug or booking path."
-        },
-        {
-          "name": "compare_experiences",
-          "description": "Compare 2 to 5 experiences side-by-side with winner callouts for best value, highest rated, most popular, and family fit."
-        },
-        {
-          "name": "get_related_experiences",
-          "description": "Find related experiences for a source slug using relationship contexts such as pair, after, nearby, and similar."
-        },
-        {
-          "name": "get_transfer_info",
-          "description": "Estimate taxi, tube/metro, bus, and train transfers from a city's default airport, station, or port to hotel coordinates."
+          "description": "Use this when a non-ChatGPT client supplies exact latitude and longitude and wants experiences near that coordinate. ChatGPT clients should use search_local_experiences instead because it accepts coarse place hints."
         },
         {
           "name": "whats_on_tonight",
-          "description": "Find experiences happening tonight in a city, sorted for same-day discovery with timing and urgency context."
+          "description": "Use this when the user asks what is bookable in a city tonight. Returns experiences with start times tonight, sorted by soonest first; events that have already started are filtered out. Each row includes start_time, countdown_text, venue, and a short urgency hint."
+        },
+        {
+          "name": "get_last_minute",
+          "description": "Use this when the user wants experiences starting within the next few hours. Returns rows with start_time, countdown_text, and seats_remaining hints, sorted by soonest first."
         },
         {
           "name": "get_whats_on_this_week",
-          "description": "Return a day-by-day weekly calendar of what is happening in a city with morning, afternoon, and evening groupings."
+          "description": "Use this when the user wants a day-by-day weekly calendar for a city. Returns one entry per day for the next 7 days, each with morning, afternoon, and evening picks plus a daily highlight."
+        },
+        {
+          "name": "recommend_experiences",
+          "description": "Use this when the user describes what they want in natural language rather than naming a category. Parses the query for audience, mood, constraints, occasion, and time of day, then returns scored recommendations with a reason field explaining the match."
         },
         {
           "name": "get_city_guide",
-          "description": "Return a curated city guide with highlights, price range, category mix, best-for suggestions, and travel-planning context."
+          "description": "Use this when the user wants an orientation overview of a city for trip planning. Returns highlights, dominant categories, price band, best-for audience hints, seasonal notes, and a short list of local advice items."
         },
         {
           "name": "get_travel_tips",
-          "description": "Return local insider travel tips for supported cities, including emergency numbers and quick local phrases."
+          "description": "Use this when the user asks practical logistics questions about a city. Returns short tips grouped by topic (transport, money, safety, culture, food, weather, language, connectivity), plus emergency numbers and quick phrases where relevant."
+        },
+        {
+          "name": "compare_experiences",
+          "description": "Use this when the user wants a side-by-side comparison of 2-5 specific products. Pass the slug for each. Returns a comparison table plus per-axis winners (value, rating, popularity, family-fit)."
+        },
+        {
+          "name": "get_hidden_gems",
+          "description": "Use this when the user wants less-popular experiences locals favour rather than top-of-list bestsellers. Returns rows tagged HiddenGem or with high ratings and lower review counts; explicitly excludes Bestseller, HopOnHopOff, and CityPass products."
         },
         {
           "name": "get_family_day",
-          "description": "Build a family day with a morning activity, lunch tip, afternoon attraction, and optional evening stop using age-aware filtering and geographic clustering."
+          "description": "Use this when the user wants a full-day plan for a family in one city. Returns a morning activity, lunch area suggestion, afternoon attraction, and optional evening stop. Uses age-aware filters and clusters venues by walking distance."
+        },
+        {
+          "name": "get_date_night",
+          "description": "Use this when the user wants an evening plan for two. Returns a pre-dinner activity, dinner area suggestion, evening show, post-show tip, and an estimated total cost. Filters out family-rated and high-physical-level venues."
+        },
+        {
+          "name": "plan_itinerary",
+          "description": "Use this when the user wants a multi-day plan for a single city. Returns morning, afternoon, and evening slots per day, with geographic clustering, category diversity, and a running total cost."
+        },
+        {
+          "name": "list_cities",
+          "description": "Use this when the user wants to browse supported cities before searching. Returns city names, slugs, country codes, and product counts."
+        },
+        {
+          "name": "get_experience_details",
+          "description": "Use this when the user selects a specific experience from search results and needs richer product, location, supplier, and booking fields. Accepts either product_id or slug."
+        },
+        {
+          "name": "get_related_experiences",
+          "description": "Use this when a non-ChatGPT widget or client has a selected product_id and needs related products to pair with it, do after it, find nearby, or find similar alternatives. Returns cached graph and semantic related products for trio-style widgets."
+        },
+        {
+          "name": "get_availability",
+          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug."
+        },
+        {
+          "name": "check_availability",
+          "description": "Use this when the user has picked a specific experience and asks whether it is available on one date, what it costs for a party, or wants a booking link. This is the legacy-compatible date-specific availability interface."
+        },
+        {
+          "name": "search_by_mood",
+          "description": "Use this when the user describes the feeling or vibe they want rather than a category, such as romantic, relaxing, adventurous, family fun, foodie, luxury, or rainy day. Maps the mood to preset search filters and returns matching experiences."
+        },
+        {
+          "name": "get_transfer_info",
+          "description": "Use this when the user is arriving in a supported city and needs transfer guidance from an airport, station, or port to a hotel coordinate. Returns taxi, metro, bus, and train estimates with durations, costs, and directions."
+        },
+        {
+          "name": "render_experience_cards",
+          "description": "Use this immediately after ANY discovery or search tool (search_experiences, whats_on_tonight, get_last_minute, get_whats_on_this_week, recommend_experiences, search_by_mood, get_hidden_gems, get_family_day, get_date_night, search_local_experiences) returns results : it is the only tool that displays the visual experience cards, so always call it once for every result set you want shown. Take the experience_ids those tools provide and render them; pass the stable product IDs (the t_ ids) only, never full product rows. Provide render_context.intent_summary describing what the user asked for (city, date, audience) : it becomes the carousel heading. Call it exactly once per result set, and do not also re-list the experiences as text."
+        },
+        {
+          "name": "report_quality_signal",
+          "description": "Use this to push a quality signal back to tickadoo about an experience or recommendation you previously surfaced. The bidirectional half of the Quality Ledger : turns the agent feedback loop from days of debate into a single recorded row. Examples: the availability you showed was stale at click time, the click-through did not land on a bookable page, the supplier was down, the description was misleading. Requires the original request_id returned by any previous tool call."
         }
       ]
     }
   },
   "name": "io.github.tickadoo/tickadoo-mcp",
-  "title": "tickadoo \u2014 Experiences & Events",
-  "description": "Discover and book theatre, shows, events and experiences in 700+ cities worldwide.",
+  "title": "tickadoo Experiences and Events",
+  "description": "Local stdio bridge to the live tickadoo remote MCP server.",
   "websiteUrl": "https://mcp.tickadoo.com",
   "repository": {
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "1.5.0",
+  "version": "2.0.0",
   "remotes": [
     {
       "type": "streamable-http",
