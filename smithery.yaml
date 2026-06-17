@@ -16,7 +16,7 @@ metadata:
     - travel
     - booking
     - sightseeing
-  icon: https://cdn.tickadoo.com/brand/logo.png
+  icon: https://cdn.jsdelivr.net/gh/tickadoo/tickadoo-mcp@main/brand/apps-directory-icon.svg
   website: https://www.tickadoo.com
   documentation: https://mcp.tickadoo.com/llms.txt
   author: "tickadoo Inc"

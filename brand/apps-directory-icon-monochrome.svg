@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>tickadoo — gold variant</title>
+  <rect width="1024" height="1024" fill="#0f1115"/>
+  <g transform="translate(512 512)">
+    <rect x="-28" y="-200" width="56" height="400" rx="20" fill="#c69b3d"/>
+    <rect x="-130" y="-120" width="260" height="56" rx="16" fill="#c69b3d"/>
+    <path d="M -10 180 L 50 220 L 150 110"
+      stroke="#c69b3d" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
