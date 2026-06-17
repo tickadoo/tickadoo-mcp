@@ -15,16 +15,22 @@ npm install
 npm run build
 ```
 
-Run the local stdio transport:
+Run the built stdio bridge:
 
 ```bash
 node dist/index.js
 ```
 
-For local HTTP development, run the production Cloudflare Worker locally:
+Or run it straight from source during development:
 
 ```bash
-npm run dev:worker
+npm run dev
+```
+
+Point the bridge at a local remote (e.g. a howard worker running locally) with `TICKADOO_MCP_URL`:
+
+```bash
+TICKADOO_MCP_URL=http://127.0.0.1:8787/mcp npm run dev
 ```
 
 ## Testing
@@ -34,21 +40,19 @@ Run the main checks before opening a pull request:
 ```bash
 npm run build
 npm test
-npm run e2e:stdio
 ```
 
-To test against the live hosted MCP endpoint:
+To exercise the bridge against the live hosted MCP endpoint:
 
 ```bash
-MCP_URL=https://mcp.tickadoo.com/mcp npm run e2e:http
+LIVE=1 npm test
 ```
 
 ## Code Style
 
 - Use TypeScript for application code and tests.
-- Keep shared MCP behavior in `src/shared/*`.
-- Keep `src/index.ts` (stdio) and `src/worker.ts` (Cloudflare Worker) as thin transport wrappers.
-- When changing tool behavior, update tests and user-facing docs in the same pull request.
+- This package is a **thin remote bridge** (since v2.0.0): tools, schemas, and results are owned by the canonical remote server in the howard repo. Keep `src/index.ts`/`src/bridge.ts` as thin transport wrappers — do not reintroduce local tool definitions here.
+- When changing bridge behavior, update tests and user-facing docs in the same pull request.
 - Prefer small, focused changes over broad refactors.
 
 ## Pull Requests

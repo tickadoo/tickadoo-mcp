@@ -6,7 +6,7 @@ build:
 metadata:
   name: "@tickadoo/mcp-server"
   displayName: "tickadoo — Experiences & Theatre"
-  description: "27,000+ bookable shows, theatre, tours, and attractions across 680+ cities. Agent-native with best-picks, price-tiers, and conversation-starter intelligence."
+  description: "13,090+ bookable shows, theatre, tours, and attractions across 681 cities. Agent-native with best-picks, price-tiers, and conversation-starter intelligence."
   category: travel
   tags:
     - experiences
@@ -16,9 +16,9 @@ metadata:
     - travel
     - booking
     - sightseeing
-  icon: https://raw.githubusercontent.com/tickadoo/howard/main/brand/apps-directory-icon.svg
+  icon: https://cdn.tickadoo.com/brand/logo.png
   website: https://www.tickadoo.com
-  documentation: https://mcp.tickadoo.com/agentx
+  documentation: https://mcp.tickadoo.com/llms.txt
   author: "tickadoo Inc"
-  license: "Commercial (free to use via the MCP endpoint)"
+  license: "MIT"
   contactEmail: support@tickadoo.com

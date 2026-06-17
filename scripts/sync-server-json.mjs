@@ -26,7 +26,8 @@ try {
 
   serverJson.version = packageJson.version;
   serverJson.title = "tickadoo Experiences and Events";
-  serverJson.description = "Local stdio bridge to the live tickadoo remote MCP server.";
+  serverJson.description =
+    "Discover and book theatre, tours, attractions, and live experiences across 681 cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.";
   serverJson.websiteUrl = "https://mcp.tickadoo.com";
   serverJson.remotes = [
     {

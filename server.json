@@ -101,7 +101,7 @@
   },
   "name": "io.github.tickadoo/tickadoo-mcp",
   "title": "tickadoo Experiences and Events",
-  "description": "Local stdio bridge to the live tickadoo remote MCP server.",
+  "description": "Discover and book theatre, tours, attractions, and live experiences across 681 cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.",
   "websiteUrl": "https://mcp.tickadoo.com",
   "repository": {
     "url": "https://github.com/tickadoo/tickadoo-mcp",

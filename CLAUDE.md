@@ -4,23 +4,24 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 ## What is this repo?
 
-`@tickadoo/mcp-server` — the public MCP (Model Context Protocol) server for tickadoo. Exposes 15 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, and recommend tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm.
+`@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It surfaces 23 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp`.
 
-As of v1.4.3: agent intelligence layer on both search tools — `_best_picks`, `_price_tiers`, `_group_summary`, smart `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`. Details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
+Since **v2.0.0** this package is a **thin remote bridge** (GRO-573): the npm command is a stdio transport that proxies to the canonical remote server. It no longer defines tools, formats catalogue data, or calls a backend directly. The remote owns the tool list, schemas, results, and errors. The remote MCP server (and the embeddable widget bundle) now live in the **HowardOS repo** (`github.com/tickadoo/howard`), which is canonical (GRO-574).
+
+Agent-intelligence layer (served by the remote): search tools carry `_best_picks`, `_price_tiers`, `_group_summary`, `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`; details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
 
 ## Architecture at a glance
 
-- **Runtime**: TypeScript MCP server
-  - `src/worker.ts` — Cloudflare Worker (Hono + `WebStandardStreamableHTTPServerTransport`) serves `mcp.tickadoo.com`
-  - `src/index.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`)
-  - `widgets-worker/` — separate Worker serving embeddable widgets at `widgets.tickadoo.com`
-- **Deploys via**: Cloudflare Workers (`wrangler.jsonc` + `.github/workflows/deploy-cf.yml`). GRO-214 migration complete.
-- **Data source**: HowardOS backend at `https://concierge.tickadoo.com` for products, cities, availability, pricing, intent tokens, accessibility. Telemetry to Neon via `NEON_URL` Worker secret.
-- **Testing**: vitest (`npm test`) + smoke suites (`npm run e2e:stdio`, `npm run e2e:http`)
-- **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm); Workers build happens in-flight via `wrangler deploy`.
-- **Local dev**: `npm run dev:worker` (wrangler dev).
+- **Runtime**: TypeScript stdio bridge
+  - `src/index.ts` → `src/bridge.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`) that proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping` to the remote.
+  - `src/config.ts` — bridge config (remote URL via `TICKADOO_MCP_URL`, log level via `TICKADOO_LOG_LEVEL`).
+- **Canonical remote**: `https://mcp.tickadoo.com/mcp` — served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
+- **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
+- **Registry metadata**: `server.json` is refreshed from the live remote via `npm run sync:server-json`.
+- **Testing**: vitest (`npm test`); `LIVE=1 npm test` runs the optional live integration test against the remote.
+- **No API key required.** Customer never sees supplier names; everything is presented as tickadoo.
 
-Customer never sees supplier names; everything is presented as tickadoo.
+> Note: the embeddable widget bundle is owned by howard (`src/mcp/cards-widget-html.ts`, canonical per GRO-574). The old `widgets-worker/` directory was removed from this repo. Do not make widget changes here.
 
 ## Multi-chat coordination
 
