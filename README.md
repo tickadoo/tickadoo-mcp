@@ -76,3 +76,10 @@ LIVE=1 npm test
 ## Live Tools
 
 The current tool list is served by the remote MCP server. Visit [mcp.tickadoo.com](https://mcp.tickadoo.com) or run `npm run sync:server-json` to refresh the registry metadata in this repo.
+
+## Privacy & Data Handling
+
+- **No account or API key required.** The server is read-mostly: it exposes tickadoo's public experiences catalogue (search, recommendations, availability, comparison, itineraries) and returns booking links — it does not collect, store, or require personal data to function.
+- **What is sent:** tool arguments (e.g. a city name, query text, or chosen experience id) are forwarded to the tickadoo backend to fulfil the request. The bridge adds no tracking and asks for no credentials.
+- **First-party service.** tickadoo is the operator of the catalogue and backend; supplier inventory is presented as tickadoo. Bookings are completed on tickadoo.com.
+- **Full policy:** [tickadoo.com/privacy](https://tickadoo.com/privacy). Questions: support@tickadoo.com.

@@ -2,7 +2,7 @@
 
 This file is automatically read by Codex CLI (and some other AI coding tools) at task start. It's the shared ruleset for every AI agent that does work on this repo: Claude chats, Claude Code sessions, and Codex tasks.
 
-This repo is **`@tickadoo/mcp-server`** — the public MCP server package (15 tools, 13,090 products, 681 cities as of v1.5.0). Not to be confused with HowardOS (the internal platform — backend, API, CF Worker, data plane — housed at `github.com/tickadoo/howard`), which this server queries for product data.
+This repo is **`@tickadoo/mcp-server`** — the npm distribution of the public tickadoo MCP server (23 tools over 13,090 products in 681 cities). Since v2.0.0 it is a **thin remote bridge** that proxies to the canonical remote server at `https://mcp.tickadoo.com/mcp`. The remote server and the embeddable widget bundle live in HowardOS (`github.com/tickadoo/howard`), which is canonical; this repo ships only the stdio bridge.
 
 ## Before you do anything
 
@@ -97,11 +97,11 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 ## Repo specifics
 
 - **Package name**: `@tickadoo/mcp-server`
-- **Deploys via**: Cloudflare Workers — `wrangler.jsonc` (main MCP worker at `mcp.tickadoo.com`) + `widgets-worker/wrangler.jsonc` (widgets at `widgets.tickadoo.com`). CI in `.github/workflows/deploy-cf.yml`.
-- **Tests**: vitest (`npm test` or `npm run test`)
-- **Build**: `npm run build` (esbuild → `dist/index.js` for npm stdio); Worker bundling runs inside `wrangler deploy`.
-- **Key dirs**: `src/` (shared MCP server + worker entrypoint), `widgets-worker/` (separate embeds Worker), `tests/` (vitest), `scripts/` (e2e smoke utilities).
-- **Product data source**: HowardOS backend at `concierge.tickadoo.com` — this server queries HowardOS for product/city data and exposes MCP tools on top.
+- **Deploys via**: nothing in this repo. Since v2.0.0 this is a thin stdio bridge published to npm; the canonical remote MCP worker (`mcp.tickadoo.com`) and the widgets bundle are deployed from the howard repo. CI in `.github/workflows/ci.yml` runs build + tests only.
+- **Tests**: vitest (`npm test` or `npm run test`); `LIVE=1 npm test` hits the live remote.
+- **Build**: `npm run build` (esbuild → `dist/index.js` for the npm stdio bridge).
+- **Key dirs**: `src/` (`index.ts`/`bridge.ts`/`config.ts` stdio bridge), `tests/` (vitest), `scripts/` (`sync-server-json.mjs`).
+- **Product data source**: the canonical remote at `mcp.tickadoo.com/mcp` (served by howard) owns all tools, schemas, and results; the bridge only proxies.
 - **MCP registries**: published to npm, MCP Marketplace (`io-github-tickadoo-tickadoo-mcp` canonical, `io-github-francistickadoo-tickadoo-mcp` duplicate pending removal).
 
 ## Related repos

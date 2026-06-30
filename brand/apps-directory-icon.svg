@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>tickadoo — experiences and theatre</title>
+  <desc>tickadoo app icon. Deep gold ticket-stub silhouette on near-black background, containing a bold lowercase t with a checkmark tail that doubles as a booking-confirmed glyph.</desc>
+  <!-- Background: solid near-black with subtle rounded corner allowance for OS mask -->
+  <rect width="1024" height="1024" fill="#0f1115"/>
+  <!-- Ticket-stub rounded badge, centred, gold. Stub notch on the right edge. -->
+  <g transform="translate(512 512)">
+    <!-- Outer ticket shape: rounded rect with a circular bite on the right side simulating a ticket perforation -->
+    <path d="
+      M -280 -260
+      Q -320 -260 -320 -220
+      L -320 -40
+      Q -280 -40 -280 0
+      Q -280 40 -320 40
+      L -320 220
+      Q -320 260 -280 260
+      L 280 260
+      Q 320 260 320 220
+      L 320 40
+      Q 280 40 280 0
+      Q 280 -40 320 -40
+      L 320 -220
+      Q 320 -260 280 -260
+      Z" fill="#c69b3d"/>
+    <!-- Bold lowercase "t" glyph, centred -->
+    <!-- stem -->
+    <rect x="-28" y="-160" width="56" height="320" rx="16" fill="#0f1115"/>
+    <!-- crossbar -->
+    <rect x="-110" y="-90" width="220" height="48" rx="14" fill="#0f1115"/>
+    <!-- checkmark tail coming off the bottom of the stem and turning up, signalling "booked" -->
+    <path d="
+      M -12 140
+      L 40 180
+      L 130 82
+      " stroke="#0f1115" stroke-width="48" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
