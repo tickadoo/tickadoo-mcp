@@ -18,6 +18,7 @@ Agent-intelligence layer (served by the remote): search tools carry `_best_picks
 - **Canonical remote**: `https://mcp.tickadoo.com/mcp` — served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
 - **Registry metadata**: `server.json` is refreshed from the live remote via `npm run sync:server-json`.
+- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `server.json`; frontmatter `name` must match the folder. Repo content only — uploading them to the plugin happens in the OpenAI Platform Dashboard (Francis's login), and they are NOT in the npm published file set.
 - **Testing**: vitest (`npm test`); `LIVE=1 npm test` runs the optional live integration test against the remote.
 - **No API key required.** Customer never sees supplier names; everything is presented as tickadoo.
 
