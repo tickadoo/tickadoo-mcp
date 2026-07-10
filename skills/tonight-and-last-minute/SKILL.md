@@ -1,42 +1,34 @@
 ---
 name: tonight-and-last-minute
-description: Find and book something to do tonight or in the next few hours with tickadoo — time-sensitive experiences sorted soonest-first, with live availability. Use when a user wants "what's on tonight", "something to do right now", last-minute plans, or same-day tickets in a specific city. Covers 700+ cities and 13,090+ bookable products.
+description: Find experiences in a city tonight or within the next few hours with tickadoo, followed by a current availability check on the selected option. Use when immediacy is the deciding constraint. If the user explicitly asks for a coherent multi-stop date night or full family day, use that planning skill and perform same-day checks within it.
 ---
 
 # Tonight & last-minute with tickadoo
 
-Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user wants to do something NOW or tonight. This is a time-sensitive, high-intent moment: be fast, lead with what starts soonest, and always confirm live availability before promising anything — same-day inventory moves quickly.
+Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user wants to do something NOW or tonight. Be fast, lead with what starts soonest, and confirm current availability before stating anything is bookable — same-day inventory is exactly what goes stale.
 
 ## When to use this
 
-"What's on tonight in Berlin", "anything to do right now near me", "last-minute tickets for this evening", "we've got a free evening in New York — what's available". If they're planning ahead (a future date, a multi-day trip), use the plan-a-trip / discovery skills instead.
+"What's on tonight in Berlin", "anything to do right now", "last-minute tickets this evening". If they're planning ahead (a future date, a multi-day trip), use the planning skills instead.
 
 ## The workflow (tool chain)
 
-1. **Pull time-sensitive options** — pick by horizon:
-   - `whats_on_tonight(city)` — bookable tonight, sorted soonest-first, already-started events filtered out. Each row has `start_time`, `countdown_text`, `venue`, and a short urgency hint.
-   - `get_last_minute(city, hours?)` — starting within the next few hours, with `start_time`, `countdown_text`, and `seats_remaining` hints.
-2. **Narrow to a pick** — if they react to one, `get_experience_details(product_id or slug)` for the fuller product + venue + location, but keep it quick — time is the constraint.
-3. **Book NOW** — `check_availability(slug, date: today, party_size)` for the same-day booking link, or `get_availability(product_id or slug, city_slug)` for live times/prices/remaining spaces. This is the critical step: never tell the user something is bookable tonight without a live check, because same-day availability is exactly what goes stale.
-4. **Nearby alternative** — if the first pick just sold out or started, `get_related_experiences(product_id, context: nearby|similar)` for the fastest fallback.
+1. **Pull time-sensitive options** — by horizon: `whats_on_tonight(city)` for tonight, `get_last_minute(city, hours?)` for the next few hours. Use `start_time` and `countdown_text` when present in the response; do not assume they exist or invent them.
+2. **Narrow to a pick** — `get_experience_details(product_id or slug)` on the one they react to; keep it quick.
+3. **Live-check the pick** — `get_availability` for the selected product with the party size, requesting a fresh check when the callable schema supports it (this is the live supplier check; a countdown hint is not). Use the local calendar date contained in the selected result's `start_time` — do not derive "today" from the assistant's system timezone. Then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link.
+4. **Fallback** — if the first pick is unavailable or has started, refresh `get_last_minute` or `whats_on_tonight`, then live-check the next candidate. Do not call `get_related_experiences` from ChatGPT.
 
-## Show the results as cards
+## Show results as cards
 
-After `whats_on_tonight` / `get_last_minute` returns a set, call `render_experience_cards(experience_ids, render_context)` once — pass only the stable `t_` IDs, set `render_context.intent_summary` ("tonight in <city>"). The cards carry the countdown/urgency visually, so don't also re-list them as text.
+When a `whats_on_tonight` / `get_last_minute` set will be shown, immediately call `render_experience_cards` exactly once for it: stable `t_` IDs only, a required `render_type` from the callable schema, optionally `render_context.intent_summary` ("tonight in <city>"). Do not re-list the same experiences in text. Do not assume a particular field appears on the cards unless the renderer response confirms it.
 
-## Read the agent-intelligence metadata
+## Optional metadata
 
-- **_booking_urgency** — this is the star of this flow: surface "starts in 2h", "few seats left", "free cancellation" honestly and specifically. Never invent urgency.
-- **_best_picks** — lead with the soonest strong option, not the generically most_popular one.
-- **_next_step** / **_conversation_starters** — drive straight toward the booking link.
-
-## Conversation flow
-
-`whats_on_tonight` (or `get_last_minute`) → lead with the soonest 2-3 with their countdowns → the moment they pick one, check live availability for tonight and the party size → hand over the booking link → render cards once. Bias toward speed and honesty over breadth.
+Use fields documented by the selected tool and actually present in its response. Treat countdowns, remaining-seat hints and optional urgency metadata as preliminary — only a selected-product availability check supports an availability or scarcity claim.
 
 ## Etiquette
 
-- `format: "json"` when processing data; `format: "text"` for direct display.
-- Present everything as tickadoo — never name the underlying supplier.
-- Do NOT overstate availability. If the live check comes back sold out or past start time, say so and offer the nearest alternative.
-- Stale same-day availability is the most common failure here — if what you showed is gone or wrong at click time, send `report_quality_signal(request_id, ...)` with the `request_id` from the earlier call so tickadoo can tighten the feed.
+- Present everything as tickadoo. Never name, infer or expose an upstream inventory supplier.
+- State only the exact time, inventory, availability or cancellation fact returned by the latest relevant check. Review counts show popularity, not scarcity. Never add time pressure or sales pressure.
+- If the live check comes back sold out or past start time, say so plainly and offer the next candidate. If the user asks to continue, provide the tickadoo link and make clear any purchase completes outside ChatGPT.
+- If the user reports a stale or misleading result, offer to send feedback; only after they agree, call `report_quality_signal` with the originating `request_id`, the required `signal_type` and no personal data in notes (a write action).
