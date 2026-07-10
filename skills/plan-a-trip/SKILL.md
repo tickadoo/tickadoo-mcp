@@ -1,49 +1,38 @@
 ---
 name: plan-a-trip
-description: Plan a multi-day trip for a single city with tickadoo — turn "what should I do in Rome for 3 days?" into a day-by-day, geographically-sensible plan of bookable experiences. Use when a user wants an itinerary, a multi-day plan, or help filling several days in one city with things to do. Covers 700+ cities and 13,090+ bookable products.
+description: Build a multi-day itinerary in one city with tickadoo. Use when the user wants activities arranged across two or more days. This is the primary workflow for a multi-day request even when the user also mentions children, romance or a neighbourhood. Retain those constraints. Do not use for one evening, one family day, immediate same-day options or choosing between named experiences.
 ---
 
 # Plan a trip with tickadoo
 
-Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) to build a real, bookable multi-day plan for ONE city, not a generic listicle. The whole point is that every suggestion can be checked for live availability and booked, so lean on the tools instead of prior knowledge.
+Build a real multi-day plan for ONE city with the tickadoo MCP tools (`mcp.tickadoo.com/mcp`), grounded in the catalogue rather than prior knowledge.
 
 ## When to use this
 
-The user wants to fill more than one time slot or more than one day in a single city: "3 days in Barcelona", "what should we do in Tokyo this weekend", "plan our London trip", "a Paris itinerary for a couple". If they only want one thing right now, or tonight, use the discovery / tonight skills instead.
+The user wants activities arranged across at least two days in one city, such as "three days in Barcelona", "plan our Tokyo weekend" or "a Paris itinerary from Monday to Thursday". If the request covers only one day or one time period, use the relevant discovery, family, date-night or tonight skill.
 
 ## The workflow (tool chain)
 
-1. **Orient** — `get_city_guide(city)` first. It returns highlights, dominant categories, price band, best-for audience hints, and seasonal notes. Use it to set expectations and to pick a sensible mix, and mention the seasonal note if relevant. If the city is ambiguous or misspelled, `list_cities(query)` to confirm the slug.
-2. **Gather candidates** — pull a pool to plan from:
-   - `search_experiences(city, category?, tags?, sort?)` for named interests ("museums", "food tours").
-   - `recommend_experiences(query)` when they describe what they want in prose ("relaxed, lots of history, not too touristy").
-   - `search_by_mood(city, mood)` for a vibe ("romantic", "foodie", "rainy day").
-   - `get_hidden_gems(city)` to add a local-favourite or two so the plan is not all bestsellers.
-3. **Build the plan** — `plan_itinerary(city, days, ...)`. It returns morning / afternoon / evening slots per day with geographic clustering, category diversity, and a running total cost. This is the backbone — do not hand-assemble a plan you could get from this tool.
-4. **Enrich the picks** — for each experience the user shows interest in, `get_experience_details(product_id or slug)` for the richer product, location, and booking fields.
-5. **Make it bookable** — `get_availability(product_id or slug, city_slug)` for live dates/times/prices/spaces, or `check_availability(slug, date, party_size)` when they name a date and party and want a booking link. Never assert something is available without checking.
-6. **Fill gaps / pair things** — `get_related_experiences(product_id, context: pair|after|nearby|similar)` to slot in a nearby lunch or an after-show idea.
+1. **Orient** — `get_city_guide(city)` for highlights, dominant categories, price band and seasonal notes. If the city is unclear or ambiguous, ask the user to clarify (use `list_cities` only to browse, optionally by country — it has no free-text query).
+2. **Build the backbone** — call `plan_itinerary` with `city` and `days`. When known, also pass the user's `interests`, `audience`, `budget` band and `pace` using the callable schema. It independently returns the day slots, geographic clustering, category mix and running cost.
+3. **Replace or widen only when needed** — use `search_experiences` for a named category, `recommend_experiences` for a natural-language preference, `search_by_mood` for a supported mood, or `get_hidden_gems` for one or two less-obvious options so the plan is not all bestsellers — only when the user asks to replace a slot or browse alternatives. Do not imply that an earlier candidate pool is consumed by `plan_itinerary`.
+4. **Enrich and check selected items** — fetch `get_experience_details` for experiences the user is considering, then follow the live-availability sequence for each selected slot.
 
-## Show the results as cards
+## Show results as cards
 
-After ANY discovery/search step returns a set you want to show, call `render_experience_cards(experience_ids, render_context)` exactly once for that set. Pass only the stable `t_` product IDs, and set `render_context.intent_summary` to what the user asked for (city, dates, audience) — it becomes the carousel heading. Do not also re-list those experiences as text.
+Only the renderer-supported search calls in this workflow (`search_experiences`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`) may feed `render_experience_cards`. Do not assume `get_city_guide` or `plan_itinerary` can be rendered. When such a set will be shown, immediately call `render_experience_cards` exactly once for it: only its stable `t_` IDs in `experience_ids`, a required `render_type` allowed by the callable schema, optionally `render_context.intent_summary`. Do not reproduce the same products in surrounding text. Present the itinerary itself as a plan, without duplicating any separately rendered search set.
 
-## Read the agent-intelligence metadata
+## Availability discipline (composite plan)
 
-Every search response carries metadata — use it, don't ignore it:
+Treat the returned plan as proposed until every selected bookable slot has been checked for the user's date and party size: `get_availability` per slot (product_id, or slug + city_slug; pass the date range and party size; request a fresh check when the schema supports it), then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link. If the user has not asked to check every slot, label unchecked slots as suggestions rather than confirmed bookable plans.
 
-- **_best_picks** — lead each day's options with these (best_value / highest_rated / most_popular).
-- **_price_tiers** — if budget matters, present by bracket or ask "what's your budget for the trip?".
-- **_group_summary** — narrate the mix ("I've balanced two big sights, a food tour, and a relaxed evening").
-- **_conversation_starters** / **_next_step** — use these to move the plan forward ("want me to lock in Tuesday's availability?").
-- **_booking_urgency** — surface genuine urgency (available today, free cancellation) honestly, never invented.
+## Optional metadata
 
-## Conversation flow
-
-City guide → gather a candidate pool → `plan_itinerary` → present day-by-day with `_best_picks` up front and a running cost → offer to check availability on the dates that matter → render cards once per set. Keep geography tight (don't zig-zag across the city), keep category variety, and respect the budget signal.
+Use fields documented by the selected tool and actually present in its response. Optional underscore-prefixed helper metadata may inform the answer when returned, but never assume it exists, never invent a value and never treat it as a live availability check.
 
 ## Etiquette
 
-- Always `format: "json"` when you're processing data; `format: "text"` only for direct display.
-- Present everything as tickadoo — never name the underlying supplier.
-- If something you surfaced turns out stale or wrong at click time, send `report_quality_signal(request_id, ...)` with the `request_id` from the earlier call so tickadoo can fix it.
+- Present discovery and the booking route as tickadoo. Never name, infer or expose an upstream inventory supplier. Do not imply tickadoo operates the venue. Preserve material venue, price, accessibility, cancellation and fulfilment facts returned by tickadoo.
+- State only the exact time, inventory, availability or cancellation fact returned by the latest relevant tool. Never add time pressure or sales pressure.
+- If the user asks to continue, provide the tickadoo link and make clear that any purchase is completed outside ChatGPT.
+- If the user reports a surfaced result was stale, unbookable or misleading, offer to send feedback to tickadoo; only after they agree, call `report_quality_signal` with the originating `request_id`, the required `signal_type` and no personal data in notes (it is a write action).
