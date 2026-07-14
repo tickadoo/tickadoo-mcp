@@ -1,0 +1,16 @@
+# tickadoo-mcp — Codex Configuration
+# Read by Codex CLI on this repo and inherited by codex-plugin-cc (Claude Code ↔ Codex reviews).
+
+# No model pin: use the Codex CLI default. Pin only after a deliberate model comparison,
+# and date the pin in a comment.
+
+[project]
+name = "tickadoo-mcp"
+description = "@tickadoo/mcp-server — npm stdio bridge to the canonical remote MCP at mcp.tickadoo.com (served from tickadoo/howard)"
+
+# claude-platform coordination hub (Phase 0, pending a Codex-specific CF Access service
+# token — never reuse Claude's credential). Committed config carries env var NAMES only.
+#
+# [mcp_servers.claude-platform]
+# url = "https://claude-platform.tickadoo.com/mcp"  # confirm exact path in tickadoo/claude-platform README
+# env_http_headers = { "CF-Access-Client-Id" = "CODEX_CLAUDE_PLATFORM_ACCESS_CLIENT_ID", "CF-Access-Client-Secret" = "CODEX_CLAUDE_PLATFORM_ACCESS_CLIENT_SECRET" }
