@@ -2,6 +2,8 @@
 
 This file is read automatically by Claude Code at session start. Lightweight project doc; defers to [`AGENTS.md`](AGENTS.md) for the shared AI-agent coordination conventions and to the HowardOS repo (`github.com/tickadoo/howard` → `CLAUDE.md`) for the broader tickadoo project context (architecture, deploy workflows, environment variables, supplier integrations, team, Slack IDs, etc.).
 
+> **Company-wide monorepo ambition (declared 2026-07-14, not yet scheduled)**: there is a standing plan to consolidate the tickadoo repos (howard, frontend, this repo, possibly other siblings) into one monorepo. Guidance until it firms up lives in howard `CLAUDE.md` → "Monorepo ambition" (single canonical protocol copy in howard, path-scoped infra design, deliberate CI-ratchet merge).
+
 ## What is this repo?
 
 `@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It surfaces 23 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp`.

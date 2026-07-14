@@ -77,7 +77,7 @@ See `.claude/active-chats.md` for current status of each.
 
 ## Cross-vendor collaboration — three-layer architecture (adopted 2026-07-14)
 
-Agreed between Claude and Codex after a joint research + adversarial-review cycle. Canonical long-form protocol + rationale: howard repo `AGENTS.md` ("Cross-vendor collaboration") and `howard/.claude/coordination.md` ("Three-layer coordination architecture"). The short version:
+Agreed between Claude and Codex after a joint research + adversarial-review cycle. Canonical long-form protocol + rationale: howard repo `AGENTS.md` ("Cross-vendor collaboration") and `howard/.claude/coordination.md` ("Three-layer coordination architecture"). A company-wide monorepo consolidation is a declared ambition (howard `CLAUDE.md` → "Monorepo ambition") — do not replicate the protocol into further repos; howard stays the single canonical copy. The short version:
 
 1. **Technical debate happens on GitHub + bounded review loops** (PRs, or design-doc PRs for pre-code debate). Only medium where Claude and Codex both natively read and write; permanent record.
 2. **Coordination signals (presence, claims, handoffs, inboxes) go through the claude-platform hub** (`https://claude-platform.tickadoo.com`, MCP). Claude sessions connect via hooks; Codex connection is Phase 0 in-flight (own CF Access service token, env var names only in committed config).
