@@ -6,8 +6,8 @@ This repo is **`@tickadoo/mcp-server`** — the npm distribution of the public t
 
 ## Before you do anything
 
-1. **Pull first**: run `git pull --rebase origin main` at task start. Codex worktrees (see `.claude/worktrees/`) may be stale clones; without a pull you may be reading an old version of this file, CLAUDE.md, or `.claude/active-chats.md` that predates recent changes.
-2. **Check who else is active.** `.claude/active-chats.md` is retired (2026-07-14; it sat stale for months). Claude sessions: hub presence via `coord_who_else_is_here` / `coord_recent_activity` (claude-platform MCP). Codex: search `#activity` for the last few hours. Race conditions on `main` are the norm across multiple concurrent agents.
+1. **Pull first**: run `git pull --rebase origin main` at task start. Codex worktrees (see `.claude/worktrees/`) may be stale clones; without a pull you may be reading an old version of this file or CLAUDE.md that predates recent changes.
+2. **Check who else is active.** `.claude/active-chats.md` is retired (2026-07-14; it sat stale for months). Claude sessions: hub presence via `coord_who_else_is_here` / `coord_recent_activity` (claude-platform MCP). Codex (until its hub connection lands): treat presence as UNKNOWN — narrow branch scope, surgical commits, and ask the human who dispatched the task when a material overlap is suspected. Do not read Slack to coordinate. Race conditions on `main` are the norm across multiple concurrent agents.
 3. **Read `CLAUDE.md`** (if present — a minimal one lives at repo root). Also read the HowardOS repo `CLAUDE.md` (`github.com/tickadoo/howard` → `CLAUDE.md`) for the broader tickadoo project context (supplier pipeline, booking flows, content rules, team). Anything in the HowardOS `CLAUDE.md` that applies to the MCP server applies here too.
 4. **Before each push**: `git pull --rebase origin main` again. Multiple agents push to `main` concurrently — racing is the default, not the exception.
 
@@ -67,11 +67,11 @@ git log --all --pretty='%h %s %(trailers:key=Claude-Chat,valueonly)'
 
 Naming convention: Francis's chats (`howardmcp`, `howardops`, `howardcms`) use historical no-prefix names. Other team members prefix with their first name (`mark-`, etc.). Codex tasks use `codex-<slug>`. Claude Code sessions use `claudecode-<repo-name>`.
 
-See `.claude/active-chats.md` for current status of each.
+Current status of each: hub presence (`coord_who_else_is_here`) — see "Before you do anything" step 2.
 
 ## Scope discipline
 
-- If your task would touch a file another agent is actively editing, stop. Post to `#ai-activity` asking Francis or the other agent to confirm before proceeding.
+- If your task would touch a file another agent is actively editing, stop and ask the human who dispatched your task to confirm before proceeding (Slack is output-only for agents, not a channel to wait on).
 - Codex tasks that run in parallel must not touch the same file.
 - Prefer surgical commits. Smaller changes rebase cleaner against racing agents.
 
@@ -122,4 +122,4 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 
 ## Related repos
 
-- **`tickadoo/howard`** — internal backend, customer-facing platform, agent fleet. Shared conventions live in its `CLAUDE.md` and `AGENTS.md`. Any cross-repo work coordinates via `#ai-activity`.
+- **`tickadoo/howard`** — internal backend, customer-facing platform, agent fleet. Shared conventions live in its `CLAUDE.md` and `AGENTS.md` (canonical cross-vendor protocol). Cross-repo work coordinates via the claude-platform hub; `#ai-activity` carries the human-visible status lines.

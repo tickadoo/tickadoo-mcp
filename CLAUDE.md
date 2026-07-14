@@ -33,7 +33,7 @@ Multiple AI coding agents (Claude chats, Claude Code, Codex tasks) may push to `
 - **Pull first, push last, pull before push again**: `git pull --rebase origin main` at session start AND before every push.
 - **Commit trailer**: every commit ends with `Claude-Chat: <agent-name>` (e.g. `howardmcp`, `codex-<task-slug>`). Filter with `git log --grep='Claude-Chat: <name>' --oneline`.
 - **Slack feed**: all agents post session-start / commit / session-paused updates to Slack `#ai-activity` (`C0ATET93PQV`). Human visibility surface; agents do not coordinate with each other through it.
-- **Presence**: `.claude/active-chats.md` is RETIRED (2026-07-14, drifted stale). Claude sessions use hub presence (`coord_who_else_is_here`); Codex searches `#activity`.
+- **Presence**: `.claude/active-chats.md` is RETIRED (2026-07-14, drifted stale). Claude sessions use hub presence (`coord_who_else_is_here`). Codex (pre-hub-token): treats presence as unknown — narrow branch scope, human-dispatcher escalation on material overlap; never Slack reads.
 - **Cross-vendor review protocol (2026-07-14)**: see `AGENTS.md` → "Cross-vendor collaboration" (bounded GitHub debate, `AI_REVIEW:` verdicts, different-vendor author/reviewer on sensitive surfaces).
 
 ### Reusable snippet for Codex task prompts in this repo
@@ -43,7 +43,7 @@ Paste near the top of every Codex task prompt fired outside a Codex CLI working 
 ```
 COORDINATION:
 - FIRST: git pull --rebase origin main (Codex worktrees may be stale)
-- Read AGENTS.md and .claude/active-chats.md at task start
+- Read AGENTS.md at task start (incl. "Cross-vendor collaboration"); treat presence as unknown — narrow scope, ask your dispatcher on material overlap
 - Post to Slack #ai-activity (C0ATET93PQV) via Slack MCP:
   🤖 Codex [<task-slug>]: starting — <one-line scope>
   🤖 Codex [<task-slug>]: <progress update> (as needed)

@@ -4,9 +4,8 @@
 # No model pin: use the Codex CLI default. Pin only after a deliberate model comparison,
 # and date the pin in a comment.
 
-[project]
-name = "tickadoo-mcp"
-description = "@tickadoo/mcp-server — npm stdio bridge to the canonical remote MCP at mcp.tickadoo.com (served from tickadoo/howard)"
+# Repo: tickadoo-mcp — @tickadoo/mcp-server, npm stdio bridge to the canonical remote MCP at mcp.tickadoo.com (served from tickadoo/howard).
+# (Comment only: a [project] table is not a documented Codex config surface.)
 
 # claude-platform coordination hub (Phase 0, pending a Codex-specific CF Access service
 # token — never reuse Claude's credential). Committed config carries env var NAMES only.

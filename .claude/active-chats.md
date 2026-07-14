@@ -5,7 +5,7 @@ This registry is no longer maintained. It updated only at session boundaries and
 Live coordination signals now come from:
 
 - **Presence + recent activity**: the claude-platform hub — `coord_who_else_is_here(repo)` / `coord_recent_activity(repo)`.
-- **Live feed**: Slack `#ai-activity` / `#activity` (`C0ATET93PQV`).
+- **Human visibility feed**: Slack `#ai-activity` / `#activity` (`C0ATET93PQV`). Output-only for agents; not a coordination input.
 - **Agent registry + conventions**: `AGENTS.md` (this repo) — including the cross-vendor collaboration protocol adopted 2026-07-14.
 
 No unique handovers lived in this file; the final registry snapshot is preserved in git history (`git log --follow -- .claude/active-chats.md`).
