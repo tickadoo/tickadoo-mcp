@@ -31,12 +31,13 @@ Use this skill only when none of those is the primary shape of the request.
 | City overview | `get_city_guide` | city |
 | Tonight / next hours / this week | `whats_on_tonight` / `get_last_minute` / `get_whats_on_this_week` | city |
 | Multi-day plan | `plan_itinerary` | city, days, interests?, audience?, budget?, pace? |
-| Family day / evening for two | `get_family_day` / `get_date_night` | city (+ kids_ages, date, budget where known) |
-| Less-popular, highly rated options | `get_hidden_gems` | city |
+| Family day | `get_family_day` | city (+ kids_ages array, date, numeric budget where known) |
+| Evening for two | `get_date_night` | city (+ date, budget band low/medium/high where known) |
+| Less-popular options (may overlap with headline results) | `get_hidden_gems` | city (optional max_results, default 5) |
 | Travel advice | `get_travel_tips` | city, topic? |
 | Browse cities | `list_cities` | country?, limit? (no free-text query — if the city is unclear, ask the user) |
-| Show visual cards | `render_experience_cards` | experience_ids (t_ IDs), required render_type, optional render_context.intent_summary |
-| Report an agreed quality issue | `report_quality_signal` | request_id, signal_type, optional non-personal notes |
+| Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type, optional render_context.intent_summary |
+| Report an agreed quality issue | `report_quality_signal` | request_id (only if a prior result returned one), signal_type, optional non-personal notes |
 
 Non-ChatGPT only (do not call from ChatGPT): `find_nearby_experiences` (needs real coordinates), `get_related_experiences` (reserved for a non-ChatGPT widget/client).
 
@@ -44,7 +45,7 @@ Non-ChatGPT only (do not call from ChatGPT): `find_nearby_experiences` (needs re
 
 ## The universal card rule
 
-When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only its stable `t_` IDs in `experience_ids`, pass a required `render_type` allowed by the callable schema, and optionally `render_context.intent_summary`. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `plan_itinerary`, `get_city_guide`, `compare_experiences`).
+When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only the `product_id` values exactly as returned by the discovery tool in `experience_ids` (IDs are internal — pass them verbatim, never display or read them aloud), pass a required `render_type` allowed by the callable schema, and optionally `render_context.intent_summary`. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `plan_itinerary`, `get_city_guide`, `compare_experiences`).
 
 ## The live-availability rule
 
@@ -56,7 +57,7 @@ Use fields documented by the selected tool and actually present in its response.
 
 ## Quality feedback (a write action)
 
-If the user reports that a surfaced result was stale, unbookable or misleading, explain that you can send feedback to tickadoo. Only after the user agrees, call `report_quality_signal` with the originating `request_id`, the required `signal_type` and no personal data in notes. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links, while `report_quality_signal` records feedback and is therefore a write action.
+If the user reports that a surfaced result was stale, unbookable or misleading, explain that you can send feedback to tickadoo. Only after the user agrees, call `report_quality_signal` — and only if a prior tool result actually included a `request_id` (format `rq_…`): pass it with the required `signal_type` and no personal data in notes. If no `request_id` was returned by any prior result, say feedback cannot be filed and never construct one. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links, while `report_quality_signal` records feedback and is therefore a write action.
 
 ## Brand and conduct
 
