@@ -18,11 +18,11 @@
         },
         {
           "name": "whats_on_tonight",
-          "description": "Use this when the user asks what is bookable in a city tonight. Returns experiences with start times tonight, sorted by soonest first; events that have already started are filtered out. Each row includes start_time, countdown_text, venue, and a short urgency hint."
+          "description": "Use this when the user asks what is on in a city tonight. Returns evening-appropriate experiences currently on sale, with seasonal products filtered out and evening-led options ranked first. Top results carry start_time (venue-local) when the live supplier calendar confirms a performance in the evening window (late afternoon onward), and timed rows sort soonest-first; rows without start_time have no confirmed evening time. Confirm the selected experience with get_availability before stating it is bookable tonight."
         },
         {
           "name": "get_last_minute",
-          "description": "Use this when the user wants experiences starting within the next few hours. Returns rows with start_time, countdown_text, and seats_remaining hints, sorted by soonest first."
+          "description": "Use this when the user wants something to do within the next few hours. Returns currently-on-sale experiences with seasonal products filtered out, ranked by popularity. Rows may include start_time, countdown_text, and seats_remaining hints when known, but none are guaranteed: confirm the selected experience with get_availability before stating it starts soon or is available today."
         },
         {
           "name": "get_whats_on_this_week",
@@ -74,7 +74,7 @@
         },
         {
           "name": "get_availability",
-          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug."
+          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug. Slot price.amount is in MINOR currency units (pence/cents): amount 13125 with currency_code GBP means GBP 131.25."
         },
         {
           "name": "check_availability",
@@ -101,7 +101,7 @@
   },
   "name": "io.github.tickadoo/tickadoo-mcp",
   "title": "tickadoo Experiences and Events",
-  "description": "Discover and book theatre, tours, attractions, and live experiences across 681 cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.",
+  "description": "Discover and book theatre, tours, attractions, and live experiences in cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.",
   "websiteUrl": "https://mcp.tickadoo.com",
   "repository": {
     "url": "https://github.com/tickadoo/tickadoo-mcp",

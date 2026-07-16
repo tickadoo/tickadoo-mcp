@@ -21,7 +21,7 @@ Use a pair of clearly identified product names or previously shown cards. If eit
 
 ## Show results as cards
 
-Do not pass `compare_experiences` output directly to `render_experience_cards`. Render contenders only when their `t_` IDs came from a renderer-supported discovery result set (e.g. the resolver `search_experiences` calls), and render that set immediately, once, with a required `render_type` from the callable schema. Use `render_type: "comparison"` only when the callable schema permits it. Do not re-list rendered products in text.
+Do not pass `compare_experiences` output directly to `render_experience_cards`. Render contenders only when their `product_id` values came from a renderer-supported discovery result set (e.g. the resolver `search_experiences` calls) — pass those IDs verbatim (they are internal; never display or read them aloud) — and render that set immediately, once, with a required `render_type` from the callable schema. Use `render_type: "comparison"` only when the callable schema permits it. Do not re-list rendered products in text.
 
 ## Optional metadata
 
@@ -32,4 +32,4 @@ Use fields documented by the selected tool and actually present in its response.
 - Present everything as tickadoo. Never name, infer or expose an upstream inventory supplier. Preserve material price, accessibility and cancellation facts.
 - Be honest when it's genuinely close; let the availability check or cancellation policy settle it. Never add time or sales pressure.
 - If the user asks to continue, provide the tickadoo link and make clear any purchase completes outside ChatGPT.
-- If the user reports stale or misleading comparison data, offer to send feedback; only after they agree, call `report_quality_signal` with the originating `request_id`, the required `signal_type` and no personal data in notes (a write action).
+- If the user reports stale or misleading comparison data, offer to send feedback; only after they agree, call `report_quality_signal` only if a prior tool result actually included a `request_id` (format `rq_…`) — pass it with the required `signal_type` and no personal data in notes (a write action). If no `request_id` was returned, say feedback cannot be filed for that result and never construct one.
