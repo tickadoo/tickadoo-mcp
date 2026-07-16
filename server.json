@@ -26,7 +26,7 @@
         },
         {
           "name": "get_whats_on_this_week",
-          "description": "Use this when the user wants a day-by-day weekly calendar for a city. Returns one entry per day for the next 7 days, each with morning, afternoon, and evening picks plus a daily highlight."
+          "description": "Use this when the user wants ideas for the coming week in a city. Returns a ranked list of currently on-sale experiences (search rows), not a day-by-day calendar. Assemble any weekly structure yourself and verify specific dates with get_availability."
         },
         {
           "name": "recommend_experiences",
@@ -34,11 +34,11 @@
         },
         {
           "name": "get_city_guide",
-          "description": "Use this when the user wants an orientation overview of a city for trip planning. Returns highlights, dominant categories, price band, best-for audience hints, seasonal notes, and a short list of local advice items."
+          "description": "Use this when the user wants an orientation overview of a city for trip planning. Returns a ranked list of the city's most popular bookable experiences (search rows); derive the dominant categories and price levels from those rows rather than expecting a structured guide payload."
         },
         {
           "name": "get_travel_tips",
-          "description": "Use this when the user asks practical logistics questions about a city. Returns short tips grouped by topic (transport, money, safety, culture, food, weather, language, connectivity), plus emergency numbers and quick phrases where relevant."
+          "description": "Use this when the user asks practical logistics questions about a city. Currently returns a ranked list of relevant bookable experiences (search rows); the topic filter is accepted but not yet applied, and the payload contains no tips text, emergency numbers, or phrases."
         },
         {
           "name": "compare_experiences",
@@ -46,19 +46,19 @@
         },
         {
           "name": "get_hidden_gems",
-          "description": "Use this when the user wants less-popular experiences locals favour rather than top-of-list bestsellers. Returns rows tagged HiddenGem or with high ratings and lower review counts; explicitly excludes Bestseller, HopOnHopOff, and CityPass products."
+          "description": "Use this when the user wants lower-profile options rather than headline bestsellers. Excludes Bestseller, hop-on-hop-off, and CityPass tagged products and prefers highly rated rows with fewer reviews; falls back to the standard ranked list when a city has too few qualifying rows (results may then overlap with headline search)."
         },
         {
           "name": "get_family_day",
-          "description": "Use this when the user wants a full-day plan for a family in one city. Returns a morning activity, lunch area suggestion, afternoon attraction, and optional evening stop. Uses age-aware filters and clusters venues by walking distance."
+          "description": "Use this when the user wants family-suitable options for a day in one city. Returns a flat ranked list of family-appropriate experiences (search rows), not a structured morning/lunch/afternoon/evening plan. Compose the day yourself and verify age suitability per pick via get_experience_details."
         },
         {
           "name": "get_date_night",
-          "description": "Use this when the user wants an evening plan for two. Returns a pre-dinner activity, dinner area suggestion, evening show, post-show tip, and an estimated total cost. Filters out family-rated and high-physical-level venues."
+          "description": "Use this when the user wants an evening for two. Returns a flat ranked list of evening-appropriate experiences (search rows), not a structured pre-dinner/dinner/show arc, and rows are not guaranteed couples-filtered. Compose the evening yourself (search_by_mood with mood 'romantic' can bias the pool)."
         },
         {
           "name": "plan_itinerary",
-          "description": "Use this when the user wants a multi-day plan for a single city. Returns morning, afternoon, and evening slots per day, with geographic clustering, category diversity, and a running total cost."
+          "description": "Use this when the user wants a multi-day plan for a single city. Returns a flat ranked candidate list of experiences (search rows), not structured day slots or a running cost. Arrange the candidates into days yourself and compute totals only from returned price fields."
         },
         {
           "name": "list_cities",
@@ -74,7 +74,7 @@
         },
         {
           "name": "get_availability",
-          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug. Slot price.amount is in MINOR currency units (pence/cents): amount 13125 with currency_code GBP means GBP 131.25."
+          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug. Slot price.amount is in MINOR currency units (pence/cents): amount 13125 with currency_code GBP means GBP 131.25. Slot time is venue-local; when the venue timezone is known, timezone carries its IANA name and datetime/next_available carry the real UTC offset (e.g. 2026-07-18T19:30:00+02:00), so they are safe for time math."
         },
         {
           "name": "check_availability",
@@ -90,7 +90,7 @@
         },
         {
           "name": "render_experience_cards",
-          "description": "Use this immediately after ANY discovery or search tool (search_experiences, whats_on_tonight, get_last_minute, get_whats_on_this_week, recommend_experiences, search_by_mood, get_hidden_gems, get_family_day, get_date_night, search_local_experiences) returns results. It is the only tool that displays the visual experience cards, so always call it once for every result set you want shown. Take the experience_ids those tools provide and render them; pass the stable product IDs (the t_ ids) only, never full product rows. Only experience_ids and render_type are required. Optionally pass render_context.intent_summary (a short phrase describing what the user asked for, e.g. city, date, audience) to set the carousel heading. Call it exactly once per result set, and do not also re-list the experiences as text."
+          "description": "Use this immediately after ANY discovery or search tool (search_experiences, whats_on_tonight, get_last_minute, get_whats_on_this_week, recommend_experiences, search_by_mood, get_hidden_gems, get_family_day, get_date_night, search_local_experiences) returns results. It is the only tool that displays the visual experience cards, so always call it once for every result set you want shown. Take the experience_ids those tools provide and render them; pass the product_id values exactly as returned by those tools, never full product rows. Only experience_ids and render_type are required. Optionally pass render_context.intent_summary (a short phrase describing what the user asked for, e.g. city, date, audience) to set the carousel heading. Call it exactly once per result set, and do not also re-list the experiences as text."
         },
         {
           "name": "report_quality_signal",
@@ -101,7 +101,7 @@
   },
   "name": "io.github.tickadoo/tickadoo-mcp",
   "title": "tickadoo Experiences and Events",
-  "description": "Discover and book theatre, tours, attractions, and live experiences in cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.",
+  "description": "Discover and book theatre, tours, attractions, and live experiences across 681 cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.",
   "websiteUrl": "https://mcp.tickadoo.com",
   "repository": {
     "url": "https://github.com/tickadoo/tickadoo-mcp",
