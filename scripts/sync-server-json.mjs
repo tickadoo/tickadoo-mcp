@@ -27,7 +27,7 @@ try {
   serverJson.version = packageJson.version;
   serverJson.title = "tickadoo Experiences and Events";
   serverJson.description =
-    "Discover and book theatre, tours, attractions, and live experiences across 681 cities worldwide. Search, recommend, check availability, compare, and plan itineraries, all presented as tickadoo. No API key required.";
+    "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
   serverJson.websiteUrl = "https://mcp.tickadoo.com";
   serverJson.remotes = [
     {

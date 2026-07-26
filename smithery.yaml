@@ -6,7 +6,7 @@ build:
 metadata:
   name: "@tickadoo/mcp-server"
   displayName: "tickadoo — Experiences & Theatre"
-  description: "13,090+ bookable shows, theatre, tours, and attractions across 681 cities. Agent-native with best-picks, price-tiers, and conversation-starter intelligence."
+  description: "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required."
   category: travel
   tags:
     - experiences
