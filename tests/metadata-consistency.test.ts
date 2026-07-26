@@ -73,6 +73,8 @@ describe("public registry metadata", () => {
     expect(serverJson.remotes).toEqual([
       { type: "streamable-http", url: MCP_ENDPOINT },
     ]);
+    expect(syncScript).toContain("url: canonicalRemoteUrl");
+    expect(syncScript).not.toContain("url: sourceRemoteUrl.href");
     expect(smitheryYaml).toMatch(
       /^\s{2}url:\s+https:\/\/mcp\.tickadoo\.com\/mcp\s*$/m,
     );
