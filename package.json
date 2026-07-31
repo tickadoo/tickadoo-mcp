@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.15",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "tsx": "^4.19.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
@@ -61,6 +61,9 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp/issues"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
+  },
+  "overrides": {
+    "esbuild": "$esbuild"
   }
 }
