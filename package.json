@@ -21,6 +21,7 @@
     "dev": "tsx src/index.ts",
     "sync:server-json": "node scripts/sync-server-json.mjs",
     "test": "vitest run",
+    "test:plugin": "vitest run tests/agent-plugin.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
