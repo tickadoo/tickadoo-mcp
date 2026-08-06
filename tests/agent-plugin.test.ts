@@ -21,6 +21,23 @@ async function validate(documentName: "plugin" | "mcp") {
   return document;
 }
 
+async function walkContained(directory: string, resolvedRoot: string): Promise<string[]> {
+  const discovered: string[] = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const candidate = path.join(directory, entry.name);
+    const stat = await lstat(candidate);
+    expect(stat.isSymbolicLink(), `${path.relative(root, candidate)} must not be a symlink`).toBe(false);
+    const resolved = await realpath(candidate);
+    expect(
+      resolved.startsWith(`${resolvedRoot}${path.sep}`),
+      `${path.relative(root, candidate)} must resolve inside the plugin root`,
+    ).toBe(true);
+    discovered.push(candidate);
+    if (entry.isDirectory()) discovered.push(...(await walkContained(candidate, resolvedRoot)));
+  }
+  return discovered;
+}
+
 describe("Agent Plugins 1.0.0 package", () => {
   it("validates the closed portable manifest against the vendored official schema", async () => {
     const manifest = await validate("plugin");
@@ -55,12 +72,18 @@ describe("Agent Plugins 1.0.0 package", () => {
       expect(stat.isSymbolicLink()).toBe(false);
       expect(await realpath(candidate)).toSatisfy((resolved) => resolved === resolvedRoot || resolved.startsWith(`${resolvedRoot}${path.sep}`));
     }
-    const skills = await readdir(path.join(root, "skills"), { withFileTypes: true });
-    for (const entry of skills.filter((candidate) => candidate.isDirectory())) {
-      const skillFile = path.join(root, "skills", entry.name, "SKILL.md");
-      expect((await lstat(skillFile)).isFile()).toBe(true);
-      expect(await realpath(skillFile)).toSatisfy((resolved) => resolved.startsWith(`${resolvedRoot}${path.sep}`));
-    }
+    const portableFiles = await walkContained(path.join(root, "skills"), resolvedRoot);
+    await walkContained(path.join(root, ".codex-plugin"), resolvedRoot);
+    const skillFiles = portableFiles.filter((candidate) => path.basename(candidate) === "SKILL.md");
+    expect(skillFiles.every((candidate) => path.dirname(path.dirname(candidate)) === path.join(root, "skills"))).toBe(true);
+  });
+
+  it("rejects fields outside the closed portable manifest schema", async () => {
+    const schema = await readJson(path.join(schemaRoot, "plugin.schema.json"));
+    const manifest = await readJson(path.join(root, "plugin.json"));
+    const ajv = new Ajv2020({ strict: true });
+    expect(ajv.validate(schema, { ...manifest, __unknownPortableField: true })).toBe(false);
+    expect(ajv.errors?.some((error) => error.keyword === "additionalProperties")).toBe(true);
   });
 
   it("uses a supported secure transport without package-visible authentication", async () => {
@@ -71,6 +94,9 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(Object.values(servers)).toHaveLength(1);
     expect(servers.tickadoo.type).toBe("streamable-http");
     expect(servers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(new URL(String(servers.tickadoo.url)).protocol).toBe("https:");
+    expect(new URL(String(servers.tickadoo.url)).username).toBe("");
+    expect(new URL(String(servers.tickadoo.url)).password).toBe("");
     expect(servers.tickadoo).not.toHaveProperty("headers");
   });
 

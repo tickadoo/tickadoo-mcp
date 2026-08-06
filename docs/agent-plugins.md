@@ -111,6 +111,27 @@ portable typed MCP config, no pinned official schemas, and no tests for secret
 absence, containment, manifest closure, schema-version agreement, or portable
 client discovery. No missing MCP protocol or Apps SDK implementation was found.
 
+## 2026-08-06 upstream release audit
+
+The Agent Plugins specification repository's two changes on 2026-08-06 only
+renamed the project description from a community standard to an open standard.
+The 1.0.0 schema blobs did not change, so the reviewed vendored schemas and
+their checksums remain current; no package migration is warranted.
+
+Codex changes released the same day added plugin-root-aware skill loading,
+remote installed-plugin discovery across scopes, lazy startup of cached MCP
+servers for subagents, MCP discovery-timeout cleanup, and reuse of MCP handlers
+across sampling steps. The first of these confirms that portable skills must be
+immediate children of `skills/` and that every discovered path must remain
+inside the plugin root. The tests now recursively enforce that contract and
+reject symlinks throughout the portable skills and Codex adapter, nested skill
+entry points, schema extensions, non-HTTPS endpoint forms, and URL credentials.
+
+The remaining Codex changes are client lifecycle and performance improvements.
+They require no Howard or `tickadoo-mcp` protocol duplication: the package
+continues to advertise one canonical remote endpoint and lets each client own
+connection caching, lazy startup, discovery cancellation, and authentication.
+
 ## Update and rollback
 
 Treat `plugin.json` version as the package release. Update the vendored schemas
