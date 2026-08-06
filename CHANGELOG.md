@@ -6,6 +6,8 @@
   including portable manifests, seven skills, pinned schemas, client adapters,
   documentation and a provider-neutral acceptance-scenario corpus.
 - Add exact npm tarball-content verification to the portable plugin test suite.
+- Make the provider-neutral corpus review-ready with nine positive fixtures and
+  result contracts plus three negative safe-behavior cases.
 
 ## [2.0.0] - 2026-06-11
 
