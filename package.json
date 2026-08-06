@@ -7,6 +7,15 @@
   "bin": "./dist/index.js",
   "files": [
     "dist/index.js",
+    "plugin.json",
+    "mcp.json",
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    ".mcp.json",
+    "skills/",
+    "schemas/agent-plugins/1.0.0/",
+    "evals/agent-plugin-scenarios.json",
+    "docs/agent-plugins.md",
     "server.json",
     "README.md",
     "LICENSE",
@@ -21,7 +30,7 @@
     "dev": "tsx src/index.ts",
     "sync:server-json": "node scripts/sync-server-json.mjs",
     "test": "vitest run",
-    "test:plugin": "vitest run tests/agent-plugin.test.ts",
+    "test:plugin": "vitest run tests/agent-plugin.test.ts tests/agent-plugin-distribution.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

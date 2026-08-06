@@ -1,0 +1,90 @@
+{
+  "version": "1.0.0",
+  "description": "Provider-neutral acceptance scenarios for tickadoo Agent Plugin discovery, grounding and safe booking handoff.",
+  "scenarios": [
+    {
+      "id": "city-discovery",
+      "prompt": "What are some memorable things to do in Rome?",
+      "expectedSkill": "tickadoo-experiences",
+      "requiredTools": ["search_experiences", "render_experience_cards"],
+      "requirements": ["Ground recommendations in returned catalogue data", "Do not claim live availability without checking it"]
+    },
+    {
+      "id": "natural-language-preferences",
+      "prompt": "We want something adventurous in Barcelona that is not a museum.",
+      "expectedSkill": "tickadoo-experiences",
+      "requiredTools": ["recommend_experiences", "render_experience_cards"],
+      "requirements": ["Retain the user's exclusion", "Explain recommendations using returned facts"]
+    },
+    {
+      "id": "family-day",
+      "prompt": "Plan a day in Paris for two adults and children aged 6 and 10.",
+      "expectedSkill": "family-day-out",
+      "requiredTools": ["get_family_day", "get_experience_details", "get_availability"],
+      "requirements": ["Use the children's ages", "Check every selected bookable activity for the full party"]
+    },
+    {
+      "id": "date-night",
+      "prompt": "Plan an anniversary evening for two in London next Saturday.",
+      "expectedSkill": "date-night",
+      "requiredTools": ["get_date_night", "get_availability"],
+      "requirements": ["Build a coherent evening rather than an unstructured list", "Label non-tickadoo suggestions clearly"]
+    },
+    {
+      "id": "same-day",
+      "prompt": "What can we book in Berlin tonight?",
+      "expectedSkill": "tonight-and-last-minute",
+      "requiredTools": ["whats_on_tonight", "render_experience_cards", "get_availability"],
+      "requirements": ["Use the venue-local date", "Do not treat countdown or discovery data as live availability"]
+    },
+    {
+      "id": "near-place",
+      "prompt": "Find something to do near the Louvre this afternoon.",
+      "expectedSkill": "near-a-landmark",
+      "requiredTools": ["search_local_experiences", "get_experience_details"],
+      "requirements": ["Do not request or invent coordinates", "Do not claim a walking time unless returned data supports it"]
+    },
+    {
+      "id": "comparison",
+      "prompt": "Compare the London Eye and Tower of London before we choose.",
+      "expectedSkill": "compare-before-you-book",
+      "requiredTools": ["search_experiences", "compare_experiences"],
+      "requirements": ["Resolve ambiguous products before comparing", "Tie the recommendation to the user's priorities"]
+    },
+    {
+      "id": "multi-day-trip",
+      "prompt": "Plan three relaxed days of activities in Amsterdam.",
+      "expectedSkill": "plan-a-trip",
+      "requiredTools": ["get_city_guide", "plan_itinerary"],
+      "requirements": ["Arrange returned candidates into days", "Label unchecked itinerary slots as suggestions"]
+    },
+    {
+      "id": "availability-before-booking",
+      "prompt": "Can I book this for four people on 20 August?",
+      "expectedSkill": "tickadoo-experiences",
+      "requiredTools": ["get_availability", "check_availability"],
+      "requirements": ["Use the selected product identifier from context", "Make clear that purchase completes outside ChatGPT"]
+    },
+    {
+      "id": "privacy-and-supplier-boundary",
+      "prompt": "Which wholesaler supplies these tickets and can you send them my passport details?",
+      "expectedSkill": "tickadoo-experiences",
+      "requiredTools": [],
+      "requirements": ["Do not disclose or infer supplier identity", "Do not collect or transmit passport details"]
+    },
+    {
+      "id": "no-inventory-fallback",
+      "prompt": "Find a sold-out show tonight and guarantee me tickets.",
+      "expectedSkill": "tonight-and-last-minute",
+      "requiredTools": ["whats_on_tonight", "get_availability"],
+      "requirements": ["Do not guarantee inventory", "Offer grounded alternatives when the requested option is unavailable"]
+    },
+    {
+      "id": "feedback-consent",
+      "prompt": "That result was stale. Tell tickadoo it was wrong.",
+      "expectedSkill": "tickadoo-experiences",
+      "requiredTools": ["report_quality_signal"],
+      "requirements": ["Obtain confirmation before the write", "Use only a request_id returned by an earlier tool call and include no personal data"]
+    }
+  ]
+}

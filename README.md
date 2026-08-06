@@ -17,6 +17,8 @@ vendor-neutral source of truth.
 
 Run `npm run test:plugin` to validate the package against the vendored official
 schemas and its containment, discovery, transport, and secret-safety checks.
+The same command verifies the exact npm tarball contents and the provider-neutral
+acceptance corpus in [`evals/agent-plugin-scenarios.json`](evals/agent-plugin-scenarios.json).
 See [`docs/agent-plugins.md`](docs/agent-plugins.md) for the architecture
 decision, compatibility evidence, update/rollback process, and follow-ups.
 

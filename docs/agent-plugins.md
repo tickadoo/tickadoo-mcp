@@ -46,7 +46,25 @@ to clients that prefer stdio.
 
 Run `npm run test:plugin` for schema validation and tests covering manifest
 closure, fixed-location discovery, filesystem containment, forbidden secrets,
-schema-version agreement, HTTPS, and Streamable HTTP transport selection.
+schema-version agreement, HTTPS, Streamable HTTP transport selection, published
+tarball closure, and the provider-neutral acceptance-scenario corpus.
+
+The npm distribution is a complete portable artifact rather than only a stdio
+bridge: its allowlist includes the portable manifests, seven skills, pinned
+schemas, client adapters, documentation and eval corpus. `npm pack --dry-run`
+is executed by the test suite so a future packaging change cannot silently ship
+the bridge while omitting the plugin.
+
+The published `.mcp.json` and `.claude-plugin/plugin.json` are compatibility
+adapters for clients that install or unpack the npm artifact as a plugin source;
+they do not alter MCP configuration merely by existing under `node_modules`.
+The portable root `mcp.json` remains authoritative for Agent Plugins clients.
+
+`evals/agent-plugin-scenarios.json` defines the same discovery, grounding,
+availability, privacy, feedback-consent and booking-handoff expectations for
+every client. It is intentionally provider-neutral: client-specific runners
+may score ChatGPT, Claude, Copilot, Cursor, VS Code and Kiro without forking the
+acceptance contract.
 
 Client setup verified from primary documentation and installed CLIs on
 2026-08-06:
