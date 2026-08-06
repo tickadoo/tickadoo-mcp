@@ -1,10 +1,11 @@
 import { lstat, readFile, realpath, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 
-const root = path.resolve(import.meta.dirname, "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const schemaRoot = path.join(root, "schemas/agent-plugins/1.0.0");
 
 async function readJson(file: string): Promise<Record<string, unknown>> {
