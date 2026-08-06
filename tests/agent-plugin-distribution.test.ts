@@ -35,9 +35,40 @@ describe("Agent Plugin distribution", () => {
       scenarios: Array<{ id: string; prompt: string; expectedSkill: string; requiredTools: string[]; requirements: string[] }>;
     };
     const server = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
-      _meta: { "io.modelcontextprotocol.registry/publisher-provided": { tools: Array<{ name: string }> } };
+      description: string;
+      _meta: {
+        "io.modelcontextprotocol.registry/publisher-provided": {
+          tools: Array<{
+            name: string;
+            title?: string;
+            annotations?: {
+              title?: string;
+              readOnlyHint?: boolean;
+              destructiveHint?: boolean;
+              idempotentHint?: boolean;
+              openWorldHint?: boolean;
+            };
+          }>;
+        };
+      };
     };
-    const knownTools = new Set(server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool) => tool.name));
+    expect(server.description.length).toBeLessThanOrEqual(100);
+    const registryTools = server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools;
+    const knownTools = new Set(registryTools.map((tool) => tool.name));
+    for (const tool of registryTools) {
+      expect(tool.title?.length, `${tool.name}: registry title`).toBeGreaterThan(0);
+      expect(tool.annotations?.title, `${tool.name}: annotation title`).toBe(tool.title);
+      expect(typeof tool.annotations?.readOnlyHint, `${tool.name}: readOnlyHint`).toBe("boolean");
+      expect(typeof tool.annotations?.destructiveHint, `${tool.name}: destructiveHint`).toBe("boolean");
+      expect(typeof tool.annotations?.idempotentHint, `${tool.name}: idempotentHint`).toBe("boolean");
+      expect(typeof tool.annotations?.openWorldHint, `${tool.name}: openWorldHint`).toBe("boolean");
+    }
+    expect(registryTools.find((tool) => tool.name === "report_quality_signal")?.annotations?.readOnlyHint).toBe(false);
+    expect(
+      registryTools
+        .filter((tool) => tool.name !== "report_quality_signal")
+        .every((tool) => tool.annotations?.readOnlyHint === true),
+    ).toBe(true);
     const skillDirectories = new Set(
       [
         "compare-before-you-book",

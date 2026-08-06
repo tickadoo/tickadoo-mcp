@@ -66,6 +66,13 @@ every client. It is intentionally provider-neutral: client-specific runners
 may score ChatGPT, Claude, Copilot, Cursor, VS Code and Kiro without forking the
 acceptance contract.
 
+The MCP Registry export preserves each live tool's standard title and
+annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, and
+`openWorldHint`). This lets downstream registries evaluate safety and tool
+selection from the published artifact instead of receiving only names and
+descriptions. The feedback tool remains explicitly non-read-only; catalogue,
+planning, availability and rendering tools remain read-only.
+
 Client setup verified from primary documentation and installed CLIs on
 2026-08-06:
 

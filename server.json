@@ -6,102 +6,286 @@
       "tools": [
         {
           "name": "search_experiences",
-          "description": "Use this when the user names a city plus a category, query, or filter set and wants a ranked list of bookable experiences. Returns products each with a stable product_id, plus name, slug, city, category, price, rating, review count, and tags. To show the results as visual cards, pass the product_id values from these results into render_experience_cards (experience_ids). Pair with get_experience_details for richer fields."
+          "title": "Search experiences",
+          "description": "Use this when the user names a city plus a category, query, or filter set and wants a ranked list of bookable experiences. Returns products each with a stable product_id, plus name, slug, city, category, price, rating, review count, and tags. To show the results as visual cards, pass the product_id values from these results into render_experience_cards (experience_ids). Pair with get_experience_details for richer fields.",
+          "annotations": {
+            "title": "Search experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "search_local_experiences",
-          "description": "Use this when the user mentions a place, neighbourhood, landmark, or area but does not give exact coordinates. Examples: 'near the Louvre', 'in Trastevere', 'around Times Square', \"walking distance from St Paul's Cathedral\". Returns experiences matched first by exact venue/neighbourhood, then by city centre fallback. Do not use for general city-wide search; use search_experiences for that."
+          "title": "Search local experiences",
+          "description": "Use this when the user mentions a place, neighbourhood, landmark, or area but does not give exact coordinates. Examples: 'near the Louvre', 'in Trastevere', 'around Times Square', \"walking distance from St Paul's Cathedral\". Returns experiences matched first by exact venue/neighbourhood, then by city centre fallback. Do not use for general city-wide search; use search_experiences for that.",
+          "annotations": {
+            "title": "Search local experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "find_nearby_experiences",
-          "description": "Use this when a non-ChatGPT client supplies exact latitude and longitude and wants experiences near that coordinate. ChatGPT clients should use search_local_experiences instead because it accepts coarse place hints."
+          "title": "Find nearby experiences",
+          "description": "Use this when a non-ChatGPT client supplies exact latitude and longitude and wants experiences near that coordinate. ChatGPT clients should use search_local_experiences instead because it accepts coarse place hints.",
+          "annotations": {
+            "title": "Find nearby experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "whats_on_tonight",
-          "description": "Use this when the user asks what is on in a city tonight. Returns evening-appropriate experiences currently on sale, with seasonal products filtered out and evening-led options ranked first. Top results carry start_time (venue-local) when the live supplier calendar confirms a performance in the evening window (late afternoon onward), and timed rows sort soonest-first; rows without start_time have no confirmed evening time. Confirm the selected experience with get_availability before stating it is bookable tonight."
+          "title": "What is on tonight",
+          "description": "Use this when the user asks what is on in a city tonight. Returns evening-appropriate experiences currently on sale, with seasonal products filtered out and evening-led options ranked first. Top results carry start_time (venue-local) when the live supplier calendar confirms a performance in the evening window (late afternoon onward), and timed rows sort soonest-first; rows without start_time have no confirmed evening time. Confirm the selected experience with get_availability before stating it is bookable tonight.",
+          "annotations": {
+            "title": "What is on tonight",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_last_minute",
-          "description": "Use this when the user wants something to do within the next few hours. Returns currently-on-sale experiences with seasonal products filtered out, ranked by popularity. Rows may include start_time, countdown_text, and seats_remaining hints when known, but none are guaranteed: confirm the selected experience with get_availability before stating it starts soon or is available today."
+          "title": "Last minute",
+          "description": "Use this when the user wants something to do within the next few hours. Returns currently-on-sale experiences with seasonal products filtered out, ranked by popularity. Rows may include start_time, countdown_text, and seats_remaining hints when known, but none are guaranteed: confirm the selected experience with get_availability before stating it starts soon or is available today.",
+          "annotations": {
+            "title": "Last minute",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_whats_on_this_week",
-          "description": "Use this when the user wants ideas for the coming week in a city. Returns a ranked list of currently on-sale experiences (search rows), not a day-by-day calendar. Assemble any weekly structure yourself and verify specific dates with get_availability."
+          "title": "This week",
+          "description": "Use this when the user wants ideas for the coming week in a city. Returns a ranked list of currently on-sale experiences (search rows), not a day-by-day calendar. Assemble any weekly structure yourself and verify specific dates with get_availability.",
+          "annotations": {
+            "title": "This week",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
         },
         {
           "name": "recommend_experiences",
-          "description": "Use this when the user describes what they want in natural language rather than naming a category. Parses the query for audience, mood, constraints, occasion, and time of day, then returns scored recommendations with a reason field explaining the match."
+          "title": "Recommend experiences",
+          "description": "Use this when the user describes what they want in natural language rather than naming a category. Parses the query for audience, mood, constraints, occasion, and time of day, then returns scored recommendations with a reason field explaining the match.",
+          "annotations": {
+            "title": "Recommend experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_city_guide",
-          "description": "Use this when the user wants an orientation overview of a city for trip planning. Returns a ranked list of the city's most popular bookable experiences (search rows); derive the dominant categories and price levels from those rows rather than expecting a structured guide payload."
+          "title": "City guide",
+          "description": "Use this when the user wants an orientation overview of a city for trip planning. Returns a ranked list of the city's most popular bookable experiences (search rows); derive the dominant categories and price levels from those rows rather than expecting a structured guide payload.",
+          "annotations": {
+            "title": "City guide",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_travel_tips",
-          "description": "Use this when the user asks practical logistics questions about a city. Currently returns a ranked list of relevant bookable experiences (search rows); the topic filter is accepted but not yet applied, and the payload contains no tips text, emergency numbers, or phrases."
+          "title": "Travel tips",
+          "description": "Use this when the user asks practical logistics questions about a city. Currently returns a ranked list of relevant bookable experiences (search rows); the topic filter is accepted but not yet applied, and the payload contains no tips text, emergency numbers, or phrases.",
+          "annotations": {
+            "title": "Travel tips",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "compare_experiences",
-          "description": "Use this when the user wants a side-by-side comparison of 2-5 specific products. Pass the slug for each. Returns a comparison table plus per-axis winners (value, rating, popularity, family-fit)."
+          "title": "Compare experiences",
+          "description": "Use this when the user wants a side-by-side comparison of 2-5 specific products. Pass the slug for each. Returns a comparison table plus per-axis winners (value, rating, popularity, family-fit).",
+          "annotations": {
+            "title": "Compare experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_hidden_gems",
-          "description": "Use this when the user wants lower-profile options rather than headline bestsellers. Excludes Bestseller, hop-on-hop-off, and CityPass tagged products and prefers highly rated rows with fewer reviews; falls back to the standard ranked list when a city has too few qualifying rows (results may then overlap with headline search)."
+          "title": "Hidden gems",
+          "description": "Use this when the user wants lower-profile options rather than headline bestsellers. Excludes Bestseller, hop-on-hop-off, and CityPass tagged products and prefers highly rated rows with fewer reviews; falls back to the standard ranked list when a city has too few qualifying rows (results may then overlap with headline search).",
+          "annotations": {
+            "title": "Hidden gems",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_family_day",
-          "description": "Use this when the user wants family-suitable options for a day in one city. Returns a flat ranked list of family-appropriate experiences (search rows), not a structured morning/lunch/afternoon/evening plan. Compose the day yourself and verify age suitability per pick via get_experience_details."
+          "title": "Family day",
+          "description": "Use this when the user wants family-suitable options for a day in one city. Returns a flat ranked list of family-appropriate experiences (search rows), not a structured morning/lunch/afternoon/evening plan. Compose the day yourself and verify age suitability per pick via get_experience_details.",
+          "annotations": {
+            "title": "Family day",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_date_night",
-          "description": "Use this when the user wants an evening for two. Returns a flat ranked list of evening-appropriate experiences (search rows), not a structured pre-dinner/dinner/show arc, and rows are not guaranteed couples-filtered. Compose the evening yourself (search_by_mood with mood 'romantic' can bias the pool)."
+          "title": "Date night",
+          "description": "Use this when the user wants an evening for two. Returns a flat ranked list of evening-appropriate experiences (search rows), not a structured pre-dinner/dinner/show arc, and rows are not guaranteed couples-filtered. Compose the evening yourself (search_by_mood with mood 'romantic' can bias the pool).",
+          "annotations": {
+            "title": "Date night",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "plan_itinerary",
-          "description": "Use this when the user wants a multi-day plan for a single city. Returns a flat ranked candidate list of experiences (search rows), not structured day slots or a running cost. Arrange the candidates into days yourself and compute totals only from returned price fields."
+          "title": "Plan itinerary",
+          "description": "Use this when the user wants a multi-day plan for a single city. Returns a flat ranked candidate list of experiences (search rows), not structured day slots or a running cost. Arrange the candidates into days yourself and compute totals only from returned price fields.",
+          "annotations": {
+            "title": "Plan itinerary",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "list_cities",
-          "description": "Use this when the user wants to browse supported cities before searching. Returns city names, slugs, country codes, and product counts."
+          "title": "List cities",
+          "description": "Use this when the user wants to browse supported cities before searching. Returns city names, slugs, country codes, and product counts.",
+          "annotations": {
+            "title": "List cities",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_experience_details",
-          "description": "Use this when the user selects a specific experience from search results and needs richer product, location, supplier, and booking fields. Accepts either product_id or slug."
+          "title": "Experience details",
+          "description": "Use this when the user selects a specific experience from search results and needs richer product, location, supplier, and booking fields. Accepts either product_id or slug.",
+          "annotations": {
+            "title": "Experience details",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_related_experiences",
-          "description": "Use this when a non-ChatGPT widget or client has a selected product_id and needs related products to pair with it, do after it, find nearby, or find similar alternatives. Returns cached graph and semantic related products for trio-style widgets."
+          "title": "Related experiences",
+          "description": "Use this when a non-ChatGPT widget or client has a selected product_id and needs related products to pair with it, do after it, find nearby, or find similar alternatives. Returns cached graph and semantic related products for trio-style widgets.",
+          "annotations": {
+            "title": "Related experiences",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_availability",
-          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug. Slot price.amount is in MINOR currency units (pence/cents): amount 13125 with currency_code GBP means GBP 131.25. Slot time is venue-local; when the venue timezone is known, timezone carries its IANA name and datetime/next_available carry the real UTC offset (e.g. 2026-07-18T19:30:00+02:00), so they are safe for time math."
+          "title": "Get availability",
+          "description": "Use this when the user is ready to check live bookable dates, times, prices, or remaining spaces for one selected product. This is the live supplier-check tool; pass product_id from search or slug plus city_slug. Slot price.amount is in MINOR currency units (pence/cents): amount 13125 with currency_code GBP means GBP 131.25. Slot time is venue-local; when the venue timezone is known, timezone carries its IANA name and datetime/next_available carry the real UTC offset (e.g. 2026-07-18T19:30:00+02:00), so they are safe for time math.",
+          "annotations": {
+            "title": "Get availability",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
         },
         {
           "name": "check_availability",
-          "description": "Use this when the user has picked a specific experience and asks whether it is available on one date, what it costs for a party, or wants a booking link. This is the legacy-compatible date-specific availability interface."
+          "title": "Check availability",
+          "description": "Use this when the user has picked a specific experience and asks whether it is available on one date, what it costs for a party, or wants a booking link. This is the legacy-compatible date-specific availability interface.",
+          "annotations": {
+            "title": "Check availability",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
         },
         {
           "name": "search_by_mood",
-          "description": "Use this when the user describes the feeling or vibe they want rather than a category, such as romantic, relaxing, adventurous, family fun, foodie, luxury, or rainy day. Maps the mood to preset search filters and returns matching experiences."
+          "title": "Search by mood",
+          "description": "Use this when the user describes the feeling or vibe they want rather than a category, such as romantic, relaxing, adventurous, family fun, foodie, luxury, or rainy day. Maps the mood to preset search filters and returns matching experiences.",
+          "annotations": {
+            "title": "Search by mood",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "get_transfer_info",
-          "description": "Use this when the user is arriving in a supported city and needs transfer guidance from an airport, station, or port to a hotel coordinate. Returns taxi, metro, bus, and train estimates with durations, costs, and directions."
+          "title": "Transfer info",
+          "description": "Use this when the user is arriving in a supported city and needs transfer guidance from an airport, station, or port to a hotel coordinate. Returns taxi, metro, bus, and train estimates with durations, costs, and directions.",
+          "annotations": {
+            "title": "Transfer info",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "render_experience_cards",
-          "description": "Use this immediately after ANY discovery or search tool (search_experiences, whats_on_tonight, get_last_minute, get_whats_on_this_week, recommend_experiences, search_by_mood, get_hidden_gems, get_family_day, get_date_night, search_local_experiences) returns results. It is the only tool that displays the visual experience cards, so always call it once for every result set you want shown. Take the experience_ids those tools provide and render them; pass the product_id values exactly as returned by those tools, never full product rows. Only experience_ids and render_type are required. Optionally pass render_context.intent_summary (a short phrase describing what the user asked for, e.g. city, date, audience) to set the carousel heading. Call it exactly once per result set, and do not also re-list the experiences as text."
+          "title": "Render experience cards",
+          "description": "Use this immediately after ANY discovery or search tool (search_experiences, whats_on_tonight, get_last_minute, get_whats_on_this_week, recommend_experiences, search_by_mood, get_hidden_gems, get_family_day, get_date_night, search_local_experiences) returns results. It is the only tool that displays the visual experience cards, so always call it once for every result set you want shown. Take the experience_ids those tools provide and render them; pass the product_id values exactly as returned by those tools, never full product rows. Only experience_ids and render_type are required. Optionally pass render_context.intent_summary (a short phrase describing what the user asked for, e.g. city, date, audience) to set the carousel heading. Call it exactly once per result set, and do not also re-list the experiences as text.",
+          "annotations": {
+            "title": "Render experience cards",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         },
         {
           "name": "report_quality_signal",
-          "description": "Use this to push a quality signal back to tickadoo about an experience or recommendation you previously surfaced. The bidirectional half of the Quality Ledger: turns the agent feedback loop from days of debate into a single recorded row. Examples: the availability you showed was stale at click time, the click-through did not land on a bookable page, the supplier was down, the description was misleading. Requires the original request_id returned by any previous tool call."
+          "title": "Report quality signal",
+          "description": "Use this to push a quality signal back to tickadoo about an experience or recommendation you previously surfaced. Examples: stale availability, a failed click-through, a supplier outage, or misleading content. Requires a real forward-event request_id returned within the last 30 days. Repeating the same signal for the same request is idempotent per caller.",
+          "annotations": {
+            "title": "Report quality signal",
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
         }
       ]
     }
   },
   "name": "io.github.tickadoo/tickadoo-mcp",
   "title": "tickadoo Experiences and Events",
-  "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+  "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. No API key required.",
   "websiteUrl": "https://mcp.tickadoo.com",
   "repository": {
     "url": "https://github.com/tickadoo/tickadoo-mcp",
