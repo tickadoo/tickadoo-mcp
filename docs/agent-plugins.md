@@ -54,8 +54,11 @@ Client setup verified from primary documentation and installed CLIs on
 - ChatGPT/Codex: current OpenAI documentation requires a
   `.codex-plugin/plugin.json` manifest and marketplace installation; Codex CLI
   0.147.0 exposes marketplace add/install commands but no direct local-path
-  mount. The portable root package is therefore accompanied by the tested
-  Codex adapter rather than treated as a replacement for it.
+  mount. A temporary local marketplace successfully installed and listed
+  `tickadoo-experiences@tickadoo-agent-plugins-test` version `2.0.0`; the plugin
+  and marketplace were then removed successfully. The portable root package is
+  therefore accompanied by the live-tested Codex adapter rather than treated
+  as a replacement for it.
 - VS Code: set `chat.plugins.enabled`, then use **Chat: Install Plugin From
   Source**, or map the checkout in `chat.pluginLocations`. VS Code recognizes
   the canonical root `$schema`, discovers `skills/` and `mcp.json`, and supports
