@@ -27,7 +27,7 @@ try {
   serverJson.version = packageJson.version;
   serverJson.title = "tickadoo Experiences and Events";
   serverJson.description =
-    "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
+    "Discover and book theatre, tours, attractions, and live experiences worldwide. No API key required.";
   serverJson.websiteUrl = "https://mcp.tickadoo.com";
   serverJson.remotes = [
     {
@@ -38,7 +38,9 @@ try {
   serverJson._meta["io.modelcontextprotocol.registry/publisher-provided"].tools =
     result.tools.map(tool => ({
       name: tool.name,
+      title: tool.title ?? tool.annotations?.title,
       description: normaliseDescription(tool.description ?? ""),
+      annotations: selectStandardAnnotations(tool.annotations),
     }));
 
   await writeFile(serverJsonUrl, `${JSON.stringify(serverJson, null, 2)}\n`);
@@ -51,4 +53,12 @@ try {
 
 function normaliseDescription(description) {
   return description.replace(/[\u2013\u2014]/g, ":");
+}
+
+function selectStandardAnnotations(annotations = {}) {
+  return Object.fromEntries(
+    ["title", "readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"]
+      .filter(key => annotations[key] !== undefined)
+      .map(key => [key, annotations[key]]),
+  );
 }

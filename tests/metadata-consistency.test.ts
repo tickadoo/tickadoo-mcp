@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const PUBLIC_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
+const REGISTRY_DESCRIPTION =
+  "Discover and book theatre, tours, attractions, and live experiences worldwide. No API key required.";
 const MCP_HOMEPAGE = "https://mcp.tickadoo.com";
 const MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
 
@@ -43,15 +45,16 @@ describe("public registry metadata", () => {
     expect(serverJson.version).toBe(packageJson.version);
   });
 
-  it("uses one evergreen, count-free public description", () => {
+  it("uses evergreen, count-free descriptions within each registry's limits", () => {
     const smitheryDescription = smitheryYaml.match(
       /^\s{2}description:\s+"([^"]+)"\s*$/m,
     )?.[1];
 
     expect(pluginJson.description).toBe(PUBLIC_DESCRIPTION);
-    expect(serverJson.description).toBe(PUBLIC_DESCRIPTION);
+    expect(serverJson.description).toBe(REGISTRY_DESCRIPTION);
+    expect(serverJson.description.length).toBeLessThanOrEqual(100);
     expect(smitheryDescription).toBe(PUBLIC_DESCRIPTION);
-    expect(syncScript).toContain(JSON.stringify(PUBLIC_DESCRIPTION));
+    expect(syncScript).toContain(JSON.stringify(REGISTRY_DESCRIPTION));
 
     for (const description of [
       pluginJson.description,

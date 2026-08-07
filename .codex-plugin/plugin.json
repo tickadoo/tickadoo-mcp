@@ -1,0 +1,37 @@
+{
+  "name": "tickadoo-experiences",
+  "version": "2.0.0",
+  "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+  "author": {
+    "name": "tickadoo Inc.",
+    "url": "https://www.tickadoo.com"
+  },
+  "homepage": "https://mcp.tickadoo.com",
+  "repository": "https://github.com/tickadoo/tickadoo-mcp",
+  "license": "MIT",
+  "keywords": ["tickadoo", "experiences", "tickets", "travel", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": {
+    "tickadoo": {
+      "type": "http",
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  },
+  "interface": {
+    "displayName": "tickadoo Experiences",
+    "shortDescription": "Discover and plan bookable experiences.",
+    "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
+    "developerName": "tickadoo",
+    "category": "Travel",
+    "capabilities": ["Interactive"],
+    "websiteURL": "https://www.tickadoo.com",
+    "privacyPolicyURL": "https://www.tickadoo.com/privacy",
+    "termsOfServiceURL": "https://www.tickadoo.com/terms-and-conditions",
+    "defaultPrompt": [
+      "Find memorable experiences in London this weekend.",
+      "Plan a family day out in Paris.",
+      "Compare two tickadoo experiences before I book."
+    ],
+    "brandColor": "#FF5A5F"
+  }
+}
