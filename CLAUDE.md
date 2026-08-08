@@ -30,8 +30,10 @@ Multiple AI coding agents (Claude chats, Claude Code, Codex tasks) may push to `
 
 - **Pull first, push last, pull before push again**: `git pull --rebase origin main` at session start AND before every push.
 - **Commit trailer**: every commit ends with `Claude-Chat: <agent-name>` (e.g. `howardmcp`, `codex-<task-slug>`). Filter with `git log --grep='Claude-Chat: <name>' --oneline`.
-- **Slack feed**: all agents post session-start / commit / session-paused updates to Slack `#ai-activity` (`C0ATET93PQV`). Live source of truth, more timely than `.claude/active-chats.md` which only updates at session boundaries.
-- **Active chats file**: `.claude/active-chats.md` lists who's working on what. Read it at session start.
+- **Hive coordination**: use the `claude_platform` tools for presence, recent activity, inboxes, reservations, handoffs, and blockers. Reserve paths before editing and release them afterward.
+- **Unavailable-Hive fallback**: treat presence as unknown, inspect open pull requests, use a narrow isolated branch, and ask the human dispatcher when material overlap remains possible.
+- **Slack visibility**: post deterministic lifecycle mirrors to `#activity` (`C0ATET93PQV`). Agents never read Slack to coordinate with each other.
+- **Bounded review**: GitHub holds artifact-anchored cross-vendor review using the verdict and round limits in `AGENTS.md` and the canonical claude-platform policy.
 
 ### Reusable snippet for Codex task prompts in this repo
 
@@ -40,14 +42,14 @@ Paste near the top of every Codex task prompt fired outside a Codex CLI working 
 ```
 COORDINATION:
 - FIRST: git pull --rebase origin main (Codex worktrees may be stale)
-- Read AGENTS.md and .claude/active-chats.md at task start
-- Post to Slack #ai-activity (C0ATET93PQV) via Slack MCP:
-  🤖 Codex [<task-slug>]: starting — <one-line scope>
-  🤖 Codex [<task-slug>]: <progress update> (as needed)
-  🤖 Codex [<task-slug>]: done — pushed <sha> — <what shipped>
-- Every commit carries trailer: Claude-Chat: codex-<task-slug>
+- Read AGENTS.md at task start and check Hive presence/reservations
+- Reserve the paths you will edit; release them after handoff or completion
+- Post deterministic lifecycle mirrors to Slack #activity (C0ATET93PQV):
+  🤖 Monaco [<linear-id> <task-slug>]: STARTED — <scope and risk lane>
+  🤖 Monaco [<linear-id> <task-slug>]: REVIEW READY — <exact SHA and validation>
+- Every commit carries trailer: Claude-Chat: codex-monaco-<task-slug>
 - Before each push: git pull --rebase origin main again
-- If you make multiple commits for one task, reference all of them (or the range `<first-sha>..<last-sha>`) in the done post
+- If Hive is unavailable, treat presence as unknown and use the documented fallback
 ```
 
 ### New Claude Code capabilities (announced 17 April 2026)
@@ -56,7 +58,7 @@ COORDINATION:
 
 **Auto mode** (research preview, Shift+Tab in Claude Code) handles permission decisions via classifiers instead of prompting per file-write or bash. Use it for long autonomous tasks with upfront context.
 
-**Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the HowardOS repo (`howard`) today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post to `#ai-activity` on start/progress/done, commit trailer `Claude-Chat: routine-{name}`).
+**Routines** (research preview) run on Claude Code's web infrastructure — no laptop dependency. Trigger via schedule, API, or GitHub webhook. Most live in the HowardOS repo (`howard`) today; if this repo gains any, prompts go in `.claude/routines/` and the same coordination rules apply (post deterministic lifecycle mirrors to `#activity`, commit trailer `Claude-Chat: routine-{name}`).
 
 **`/ultrareview`** spins up a careful-review pass in the terminal. Three free runs per account.
 
@@ -68,7 +70,8 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. 
 
 - HowardOS backend: `github.com/tickadoo/howard`
 - Shared conventions: `github.com/tickadoo/howard/blob/main/CLAUDE.md` (section "Multi-chat coordination") and `github.com/tickadoo/howard/blob/main/AGENTS.md`
-- Slack `#ai-activity` (`C0ATET93PQV`) for all AI agent activity across all repos
+- Canonical engineering policy: `github.com/tickadoo/claude-platform/blob/main/docs/engineering-operating-policy.md`
+- Slack `#activity` (`C0ATET93PQV`) for deterministic human-visible lifecycle mirrors
 
 ## This is a living document
 
