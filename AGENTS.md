@@ -4,6 +4,20 @@ This file is automatically read by Codex CLI (and some other AI coding tools) at
 
 This repo is **`@tickadoo/mcp-server`** — the npm distribution of the public tickadoo MCP server (23 tools over 13,090 products in 681 cities). Since v2.0.0 it is a **thin remote bridge** that proxies to the canonical remote server at `https://mcp.tickadoo.com/mcp`. The remote server and the embeddable widget bundle live in HowardOS (`github.com/tickadoo/howard`), which is canonical; this repo ships only the stdio bridge.
 
+## Issue tracking: GitHub Issues (Linear frozen 2026-08-18)
+
+New work is a GitHub issue `#NNNN` **in this repo**, on the shared Project
+board. Do not open Linear issues.
+
+Legacy `GRO-` / `BAC-` / `TIC-` IDs are read-only historical references and
+resolve to [`tickadoo/linear-archive`](https://github.com/tickadoo/linear-archive),
+never to a GitHub issue number. Grep that repo rather than calling an API. All
+three namespaces are frozen; never mint a new one.
+
+Canonical policy lives in `tickadoo/howard`:
+[`AGENTS.md` → "Issue tracking"](https://github.com/tickadoo/howard/blob/main/AGENTS.md)
+and [`docs/operations/linear-to-github-issues.md`](https://github.com/tickadoo/howard/blob/main/docs/operations/linear-to-github-issues.md).
+
 ## Before you do anything
 
 1. **Pull first**: run `git pull --rebase origin main` at task start. Codex worktrees (see `.claude/worktrees/`) may be stale clones; without a pull you may be reading an old version of this file or `CLAUDE.md` that predates recent changes.
