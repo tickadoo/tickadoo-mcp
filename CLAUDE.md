@@ -64,7 +64,7 @@ COORDINATION:
 
 **Dispatch** (research preview, Pro/Max) kicks off tasks from your phone, running locally via the desktop app.
 
-Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. Sibling Linear issues: GRO-196 (routine setup) and GRO-216 (Slack wiring).
+Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. Sibling pre-cutover issues, now read-only in the archive: GRO-196 (routine setup) and GRO-216 (Slack wiring).
 
 ## Cross-repo links
 
