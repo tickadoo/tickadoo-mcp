@@ -53,6 +53,12 @@ Use the npm package when your MCP client needs a local stdio command:
 }
 ```
 
+Use Gemini CLI:
+
+```bash
+gemini extensions install https://github.com/tickadoo/tickadoo-mcp
+```
+
 ## Configuration
 
 Set `TICKADOO_MCP_URL` to point the bridge at another compatible Streamable HTTP MCP endpoint:
