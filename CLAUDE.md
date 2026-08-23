@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md — tickadoo-mcp
 
 This file is read automatically by Claude Code at session start. Lightweight project doc; defers to [`AGENTS.md`](AGENTS.md) for the shared AI-agent coordination conventions and to the HowardOS repo (`github.com/tickadoo/howard` → `CLAUDE.md`) for the broader tickadoo project context (architecture, deploy workflows, environment variables, supplier integrations, team, Slack IDs, etc.).
