@@ -1,0 +1,16 @@
+name: Agent instructions
+
+on:
+  pull_request:
+    paths:
+      - AGENTS.md
+      - CLAUDE.md
+      - .github/workflows/agent-instructions.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agent-instructions:
+    uses: tickadoo/.github/.github/workflows/agent-instructions.yml@4fad0c6f996d148289908bf4d6c750593cf38347
