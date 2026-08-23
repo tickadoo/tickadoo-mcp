@@ -145,3 +145,7 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 ## Related repos
 
 - **`tickadoo/howard`** — internal backend, customer-facing platform, agent fleet. Shared conventions live in its `CLAUDE.md` and `AGENTS.md`. Cross-repo coordination uses Hive; Slack carries deterministic human-visible lifecycle mirrors only.
+
+## Monorepo migration preservation
+
+Before migration deletes or consolidates these files, review every source AGENTS.md, CLAUDE.md, nested instruction file, runbook, and linked policy. Attach a source-to-destination mapping to the migration PR and carry forward all still-relevant architecture, commands, ownership, deploy paths, safety rules, contracts, operational IDs, gotchas, and validation steps. Do not assume the import makes the remaining CLAUDE.md project context disposable.
