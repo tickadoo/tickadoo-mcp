@@ -8,6 +8,8 @@
 - Add exact npm tarball-content verification to the portable plugin test suite.
 - Make the provider-neutral corpus review-ready with nine positive fixtures and
   result contracts plus three negative safe-behavior cases.
+- Add a copy-ready GitHub Copilot cloud adapter with an explicit read-only tool
+  allowlist and metadata-backed safety tests.
 
 ## [2.0.0] - 2026-06-11
 

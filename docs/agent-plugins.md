@@ -37,6 +37,11 @@ Explicit non-fits:
   Tests pin both spellings and the identical endpoint. Existing
   `.claude-plugin/plugin.json` and `.mcp.json` remain untouched for their
   established client flows.
+- `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
+  for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
+  transport spelling and an explicit eight-tool, read-only allowlist. It omits
+  the consent-gated feedback tool, the ChatGPT card renderer, wildcards,
+  headers, environment variables and credentials.
 
 The package does not reimplement MCP protocol behavior. The canonical remote
 server remains in Howard and the existing npm stdio bridge remains available
@@ -103,6 +108,27 @@ Client setup verified from primary documentation and installed CLIs on
   repository or marketplace source.
 - Kiro: import the plugin as a Power; it advertises Agent Skills and all three
   portable MCP transports.
+
+### GitHub Copilot cloud setup
+
+GitHub's [primary repository MCP documentation](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/configure-mcp-servers),
+rechecked on 2026-08-24, requires repository administrators to paste MCP JSON
+into **Settings → Copilot → MCP servers**.
+That configuration is available to Copilot cloud agent and Copilot code review;
+repository and CLI MCP configurations also become available in the
+[GitHub Copilot app](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app).
+GitHub requires a `tools` array and strongly recommends explicitly allowlisting
+read-only tools because cloud agents can invoke them autonomously without
+per-call approval.
+
+Copy `clients/github-copilot/mcp.json` into that repository setting. The public
+tickadoo endpoint requires no authentication, so this adapter needs no Agents
+secret, header or environment variable. It deliberately exposes only the core
+discovery, comparison, details and live-availability journey. The tests prove
+that every allowlisted tool remains present and read-only in `server.json`, the
+URL remains identical to portable `mcp.json`, and the published npm tarball
+contains the adapter. This repository does not apply settings automatically;
+enabling it remains an explicit repository-administrator action.
 
 Record exact live client results in the PR. A schema/discovery test is not a
 claim that a particular GUI successfully connected.

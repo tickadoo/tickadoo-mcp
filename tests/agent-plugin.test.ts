@@ -134,7 +134,14 @@ describe("Agent Plugins 1.0.0 package", () => {
   });
 
   it("contains no credential-shaped values in portable or client manifests", async () => {
-    const files = ["plugin.json", "mcp.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json", ".mcp.json"];
+    const files = [
+      "plugin.json",
+      "mcp.json",
+      ".codex-plugin/plugin.json",
+      ".claude-plugin/plugin.json",
+      ".mcp.json",
+      "clients/github-copilot/mcp.json",
+    ];
     for (const file of files) {
       const source = await readFile(path.join(root, file), "utf8");
       expect(source).not.toMatch(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/i);

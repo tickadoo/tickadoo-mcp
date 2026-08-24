@@ -12,6 +12,7 @@
     ".codex-plugin/plugin.json",
     ".claude-plugin/plugin.json",
     ".mcp.json",
+    "clients/github-copilot/mcp.json",
     "skills/",
     "schemas/agent-plugins/1.0.0/",
     "evals/agent-plugin-scenarios.json",
