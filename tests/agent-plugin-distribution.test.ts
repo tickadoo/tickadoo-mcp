@@ -7,6 +7,33 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Agent Plugin distribution", () => {
+  it("matches GitHub Copilot native plugin discovery conventions", async () => {
+    const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+    };
+    const copilotMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    const skills = [
+      "compare-before-you-book",
+      "date-night",
+      "family-day-out",
+      "near-a-landmark",
+      "plan-a-trip",
+      "tickadoo-experiences",
+      "tonight-and-last-minute",
+    ];
+
+    expect(manifest.name).toBe("tickadoo-experiences");
+    expect(Object.keys(copilotMcp.mcpServers)).toEqual(["tickadoo"]);
+    expect(copilotMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    for (const skill of skills) {
+      expect(await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")).toContain(
+        `name: ${skill}`,
+      );
+    }
+  });
+
   it("ships the portable package and client adapters in the npm tarball", () => {
     const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
       cwd: root,

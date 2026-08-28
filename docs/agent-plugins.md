@@ -104,8 +104,11 @@ Client setup verified from primary documentation and installed CLIs on
   Skills and all three portable MCP transports.
 - GitHub Copilot: CLI 1.0.78 successfully discovered this checkout through
   `copilot --plugin-dir . plugin list` as external plugin
-  `tickadoo-experiences`. Its direct install flow otherwise expects a GitHub
-  repository or marketplace source.
+  `tickadoo-experiences`. GitHub now also documents direct installation from a
+  repository or local path and declarative enablement through
+  `.github/copilot/settings.json`. Copilot discovers the portable root
+  `plugin.json`, standard `skills/`, and the credential-free `.mcp.json`
+  adapter without a second Copilot-specific manifest.
 - Kiro: import the plugin as a Power; it advertises Agent Skills and all three
   portable MCP transports.
 
@@ -160,9 +163,10 @@ a parallel runtime:
   MCP 2026-07-28 dual-era compatibility layer. It is intentionally excluded
   from this public plugin.
 - OpenAI's current plugin documentation still describes the Codex-specific
-  manifest and marketplace packaging, while the vendor-neutral working draft
-  defines root `plugin.json` and `mcp.json`. Both are kept side-by-side with
-  explicit consistency tests until client ingestion converges.
+  manifest and marketplace packaging, while the published vendor-neutral 1.0
+  specification defines root `plugin.json` and `mcp.json`. Both are kept
+  side-by-side with explicit consistency tests until client ingestion
+  converges.
 
 Review gaps found and handled here: there was no root portable manifest, no
 portable typed MCP config, no pinned official schemas, and no tests for secret
@@ -190,6 +194,28 @@ They require no Howard or `tickadoo-mcp` protocol duplication: the package
 continues to advertise one canonical remote endpoint and lets each client own
 connection caching, lazy startup, discovery cancellation, and authentication.
 
+## 2026-08-28 upstream release audit
+
+Agent Plugins 1.0.0 is now published rather than a working draft. Its canonical
+schema files remain byte-for-byte identical to the copies pinned here. A 1.1.0
+working draft was opened on 2026-08-12; its current schemas differ from 1.0.0
+only in schema identifiers and descriptions, so this package remains on the
+published 1.0.0 line until a reviewed draft change adds material value.
+
+GitHub Copilot now documents plugins as first-class bundles across Copilot CLI,
+the cloud agent, and the GitHub Copilot app. Its discovery conventions include
+root `plugin.json`, `skills/`, and root `.mcp.json`, all of which this package
+already ships. The separately tested `clients/github-copilot/mcp.json` remains
+useful for repository administrators who want the narrower eight-tool,
+default-deny cloud configuration rather than the full plugin tool surface.
+
+Anthropic's managed-agent MCP connector now separates reusable server URLs from
+session credentials held in vaults and supports disabling tools by default
+before explicitly enabling a reviewed subset. That validates this package's
+credential-free public manifest and least-privilege adapter pattern; it does
+not justify embedding Hive credentials or duplicating its authenticated MCP
+transport.
+
 ## Update and rollback
 
 Treat `plugin.json` version as the package release. Update the vendored schemas
@@ -201,7 +227,7 @@ the remote MCP service and npm bridge are unaffected by package rollback.
 ## Follow-ups
 
 - Decide marketplace and directory publication only after client-local testing.
-- Define distribution integrity/signing once the working draft specifies it or
+- Define distribution integrity/signing once the specification defines it or
   the selected marketplaces provide a suitable mechanism.
 - Track the portable OAuth and credential-reference gap. Do not add Hive until
   the standard can express its existing secure client-managed auth path.
