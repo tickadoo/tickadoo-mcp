@@ -108,7 +108,11 @@ Client setup verified from primary documentation and installed CLIs on
   repository or local path and declarative enablement through
   `.github/copilot/settings.json`. Copilot discovers the portable root
   `plugin.json`, standard `skills/`, and the credential-free `.mcp.json`
-  adapter without a second Copilot-specific manifest.
+  adapter without a second Copilot-specific manifest. On 2026-08-30, Copilot
+  CLI 1.0.80 installed the checkout and reported all seven skills, but warned
+  that direct installs are deprecated. The repository therefore also carries
+  `.github/plugin/marketplace.json` for the supported marketplace installation
+  and update path.
 - Kiro: import the plugin as a Power; it advertises Agent Skills and all three
   portable MCP transports.
 
@@ -208,6 +212,13 @@ root `plugin.json`, `skills/`, and root `.mcp.json`, all of which this package
 already ships. The separately tested `clients/github-copilot/mcp.json` remains
 useful for repository administrators who want the narrower eight-tool,
 default-deny cloud configuration rather than the full plugin tool surface.
+
+Copilot CLI 1.0.80 successfully installed this checkout in an isolated client
+home and discovered all seven skills. That release warns that direct repository
+and local-path installs will be removed in favor of marketplace installation.
+The checked-in marketplace manifest makes this repository locally testable as
+`tickadoo-experiences@tickadoo-agent-plugins`; adding the marketplace to a user,
+organization, or public catalog remains an explicit distribution decision.
 
 Anthropic's managed-agent MCP connector now separates reusable server URLs from
 session credentials held in vaults and supports disabling tools by default

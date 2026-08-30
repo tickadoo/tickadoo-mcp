@@ -7,6 +7,40 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Agent Plugin distribution", () => {
+  it("provides a strict GitHub Copilot marketplace entry for the portable root", async () => {
+    const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+      version: string;
+      description: string;
+    };
+    const marketplace = JSON.parse(
+      await readFile(path.join(root, ".github/plugin/marketplace.json"), "utf8"),
+    ) as {
+      name: string;
+      owner: { name: string };
+      metadata: { version: string };
+      plugins: Array<{
+        name: string;
+        version: string;
+        description: string;
+        source: string;
+        strict: boolean;
+      }>;
+    };
+
+    expect(marketplace.name).toBe("tickadoo-agent-plugins");
+    expect(marketplace.owner.name).toBe("tickadoo Inc.");
+    expect(marketplace.metadata.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(marketplace.plugins).toHaveLength(1);
+    expect(marketplace.plugins[0]).toMatchObject({
+      name: manifest.name,
+      version: manifest.version,
+      description: manifest.description,
+      source: ".",
+      strict: true,
+    });
+  });
+
   it("matches GitHub Copilot native plugin discovery conventions", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;
