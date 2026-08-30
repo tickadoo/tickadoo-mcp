@@ -7,6 +7,67 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Agent Plugin distribution", () => {
+  it("provides a strict GitHub Copilot marketplace entry for the portable root", async () => {
+    const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+      version: string;
+      description: string;
+    };
+    const marketplace = JSON.parse(
+      await readFile(path.join(root, ".github/plugin/marketplace.json"), "utf8"),
+    ) as {
+      name: string;
+      owner: { name: string };
+      metadata: { version: string };
+      plugins: Array<{
+        name: string;
+        version: string;
+        description: string;
+        source: string;
+        strict: boolean;
+      }>;
+    };
+
+    expect(marketplace.name).toBe("tickadoo-agent-plugins");
+    expect(marketplace.owner.name).toBe("tickadoo Inc.");
+    expect(marketplace.metadata.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(marketplace.plugins).toHaveLength(1);
+    expect(marketplace.plugins[0]).toMatchObject({
+      name: manifest.name,
+      version: manifest.version,
+      description: manifest.description,
+      source: ".",
+      strict: true,
+    });
+  });
+
+  it("matches GitHub Copilot native plugin discovery conventions", async () => {
+    const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+    };
+    const copilotMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    const skills = [
+      "compare-before-you-book",
+      "date-night",
+      "family-day-out",
+      "near-a-landmark",
+      "plan-a-trip",
+      "tickadoo-experiences",
+      "tonight-and-last-minute",
+    ];
+
+    expect(manifest.name).toBe("tickadoo-experiences");
+    expect(Object.keys(copilotMcp.mcpServers)).toEqual(["tickadoo"]);
+    expect(copilotMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    for (const skill of skills) {
+      expect(await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")).toContain(
+        `name: ${skill}`,
+      );
+    }
+  });
+
   it("ships the portable package and client adapters in the npm tarball", () => {
     const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
       cwd: root,
@@ -20,6 +81,7 @@ describe("Agent Plugin distribution", () => {
       ".codex-plugin/plugin.json",
       ".claude-plugin/plugin.json",
       ".mcp.json",
+      "clients/github-copilot/mcp.json",
       "evals/agent-plugin-scenarios.json",
       "schemas/agent-plugins/1.0.0/plugin.schema.json",
       "schemas/agent-plugins/1.0.0/mcp.schema.json",
@@ -27,6 +89,53 @@ describe("Agent Plugin distribution", () => {
       expect(packed.has(required), `${required} must be published`).toBe(true);
     }
     expect([...packed].filter((file) => /^skills\/[^/]+\/SKILL\.md$/.test(file))).toHaveLength(7);
+  });
+
+  it("ships a least-privilege GitHub Copilot cloud adapter", async () => {
+    const adapter = JSON.parse(
+      await readFile(path.join(root, "clients/github-copilot/mcp.json"), "utf8"),
+    ) as {
+      mcpServers: Record<
+        string,
+        { type: string; url: string; tools: string[]; headers?: unknown; env?: unknown }
+      >;
+    };
+    const portable = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    const registry = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
+      _meta: {
+        "io.modelcontextprotocol.registry/publisher-provided": {
+          tools: Array<{
+            name: string;
+            annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean };
+          }>;
+        };
+      };
+    };
+
+    expect(Object.keys(adapter.mcpServers)).toEqual(["tickadoo"]);
+    const server = adapter.mcpServers.tickadoo;
+    expect(server.type).toBe("http");
+    expect(server.url).toBe(portable.mcpServers.tickadoo.url);
+    expect(server.tools.length).toBeGreaterThan(0);
+    expect(new Set(server.tools).size).toBe(server.tools.length);
+    expect(server.tools).not.toContain("*");
+    expect(server).not.toHaveProperty("headers");
+    expect(server).not.toHaveProperty("env");
+    expect(JSON.stringify(adapter)).not.toMatch(/authorization|bearer|token|secret|password|api[_-]?key|cf-access/i);
+
+    const metadata = new Map(
+      registry._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool) => [tool.name, tool]),
+    );
+    for (const toolName of server.tools) {
+      const tool = metadata.get(toolName);
+      expect(tool, `unknown Copilot tool ${toolName}`).toBeDefined();
+      expect(tool?.annotations?.readOnlyHint, `${toolName}: readOnlyHint`).toBe(true);
+      expect(tool?.annotations?.destructiveHint, `${toolName}: destructiveHint`).toBe(false);
+    }
+    expect(server.tools).not.toContain("report_quality_signal");
+    expect(server.tools).not.toContain("render_experience_cards");
   });
 
   it("keeps provider-neutral scenarios closed over shipped skills and live tool metadata", async () => {

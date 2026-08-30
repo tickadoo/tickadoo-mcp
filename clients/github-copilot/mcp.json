@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "tickadoo": {
+      "type": "http",
+      "url": "https://mcp.tickadoo.com/mcp",
+      "tools": [
+        "search_experiences",
+        "search_local_experiences",
+        "whats_on_tonight",
+        "recommend_experiences",
+        "compare_experiences",
+        "list_cities",
+        "get_experience_details",
+        "get_availability"
+      ]
+    }
+  }
+}
