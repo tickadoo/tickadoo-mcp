@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a credential-free, default-deny Claude Managed Agents adapter for the
+  public tickadoo MCP endpoint.
 - Prepare the complete Agent Plugins 1.0 package for publication alongside the stdio bridge,
   including portable manifests, seven skills, pinned schemas, client adapters,
   documentation and a provider-neutral acceptance-scenario corpus.

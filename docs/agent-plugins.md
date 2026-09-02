@@ -227,6 +227,22 @@ credential-free public manifest and least-privilege adapter pattern; it does
 not justify embedding Hive credentials or duplicating its authenticated MCP
 transport.
 
+### Claude Managed Agents setup
+
+`clients/anthropic-managed-agents/agent.json` is a copy-ready agent-create body
+for Anthropic's Managed Agents beta. It uses the pinned `claude-sonnet-5` model,
+declares only the public tickadoo MCP URL, disables newly discovered MCP tools
+by default, and explicitly enables the same eight read-only journey tools as
+the Copilot cloud adapter. Those reviewed read-only calls use `always_allow`;
+anything not listed remains disabled with the conservative `always_ask`
+fallback. No vault is required because the public endpoint is unauthenticated.
+
+Create the agent with Anthropic's current Managed Agents API or CLI, then create
+a session using the returned agent ID and an environment ID. This repository
+does not create an Anthropic agent, environment, session, API key, or vault.
+Managed Agents is a beta service, so recheck Anthropic's beta header and model
+support before external account setup.
+
 ## Update and rollback
 
 Treat `plugin.json` version as the package release. Update the vendored schemas
