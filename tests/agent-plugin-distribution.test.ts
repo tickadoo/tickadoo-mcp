@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +79,52 @@ describe("Agent Plugin distribution", () => {
     });
   });
 
+  it("provides a strict Claude Code marketplace for the native plugin", async () => {
+    const manifest = JSON.parse(
+      await readFile(path.join(root, ".claude-plugin/plugin.json"), "utf8"),
+    ) as {
+      name: string;
+      description: string;
+      author: { name: string; url: string };
+      homepage: string;
+      repository: string;
+      license: string;
+      keywords: string[];
+    };
+    const marketplace = JSON.parse(
+      await readFile(path.join(root, ".claude-plugin/marketplace.json"), "utf8"),
+    ) as {
+      name: string;
+      owner: { name: string; url: string };
+      description: string;
+      metadata: { description: string };
+      plugins: Array<Record<string, unknown>>;
+    };
+
+    expect(marketplace.name).toBe("tickadoo-agent-plugins");
+    expect(marketplace.owner).toEqual({
+      name: "tickadoo Inc.",
+      url: "https://www.tickadoo.com",
+    });
+    expect(marketplace.metadata.description).toBe(marketplace.description);
+    expect(marketplace.plugins).toHaveLength(1);
+    expect(marketplace.plugins[0]).toMatchObject({
+      name: manifest.name,
+      source: "./",
+      description: manifest.description,
+      author: manifest.author,
+      homepage: manifest.homepage,
+      repository: manifest.repository,
+      license: manifest.license,
+      keywords: manifest.keywords,
+      strict: true,
+    });
+    expect(marketplace.plugins[0]).not.toHaveProperty("version");
+    expect(JSON.stringify(marketplace)).not.toMatch(
+      /authorization|bearer|token|secret|password|api[_-]?key|cf-access/i,
+    );
+  });
+
   it("matches GitHub Copilot native plugin discovery conventions", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;
@@ -106,29 +153,56 @@ describe("Agent Plugin distribution", () => {
   });
 
   it("ships the portable package and client adapters in the npm tarball", () => {
+    const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as {
+      main: string;
+      bin: Record<string, string>;
+      publishConfig: { access: string; provenance: boolean };
+    };
     const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
       cwd: root,
       encoding: "utf8",
     });
-    const report = JSON.parse(output) as Array<{ files: Array<{ path: string }> }>;
-    const packed = new Set(report[0].files.map((file) => file.path));
-    for (const required of [
-      "plugin.json",
-      "mcp.json",
-      ".codex-plugin/plugin.json",
+    const report = JSON.parse(output) as Array<{ files: Array<{ path: string; mode: number }> }>;
+    const packed = new Map(report[0].files.map((file) => [file.path, file]));
+    const expectedFiles = [
+      ".claude-plugin/marketplace.json",
       ".claude-plugin/plugin.json",
       ".mcp.json",
-      "clients/github-copilot/mcp.json",
-      "clients/anthropic-managed-agents/agent.json",
-      "brand/apps-directory-icon.svg",
+      ".codex-plugin/plugin.json",
+      "CHANGELOG.md",
+      "LICENSE",
+      "README.md",
       "brand/apps-directory-icon-monochrome.svg",
+      "brand/apps-directory-icon.svg",
+      "clients/anthropic-managed-agents/agent.json",
+      "clients/github-copilot/mcp.json",
+      "dist/index.js",
+      "docs/agent-plugins.md",
       "evals/agent-plugin-scenarios.json",
-      "schemas/agent-plugins/1.0.0/plugin.schema.json",
+      "mcp.json",
+      "package.json",
+      "plugin.json",
       "schemas/agent-plugins/1.0.0/mcp.schema.json",
-    ]) {
-      expect(packed.has(required), `${required} must be published`).toBe(true);
-    }
-    expect([...packed].filter((file) => /^skills\/[^/]+\/SKILL\.md$/.test(file))).toHaveLength(7);
+      "schemas/agent-plugins/1.0.0/plugin.schema.json",
+      "schemas/agent-plugins/1.0.0/SHA256SUMS",
+      "server.json",
+      "skills/compare-before-you-book/SKILL.md",
+      "skills/date-night/SKILL.md",
+      "skills/family-day-out/SKILL.md",
+      "skills/near-a-landmark/SKILL.md",
+      "skills/plan-a-trip/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+      "skills/tonight-and-last-minute/SKILL.md",
+    ].sort();
+    expect([...packed.keys()].sort()).toEqual(expectedFiles);
+    expect(packageJson.main).toBe("dist/index.js");
+    expect(packageJson.bin).toEqual({ "mcp-server": "dist/index.js" });
+    expect(packageJson.publishConfig).toEqual({ access: "public", provenance: true });
+    expect(readFileSync(path.join(root, "dist/index.js"), "utf8")).toMatch(
+      /^#!\/usr\/bin\/env node\n/,
+    );
+    expect((packed.get("dist/index.js")?.mode ?? 0) & 0o111).not.toBe(0);
+    expect([...packed.keys()].filter((file) => /^skills\/[^/]+\/SKILL\.md$/.test(file))).toHaveLength(7);
   });
 
   it("ships a least-privilege GitHub Copilot cloud adapter", async () => {
@@ -303,7 +377,12 @@ describe("Agent Plugin distribution", () => {
       expect(typeof tool.annotations?.idempotentHint, `${tool.name}: idempotentHint`).toBe("boolean");
       expect(typeof tool.annotations?.openWorldHint, `${tool.name}: openWorldHint`).toBe("boolean");
     }
-    expect(registryTools.find((tool) => tool.name === "report_quality_signal")?.annotations?.readOnlyHint).toBe(false);
+    expect(registryTools.find((tool) => tool.name === "report_quality_signal")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
     expect(
       registryTools
         .filter((tool) => tool.name !== "report_quality_signal")
