@@ -1,7 +1,7 @@
 {
   "name": "tickadoo",
-  "version": "2.0.0",
-  "description": "Search and book official theatre, attractions, and experiences in 1,100+ cities.",
+  "version": "2.1.0",
+  "description": "Search and book theatre, attractions, tours, and live experiences worldwide with tickadoo.",
   "mcpServers": {
     "tickadoo": {
       "httpUrl": "https://mcp.tickadoo.com/mcp"

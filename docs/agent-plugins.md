@@ -34,9 +34,13 @@ Explicit non-fits:
 - `.codex-plugin/plugin.json` maps the same skills and public endpoint into the
   current Codex marketplace shape. Its client-specific transport spelling is
   `http`; the portable manifest uses the normative `streamable-http` spelling.
-  Tests pin both spellings and the identical endpoint. Existing
-  `.claude-plugin/plugin.json` and `.mcp.json` remain untouched for their
-  established client flows.
+  Tests pin both spellings and the identical endpoint.
+- `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, and
+  `.mcp.json` provide Claude Code's native repository marketplace, plugin, and
+  credential-free MCP adapters. The marketplace source is the repository root;
+  the plugin manifest alone owns the version, as Anthropic's
+  [version-resolution guidance](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)
+  recommends.
 - `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
   for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
   transport spelling and an explicit eight-tool, read-only allowlist. It omits
@@ -60,9 +64,9 @@ schemas, client adapters, documentation and eval corpus. `npm pack --dry-run`
 is executed by the test suite so a future packaging change cannot silently ship
 the bridge while omitting the plugin.
 
-The published `.mcp.json` and `.claude-plugin/plugin.json` are compatibility
-adapters for clients that install or unpack the npm artifact as a plugin source;
-they do not alter MCP configuration merely by existing under `node_modules`.
+The published `.mcp.json` and `.claude-plugin/` files are compatibility adapters
+for clients that install or unpack the npm artifact as a plugin source; they do
+not alter MCP configuration merely by existing under `node_modules`.
 The portable root `mcp.json` remains authoritative for Agent Plugins clients.
 
 `evals/agent-plugin-scenarios.json` defines the same discovery, grounding,
@@ -84,6 +88,9 @@ annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, and
 selection from the published artifact instead of receiving only names and
 descriptions. The feedback tool remains explicitly non-read-only; catalogue,
 planning, availability and rendering tools remain read-only.
+`report_quality_signal` is also explicitly open-world because it submits the
+user-approved quality signal to the remote service; it remains non-destructive
+and idempotent.
 
 Client setup verified from primary documentation and installed CLIs on
 2026-08-06:
@@ -102,6 +109,10 @@ Client setup verified from primary documentation and installed CLIs on
   stdio, Streamable HTTP, and legacy SSE.
 - Cursor: install from its Plugins marketplace/source flow; it advertises Agent
   Skills and all three portable MCP transports.
+- Claude Code: add `tickadoo/tickadoo-mcp` as a marketplace, then install
+  `tickadoo@tickadoo-agent-plugins`. Its strict marketplace entry resolves to
+  the repository root and relies on `.claude-plugin/plugin.json` as the single
+  version authority.
 - GitHub Copilot: CLI 1.0.78 successfully discovered this checkout through
   `copilot --plugin-dir . plugin list` as external plugin
   `tickadoo-experiences`. GitHub now also documents direct installation from a
@@ -232,6 +243,13 @@ transport.
 The published Agent Plugins specification remains 1.0.0. The 1.1.0 working
 draft still changes only schema identifiers and descriptions, so the portable
 package remains pinned to the published line.
+
+Kiro's [Powers documentation](https://kiro.dev/docs/powers/) now confirms that
+root `plugin.json` keywords drive on-demand activation as well as discovery.
+The portable manifest therefore carries explicit theatre, tour, attraction,
+event, and booking intent terms alongside the tickadoo brand and general
+experience/travel terms; a focused test keeps that activation vocabulary from
+silently regressing.
 
 OpenAI now documents [one universal public plugin directory](https://developers.openai.com/plugins/deploy/submission)
 shared by ChatGPT and Codex. The repository therefore includes
