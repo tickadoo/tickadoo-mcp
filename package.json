@@ -13,6 +13,9 @@
     ".claude-plugin/plugin.json",
     ".mcp.json",
     "clients/github-copilot/mcp.json",
+    "clients/anthropic-managed-agents/agent.json",
+    "brand/apps-directory-icon.svg",
+    "brand/apps-directory-icon-monochrome.svg",
     "skills/",
     "schemas/agent-plugins/1.0.0/",
     "evals/agent-plugin-scenarios.json",
@@ -58,6 +61,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.15",
+    "ajv": "^8.20.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.19.4",
     "typescript": "^5.9.3",

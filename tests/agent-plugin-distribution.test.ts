@@ -7,6 +7,43 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Agent Plugin distribution", () => {
+  it("provides a repo marketplace for ChatGPT and Codex discovery", async () => {
+    const portable = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+    };
+    const codex = JSON.parse(
+      await readFile(path.join(root, ".codex-plugin/plugin.json"), "utf8"),
+    ) as {
+      interface: { category: string };
+    };
+    const marketplace = JSON.parse(
+      await readFile(path.join(root, ".agents/plugins/marketplace.json"), "utf8"),
+    ) as {
+      name: string;
+      interface: { displayName: string };
+      plugins: Array<{
+        name: string;
+        source: { source: string; path: string };
+        policy: { installation: string; authentication: string };
+        category: string;
+      }>;
+    };
+
+    expect(marketplace.name).toBe("tickadoo-agent-plugins");
+    expect(marketplace.interface.displayName).toBe("tickadoo Agent Plugins");
+    expect(marketplace.plugins).toEqual([
+      {
+        name: portable.name,
+        source: { source: "local", path: "./" },
+        policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+        category: codex.interface.category,
+      },
+    ]);
+    expect(JSON.stringify(marketplace)).not.toMatch(
+      /authorization|bearer|token|secret|password|api[_-]?key|cf-access/i,
+    );
+  });
+
   it("provides a strict GitHub Copilot marketplace entry for the portable root", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;
@@ -82,6 +119,9 @@ describe("Agent Plugin distribution", () => {
       ".claude-plugin/plugin.json",
       ".mcp.json",
       "clients/github-copilot/mcp.json",
+      "clients/anthropic-managed-agents/agent.json",
+      "brand/apps-directory-icon.svg",
+      "brand/apps-directory-icon-monochrome.svg",
       "evals/agent-plugin-scenarios.json",
       "schemas/agent-plugins/1.0.0/plugin.schema.json",
       "schemas/agent-plugins/1.0.0/mcp.schema.json",
@@ -136,6 +176,85 @@ describe("Agent Plugin distribution", () => {
     }
     expect(server.tools).not.toContain("report_quality_signal");
     expect(server.tools).not.toContain("render_experience_cards");
+  });
+
+  it("ships a default-deny Claude Managed Agents adapter", async () => {
+    const adapter = JSON.parse(
+      await readFile(path.join(root, "clients/anthropic-managed-agents/agent.json"), "utf8"),
+    ) as {
+      model: { id: string };
+      system: string;
+      mcp_servers: Array<{ type: string; name: string; url: string }>;
+      tools: Array<{
+        type: string;
+        mcp_server_name: string;
+        default_config: { enabled: boolean; permission_policy: { type: string } };
+        configs: Array<{
+          name: string;
+          enabled: boolean;
+          permission_policy: { type: string };
+        }>;
+      }>;
+    };
+    const portable = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    const copilot = JSON.parse(
+      await readFile(path.join(root, "clients/github-copilot/mcp.json"), "utf8"),
+    ) as { mcpServers: Record<string, { tools: string[] }> };
+    const registry = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
+      _meta: {
+        "io.modelcontextprotocol.registry/publisher-provided": {
+          tools: Array<{
+            name: string;
+            annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean };
+          }>;
+        };
+      };
+    };
+
+    expect(adapter.model.id).toBe("claude-sonnet-5");
+    expect(adapter.system).toContain("Ground recommendations in tool results");
+    expect(adapter.mcp_servers).toEqual([
+      {
+        type: "url",
+        name: "tickadoo",
+        url: portable.mcpServers.tickadoo.url,
+      },
+    ]);
+    expect(adapter.tools).toHaveLength(1);
+    const toolset = adapter.tools[0];
+    expect(toolset.type).toBe("mcp_toolset");
+    expect(toolset.mcp_server_name).toBe("tickadoo");
+    expect(toolset.default_config).toEqual({
+      enabled: false,
+      permission_policy: { type: "always_ask" },
+    });
+    expect(toolset.configs.map((config) => config.name)).toEqual(
+      copilot.mcpServers.tickadoo.tools,
+    );
+    expect(toolset.configs.every((config) => config.enabled)).toBe(true);
+    expect(
+      toolset.configs.every((config) => config.permission_policy.type === "always_allow"),
+    ).toBe(true);
+
+    const metadata = new Map(
+      registry._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool) => [
+        tool.name,
+        tool,
+      ]),
+    );
+    for (const config of toolset.configs) {
+      const tool = metadata.get(config.name);
+      expect(tool, `unknown Claude tool ${config.name}`).toBeDefined();
+      expect(tool?.annotations?.readOnlyHint, `${config.name}: readOnlyHint`).toBe(true);
+      expect(tool?.annotations?.destructiveHint, `${config.name}: destructiveHint`).toBe(false);
+    }
+    expect(toolset.configs.map((config) => config.name)).not.toContain("report_quality_signal");
+    expect(toolset.configs.map((config) => config.name)).not.toContain("render_experience_cards");
+    expect(JSON.stringify(adapter)).not.toMatch(
+      /authorization|bearer|token|secret|password|api[_-]?key|cf-access/i,
+    );
   });
 
   it("keeps provider-neutral scenarios closed over shipped skills and live tool metadata", async () => {
