@@ -4,6 +4,8 @@
 
 - Add a credential-free, default-deny Claude Managed Agents adapter for the
   public tickadoo MCP endpoint.
+- Add a ChatGPT/Codex repository marketplace and make the Codex listing meet
+  current public-directory text, legal-link, branding, and asset requirements.
 - Prepare the complete Agent Plugins 1.0 package for publication alongside the stdio bridge,
   including portable manifests, seven skills, pinned schemas, client adapters,
   documentation and a provider-neutral acceptance-scenario corpus.

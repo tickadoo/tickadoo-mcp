@@ -7,6 +7,43 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Agent Plugin distribution", () => {
+  it("provides a repo marketplace for ChatGPT and Codex discovery", async () => {
+    const portable = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      name: string;
+    };
+    const codex = JSON.parse(
+      await readFile(path.join(root, ".codex-plugin/plugin.json"), "utf8"),
+    ) as {
+      interface: { category: string };
+    };
+    const marketplace = JSON.parse(
+      await readFile(path.join(root, ".agents/plugins/marketplace.json"), "utf8"),
+    ) as {
+      name: string;
+      interface: { displayName: string };
+      plugins: Array<{
+        name: string;
+        source: { source: string; path: string };
+        policy: { installation: string; authentication: string };
+        category: string;
+      }>;
+    };
+
+    expect(marketplace.name).toBe("tickadoo-agent-plugins");
+    expect(marketplace.interface.displayName).toBe("tickadoo Agent Plugins");
+    expect(marketplace.plugins).toEqual([
+      {
+        name: portable.name,
+        source: { source: "local", path: "./" },
+        policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+        category: codex.interface.category,
+      },
+    ]);
+    expect(JSON.stringify(marketplace)).not.toMatch(
+      /authorization|bearer|token|secret|password|api[_-]?key|cf-access/i,
+    );
+  });
+
   it("provides a strict GitHub Copilot marketplace entry for the portable root", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;
@@ -83,6 +120,8 @@ describe("Agent Plugin distribution", () => {
       ".mcp.json",
       "clients/github-copilot/mcp.json",
       "clients/anthropic-managed-agents/agent.json",
+      "brand/apps-directory-icon.svg",
+      "brand/apps-directory-icon-monochrome.svg",
       "evals/agent-plugin-scenarios.json",
       "schemas/agent-plugins/1.0.0/plugin.schema.json",
       "schemas/agent-plugins/1.0.0/mcp.schema.json",
