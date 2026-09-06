@@ -2,7 +2,7 @@
 
 This file is automatically read by Codex CLI (and some other AI coding tools) at task start. It's the shared ruleset for every AI agent that does work on this repo: Claude chats, Claude Code sessions, and Codex tasks.
 
-This repo is **`@tickadoo/mcp-server`** — the npm distribution of the public tickadoo MCP server (23 tools over 13,090 products in 681 cities). Since v2.0.0 it is a **thin remote bridge** that proxies to the canonical remote server at `https://mcp.tickadoo.com/mcp`. The remote server and the embeddable widget bundle live in HowardOS (`github.com/tickadoo/howard`), which is canonical; this repo ships only the stdio bridge.
+This repo is **`@tickadoo/mcp-server`** — the npm distribution of the public tickadoo MCP server for its live experiences catalogue. Since v2.0.0 it is a **thin remote bridge** that proxies to the canonical remote server at `https://mcp.tickadoo.com/mcp`. The remote server and the embeddable widget bundle live in HowardOS (`github.com/tickadoo/howard`), which is canonical; this repo ships only the stdio bridge.
 
 ## Issue tracking: GitHub Issues (Linear frozen 2026-08-18)
 

@@ -7,7 +7,7 @@
         {
           "name": "search_experiences",
           "title": "Search experiences",
-          "description": "Use this when the user names a city plus a category, query, or filter set and wants a ranked list of bookable experiences. Returns products each with a stable product_id, plus name, slug, city, category, price, rating, review count, and tags. To show the results as visual cards, pass the product_id values from these results into render_experience_cards (experience_ids). Pair with get_experience_details for richer fields.",
+          "description": "Use this when the user names a city plus a category, query, or filter set and wants a ranked list of bookable experiences. `query` matches on experience NAME (and venue), so it suits a title or keyword (\"Lion King\", \"river cruise\"); for mood or theme use search_by_mood, and for a free-text \"what should I do\" ask use recommend_experiences. When a query matches no name, results are the city top-picks flagged match_type \"fallback_city_ranked\" (reason_codes include \"fallback_no_text_match\") rather than a genuine match, so treat those as suggestions, not the thing asked for. Returns products each with a stable product_id, plus name, slug, city, category, price, rating, review count, and tags. To show the results as visual cards, pass the product_id values from these results into render_experience_cards (experience_ids). Pair with get_experience_details for richer fields.",
           "annotations": {
             "title": "Search experiences",
             "readOnlyHint": true,
@@ -31,7 +31,7 @@
         {
           "name": "find_nearby_experiences",
           "title": "Find nearby experiences",
-          "description": "Use this when a non-ChatGPT client supplies exact latitude and longitude and wants experiences near that coordinate. ChatGPT clients should use search_local_experiences instead because it accepts coarse place hints.",
+          "description": "Use this when the client already holds exact latitude and longitude coordinates and wants experiences near that point. When only a place name, landmark, or neighbourhood is known, use search_local_experiences, which accepts coarse place hints and needs no coordinates.",
           "annotations": {
             "title": "Find nearby experiences",
             "readOnlyHint": true,
@@ -43,7 +43,7 @@
         {
           "name": "whats_on_tonight",
           "title": "What is on tonight",
-          "description": "Use this when the user asks what is on in a city tonight. Returns evening-appropriate experiences currently on sale, with seasonal products filtered out and evening-led options ranked first. Top results carry start_time (venue-local) when the live supplier calendar confirms a performance in the evening window (late afternoon onward), and timed rows sort soonest-first; rows without start_time have no confirmed evening time. Confirm the selected experience with get_availability before stating it is bookable tonight.",
+          "description": "Use this when the user asks what is on in a city tonight. Returns evening-appropriate experiences currently on sale, with out-of-season products filtered out, evening-led options ranked first, and multi-day passes, travel cards and transport products ranked last. Top results carry start_time (venue-local) when the live supplier calendar confirms a performance in the evening window (late afternoon onward); a confirmed slot lifts a row, and timed rows sort soonest-first within one relevance band. Rows without start_time have no confirmed evening time. Confirm the selected experience with get_availability before stating it is bookable tonight.",
           "annotations": {
             "title": "What is on tonight",
             "readOnlyHint": true,
@@ -103,7 +103,7 @@
         {
           "name": "get_travel_tips",
           "title": "Travel tips",
-          "description": "Use this when the user asks practical logistics questions about a city. Currently returns a ranked list of relevant bookable experiences (search rows); the topic filter is accepted but not yet applied, and the payload contains no tips text, emergency numbers, or phrases.",
+          "description": "Use this to surface bookable experiences relevant to a practical topic in a city, such as transport passes or food tours. It returns a ranked list of experiences (search rows) ONLY: the topic filter is accepted but not yet applied, and the payload contains no tips text, emergency numbers, or phrases. Do not rely on it for actual logistics guidance; answer those questions yourself and use this list for bookable add-ons.",
           "annotations": {
             "title": "Travel tips",
             "readOnlyHint": true,
@@ -199,7 +199,7 @@
         {
           "name": "get_related_experiences",
           "title": "Related experiences",
-          "description": "Use this when a non-ChatGPT widget or client has a selected product_id and needs related products to pair with it, do after it, find nearby, or find similar alternatives. Returns cached graph and semantic related products for trio-style widgets.",
+          "description": "Use this when a widget or client holds a selected product_id and needs related products to pair with it, do after it, find nearby, or find similar alternatives. Returns cached graph and semantic related products for trio-style widgets.",
           "annotations": {
             "title": "Related experiences",
             "readOnlyHint": true,
@@ -223,7 +223,7 @@
         {
           "name": "check_availability",
           "title": "Check availability",
-          "description": "Use this when the user has picked a specific experience and asks whether it is available on one date, what it costs for a party, or wants a booking link. This is the legacy-compatible date-specific availability interface.",
+          "description": "Use this when the user has picked a specific experience and asks about exactly one date: whether it is available that day, what it costs for a party, or a booking link for that date. For browsing a date range or listing upcoming times and live slot prices, use get_availability.",
           "annotations": {
             "title": "Check availability",
             "readOnlyHint": true,
@@ -277,7 +277,7 @@
             "readOnlyHint": false,
             "destructiveHint": false,
             "idempotentHint": true,
-            "openWorldHint": false
+            "openWorldHint": true
           }
         }
       ]
@@ -291,7 +291,7 @@
     "url": "https://github.com/tickadoo/tickadoo-mcp",
     "source": "github"
   },
-  "version": "2.0.0",
+  "version": "2.1.0",
   "remotes": [
     {
       "type": "streamable-http",

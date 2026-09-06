@@ -1,0 +1,49 @@
+{
+  "name": "tickadoo-agent-plugins",
+  "owner": {
+    "name": "tickadoo Inc.",
+    "url": "https://www.tickadoo.com"
+  },
+  "description": "Official tickadoo plugins for discovering and booking live experiences.",
+  "metadata": {
+    "description": "Official tickadoo plugins for discovering and booking live experiences."
+  },
+  "plugins": [
+    {
+      "name": "tickadoo",
+      "source": "./",
+      "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+      "author": {
+        "name": "tickadoo",
+        "url": "https://tickadoo.com"
+      },
+      "homepage": "https://mcp.tickadoo.com",
+      "repository": "https://github.com/tickadoo/tickadoo-mcp",
+      "license": "MIT",
+      "keywords": [
+        "tickadoo",
+        "experiences",
+        "tickets",
+        "theatre",
+        "tours",
+        "attractions",
+        "events",
+        "booking",
+        "travel",
+        "mcp"
+      ],
+      "category": "travel",
+      "tags": [
+        "experiences",
+        "tickets",
+        "theatre",
+        "tours",
+        "attractions",
+        "events",
+        "booking",
+        "travel"
+      ],
+      "strict": true
+    }
+  ]
+}

@@ -59,6 +59,13 @@ Use Gemini CLI:
 gemini extensions install https://github.com/tickadoo/tickadoo-mcp
 ```
 
+Use Claude Code's supported marketplace flow:
+
+```bash
+claude plugin marketplace add tickadoo/tickadoo-mcp
+claude plugin install tickadoo@tickadoo-agent-plugins
+```
+
 ## Configuration
 
 Set `TICKADOO_MCP_URL` to point the bridge at another compatible Streamable HTTP MCP endpoint:

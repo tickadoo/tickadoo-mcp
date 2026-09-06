@@ -51,6 +51,18 @@ describe("Agent Plugins 1.0.0 package", () => {
   it("validates the closed portable manifest against the vendored official schema", async () => {
     const manifest = await validate("plugin");
     expect(manifest.$schema).toBe("https://agent-plugins.org/schemas/1.0.0/plugin.schema.json");
+    expect(manifest.keywords).toEqual([
+      "tickadoo",
+      "experiences",
+      "tickets",
+      "theatre",
+      "tours",
+      "attractions",
+      "events",
+      "booking",
+      "travel",
+      "mcp",
+    ]);
     expect(manifest).not.toHaveProperty("mcpServers");
     expect(manifest).not.toHaveProperty("skills");
   });
@@ -211,6 +223,7 @@ describe("Agent Plugins 1.0.0 package", () => {
       "mcp.json",
       ".codex-plugin/plugin.json",
       ".claude-plugin/plugin.json",
+      ".claude-plugin/marketplace.json",
       ".mcp.json",
       "clients/github-copilot/mcp.json",
     ];

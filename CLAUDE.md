@@ -6,7 +6,7 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 ## What is this repo?
 
-`@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It surfaces 23 tools over 13,090 products in 681 cities to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book tickadoo experiences on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp`.
+`@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It exposes the live tickadoo experiences catalogue to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp`.
 
 Since **v2.0.0** this package is a **thin remote bridge** (GRO-573): the npm command is a stdio transport that proxies to the canonical remote server. It no longer defines tools, formats catalogue data, or calls a backend directly. The remote owns the tool list, schemas, results, and errors. The remote MCP server (and the embeddable widget bundle) now live in the **HowardOS repo** (`github.com/tickadoo/howard`), which is canonical (GRO-574).
 
