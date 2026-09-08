@@ -1,16 +1,18 @@
 {
   "name": "@tickadoo/mcp-server",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "tickadoo MCP Server: a thin stdio bridge to the live remote MCP server at https://mcp.tickadoo.com/mcp. No API key required.",
   "type": "module",
   "main": "dist/index.js",
-  "bin": "./dist/index.js",
+  "bin": {
+    "mcp-server": "dist/index.js"
+  },
   "files": [
     "dist/index.js",
     "plugin.json",
     "mcp.json",
     ".codex-plugin/plugin.json",
-    ".claude-plugin/plugin.json",
+    ".claude-plugin/",
     ".mcp.json",
     "clients/github-copilot/mcp.json",
     "clients/anthropic-managed-agents/agent.json",
@@ -26,7 +28,8 @@
     "CHANGELOG.md"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "node -e \"const fs = require('node:fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });\" && ./node_modules/.bin/esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --target=node22 --outfile=dist/index.js",
@@ -69,7 +72,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tickadoo/tickadoo-mcp.git"
+    "url": "git+https://github.com/tickadoo/tickadoo-mcp.git"
   },
   "homepage": "https://mcp.tickadoo.com",
   "bugs": {

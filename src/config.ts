@@ -10,5 +10,5 @@ export const TICKADOO_LOG_LEVEL: TickadooLogLevel =
   rawLogLevel === "none" || rawLogLevel === "debug" ? rawLogLevel : "info";
 
 export const BRIDGE_NAME = "tickadoo-stdio-bridge";
-export const BRIDGE_VERSION = "2.0.0";
+export const BRIDGE_VERSION = "2.1.0";
 export const BRIDGE_WEBSITE_URL = "https://mcp.tickadoo.com";
