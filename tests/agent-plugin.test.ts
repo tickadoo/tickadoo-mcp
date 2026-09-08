@@ -2,7 +2,7 @@ import { lstat, readFile, realpath, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -37,6 +37,14 @@ async function walkContained(directory: string, resolvedRoot: string): Promise<s
     if (entry.isDirectory()) discovered.push(...(await walkContained(candidate, resolvedRoot)));
   }
   return discovered;
+}
+
+function relativeLuminance(hex: string): number {
+  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map((channel) =>
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
 }
 
 describe("Agent Plugins 1.0.0 package", () => {
@@ -131,6 +139,70 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(codexServers.tickadoo.type).toBe("http");
     expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
     expect(JSON.stringify(codex)).not.toMatch(/bearer|token|secret|password|api[_-]?key|cf-access/i);
+  });
+
+  it("meets the current OpenAI install-surface metadata gates", async () => {
+    const codex = await readJson(path.join(root, ".codex-plugin/plugin.json"));
+    const pluginInterface = codex.interface as Record<string, unknown>;
+    expect(codex.name).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
+    expect(codex.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
+    expect(String(pluginInterface.displayName).length).toBeLessThanOrEqual(30);
+    expect(String(pluginInterface.shortDescription).length).toBeLessThanOrEqual(30);
+    expect(String(pluginInterface.longDescription).length).toBeLessThanOrEqual(4_000);
+    expect(String(pluginInterface.developerName).length).toBeLessThanOrEqual(80);
+    expect([
+      "Productivity",
+      "Creativity",
+      "Developer Tools",
+      "Business & Operations",
+      "Data & Analytics",
+      "Communication",
+      "Education & Research",
+      "Security",
+      "Finance",
+      "Healthcare",
+      "Travel",
+      "Entertainment",
+      "Other",
+    ]).toContain(pluginInterface.category);
+
+    const capabilities = pluginInterface.capabilities as string[];
+    expect(capabilities.length).toBeLessThanOrEqual(20);
+    expect(capabilities.every((capability) => capability.length > 0 && capability.length <= 120)).toBe(true);
+
+    const prompts = pluginInterface.defaultPrompt as string[];
+    expect(prompts.length).toBeLessThanOrEqual(3);
+    expect(prompts.every((prompt) => prompt.length > 0 && prompt.length <= 128 && !prompt.includes("@"))).toBe(true);
+    expect(new Set(prompts.map((prompt) => prompt.normalize().replace(/\s+/g, " ").trim())).size).toBe(prompts.length);
+
+    for (const field of ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+      const value = String(pluginInterface[field]);
+      const url = new URL(value);
+      expect(value.length, field).toBeLessThanOrEqual(1_024);
+      expect(url.protocol, field).toBe("https:");
+      expect(url.username, field).toBe("");
+      expect(url.password, field).toBe("");
+    }
+
+    const brandColor = String(pluginInterface.brandColor);
+    expect(brandColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(1.05 / (relativeLuminance(brandColor) + 0.05)).toBeGreaterThanOrEqual(2);
+
+    const resolvedRoot = await realpath(root);
+    for (const field of ["composerIcon", "logo"]) {
+      const relative = String(pluginInterface[field]);
+      expect(relative).toMatch(/^\.\/brand\/.+\.svg$/);
+      const asset = path.resolve(root, relative);
+      const assetStat = await lstat(asset);
+      expect(assetStat.isSymbolicLink(), `${field} must not be a symlink`).toBe(false);
+      expect(assetStat.size, `${field} must not exceed 5 MiB`).toBeLessThanOrEqual(5 * 1024 * 1024);
+      expect(await realpath(asset)).toSatisfy((resolved) => resolved.startsWith(`${resolvedRoot}${path.sep}`));
+      const svg = await readFile(asset, "utf8");
+      expect(svg, `${field} must have an SVG root`).toMatch(/^\s*<svg\b/);
+      const dimensions = svg.match(/<svg\b[^>]*\bviewBox="0 0 (\d+) \1"/);
+      expect(dimensions, `${field} must have a square numeric viewBox`).not.toBeNull();
+      expect(Number(dimensions?.[1]), `${field} must be at least 48 by 48`).toBeGreaterThanOrEqual(48);
+    }
   });
 
   it("contains no credential-shaped values in portable or client manifests", async () => {

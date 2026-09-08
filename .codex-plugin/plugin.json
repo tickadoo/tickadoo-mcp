@@ -19,19 +19,21 @@
   },
   "interface": {
     "displayName": "tickadoo Experiences",
-    "shortDescription": "Discover and plan bookable experiences.",
+    "shortDescription": "Find bookable experiences",
     "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
     "developerName": "tickadoo",
     "category": "Travel",
     "capabilities": ["Interactive"],
     "websiteURL": "https://www.tickadoo.com",
     "privacyPolicyURL": "https://www.tickadoo.com/privacy",
-    "termsOfServiceURL": "https://www.tickadoo.com/terms-and-conditions",
+    "termsOfServiceURL": "https://www.tickadoo.com/terms",
     "defaultPrompt": [
       "Find memorable experiences in London this weekend.",
       "Plan a family day out in Paris.",
       "Compare two tickadoo experiences before I book."
     ],
-    "brandColor": "#FF5A5F"
+    "brandColor": "#FF5A5F",
+    "composerIcon": "./brand/apps-directory-icon-monochrome.svg",
+    "logo": "./brand/apps-directory-icon.svg"
   }
 }

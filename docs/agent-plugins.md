@@ -227,6 +227,72 @@ credential-free public manifest and least-privilege adapter pattern; it does
 not justify embedding Hive credentials or duplicating its authenticated MCP
 transport.
 
+## 2026-09-06 upstream release audit
+
+The published Agent Plugins specification remains 1.0.0. The 1.1.0 working
+draft still changes only schema identifiers and descriptions, so the portable
+package remains pinned to the published line.
+
+OpenAI now documents [one universal public plugin directory](https://developers.openai.com/plugins/deploy/submission)
+shared by ChatGPT and Codex. The repository therefore includes
+`.agents/plugins/marketplace.json` for repo and workspace discovery, while the
+existing `.codex-plugin/plugin.json` remains the client manifest. Codex CLI
+0.153.4 successfully added the exact local marketplace, discovered the root
+plugin, installed version 2.0.0 with all seven skills and both brand assets,
+and then removed the plugin and marketplace cleanly.
+
+The Codex listing now uses a 30-character-or-shorter subtitle, a live canonical
+terms URL, square SVG `composerIcon` and `logo` assets, HTTPS legal links, three
+bounded starter prompts, and a brand colour that passes OpenAI's documented
+light-background contrast floor. Tests enforce those final-directory metadata
+limits and prove the assets ship in the npm tarball.
+
+OpenAI's [GitHub workspace-import documentation](https://learn.chatgpt.com/docs/enterprise/plugin-management)
+currently marks every imported
+plugin that declares MCP configuration as desktop-only, even when the server
+uses a public HTTPS URL. Web availability therefore still requires either the
+public **With MCP** submission flow or an `.app.json` reference to a real
+ChatGPT-registered MCP connection. This repository does not invent an
+`asdk_app_...` identifier. OpenAI's final submission form also requires the
+support URL `https://www.tickadoo.com/contact`; the current local Plugin
+Creator 1.2.3 validator rejects the newly documented `interface.supportURL`
+field, so the value remains a portal field until the installed package schema
+accepts it.
+
+Anthropic CLI 1.30.0 introduced [`ant apply`](https://platform.claude.com/docs/en/cli-sdks-libraries/cli/apply)
+for managed resources as code. The current 1.31.0 CLI accepted the exact shipped
+adapter with an isolated, credential-free `ant apply --dry-run` and planned one
+agent create. That is local parse/plan evidence only, not an authenticated API
+rehearsal or remote mutation. Claude Code 2.1.263 also validated the native
+`.claude-plugin/plugin.json` with no manifest errors or warnings; its sole
+content warning correctly notes that the repository-level `CLAUDE.md` is not
+plugin-delivered context, because this package supplies reusable context under
+`skills/` instead.
+
+Howard issue #5053 and PR #5054 already own that operational apply/lockfile
+lane; this package keeps only the portable copy-ready, default-deny agent body
+and does not duplicate account mutation or lockfile infrastructure. Claude
+Code 2.1.259 introduced the machine-readable validation used above. Copilot CLI
+1.0.83 discovered this exact root package as an external plugin and also
+improved MCP lifecycle and OAuth support; both remain client concerns around
+the same credential-free public endpoint.
+
+### Claude Managed Agents setup
+
+`clients/anthropic-managed-agents/agent.json` is a copy-ready agent-create body
+for Anthropic's Managed Agents beta. It uses the pinned `claude-sonnet-5` model,
+declares only the public tickadoo MCP URL, disables newly discovered MCP tools
+by default, and explicitly enables the same eight read-only journey tools as
+the Copilot cloud adapter. Those reviewed read-only calls use `always_allow`;
+anything not listed remains disabled with the conservative `always_ask`
+fallback. No vault is required because the public endpoint is unauthenticated.
+
+Create the agent with Anthropic's current Managed Agents API or CLI, then create
+a session using the returned agent ID and an environment ID. This repository
+does not create an Anthropic agent, environment, session, API key, or vault.
+Managed Agents is a beta service, so recheck Anthropic's beta header and model
+support before external account setup.
+
 ## Update and rollback
 
 Treat `plugin.json` version as the package release. Update the vendored schemas

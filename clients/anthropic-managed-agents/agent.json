@@ -1,0 +1,85 @@
+{
+  "name": "tickadoo experiences",
+  "description": "Discover, compare, check availability, and book theatre, tours, attractions, and live experiences worldwide with tickadoo.",
+  "model": {
+    "id": "claude-sonnet-5"
+  },
+  "system": "Use tickadoo tools when a user asks for bookable live experiences, attractions, theatre, tours, local activities, comparisons, recommendations, or availability. Ground recommendations in tool results, preserve returned prices and availability exactly, and use tickadoo booking links. Ask only for missing constraints that materially affect the search.",
+  "mcp_servers": [
+    {
+      "type": "url",
+      "name": "tickadoo",
+      "url": "https://mcp.tickadoo.com/mcp"
+    }
+  ],
+  "tools": [
+    {
+      "type": "mcp_toolset",
+      "mcp_server_name": "tickadoo",
+      "default_config": {
+        "enabled": false,
+        "permission_policy": {
+          "type": "always_ask"
+        }
+      },
+      "configs": [
+        {
+          "name": "search_experiences",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "search_local_experiences",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "whats_on_tonight",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "recommend_experiences",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "compare_experiences",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "list_cities",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "get_experience_details",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        },
+        {
+          "name": "get_availability",
+          "enabled": true,
+          "permission_policy": {
+            "type": "always_allow"
+          }
+        }
+      ]
+    }
+  ]
+}
