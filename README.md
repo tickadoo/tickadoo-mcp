@@ -22,6 +22,10 @@ acceptance corpus in [`evals/agent-plugin-scenarios.json`](evals/agent-plugin-sc
 See [`docs/agent-plugins.md`](docs/agent-plugins.md) for the architecture
 decision, compatibility evidence, update/rollback process, and follow-ups.
 
+OpenAI Agents API sessions that call the public MCP (Book path) are documented in
+[`docs/openai-agents-api.md`](docs/openai-agents-api.md). Use
+`https://mcp.tickadoo.com/mcp` — the bare host 404s.
+
 The package no longer defines tools, formats catalogue data, or calls a local tickadoo backend. It connects to the remote Streamable HTTP MCP server and proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping`. The live remote owns the tool list, schemas, results, and errors.
 
 No API key is required.
