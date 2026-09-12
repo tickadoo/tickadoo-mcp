@@ -48,6 +48,13 @@ To exercise the bridge against the live hosted MCP endpoint:
 LIVE=1 npm test
 ```
 
+To run the optional OpenAI Agents API → public MCP Book-path smoke (requires
+`OPENAI_API_KEY`; see [`docs/openai-agents-api.md`](docs/openai-agents-api.md)):
+
+```bash
+npm run smoke:agents-api
+```
+
 ## Code Style
 
 - Use TypeScript for application code and tests.
