@@ -1,0 +1,36 @@
+name: Agents API smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agents-api-tickadoo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Require OPENAI_API_KEY
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::error::OPENAI_API_KEY is not available to tickadoo/tickadoo-mcp."
+            echo "Francis/Mark must add OPENAI_API_KEY to tickadoo-mcp repo secrets or ensure the org secret is visible to this repo."
+            echo "Do not invent keys. Do not reuse Cloudflare ads keys."
+            exit 1
+          fi
+      - name: Run Agents API → tickadoo MCP smoke
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run smoke:agents-api
