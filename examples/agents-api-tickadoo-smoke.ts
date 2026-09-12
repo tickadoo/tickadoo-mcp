@@ -25,8 +25,8 @@ import OpenAI from "openai";
 export const TICKADOO_MCP_URL = "https://mcp.tickadoo.com/mcp";
 export const TICKADOO_BOOKING_HOST = "www.tickadoo.com";
 
-export const MISSING_OPENAI_API_KEY_MESSAGE = [
-  "OPENAI_API_KEY is not set.",
+export const MISSING_CREDENTIAL_GUIDANCE = [
+  "The Agents API credential is not set.",
   "Francis/Mark must add OPENAI_API_KEY to tickadoo-mcp repo secrets or ensure the org secret is visible to this repo.",
   "Do not invent keys. Do not reuse Cloudflare ads keys.",
 ].join("\n");
@@ -49,23 +49,47 @@ export const SMOKE_INSTRUCTIONS =
 export const SMOKE_INPUT =
   "Find The Lion King in London and return one official tickadoo booking_url on www.tickadoo.com. Quote the booking_url exactly.";
 
-export const BOOKING_URL_PATTERN = /https?:\/\/(?:www\.)?tickadoo\.com\/[^\s)"']+/i;
-
 const DEFAULT_MODEL = "gpt-6-astra";
+
+export class MissingAgentsCredentialError extends Error {
+  constructor() {
+    super(MISSING_CREDENTIAL_GUIDANCE);
+    this.name = "MissingAgentsCredentialError";
+  }
+}
 
 export function requireOpenAIApiKey(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const key = env.OPENAI_API_KEY?.trim();
-  if (!key) {
-    throw new Error(MISSING_OPENAI_API_KEY_MESSAGE);
+  const value = env.OPENAI_API_KEY?.trim();
+  if (!value) {
+    throw new MissingAgentsCredentialError();
   }
-  return key;
+  return value;
+}
+
+export function isTickadooBookingUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === TICKADOO_BOOKING_HOST &&
+      url.username === "" &&
+      url.password === ""
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function extractBookingUrl(text: string): string | undefined {
-  const match = text.match(BOOKING_URL_PATTERN);
-  return match?.[0];
+  const candidates = text.match(/https?:\/\/[^\s)"']+/gi) ?? [];
+  for (const candidate of candidates) {
+    if (isTickadooBookingUrl(candidate)) {
+      return new URL(candidate).href;
+    }
+  }
+  return undefined;
 }
 
 function eventRecord(event: unknown): Record<string, unknown> {
@@ -231,9 +255,9 @@ async function runSmoke(): Promise<void> {
 
   const combined = [...streamed, saved].join("\n");
   const bookingUrl = extractBookingUrl(combined);
-  if (!bookingUrl || !bookingUrl.includes(TICKADOO_BOOKING_HOST)) {
+  if (!bookingUrl) {
     throw new Error(
-      `Smoke did not find a ${TICKADOO_BOOKING_HOST} booking_url in the Agents API output.`,
+      `Smoke did not find a https://${TICKADOO_BOOKING_HOST}/ booking_url in the Agents API output.`,
     );
   }
 
@@ -246,8 +270,15 @@ const isDirectRun =
 
 if (isDirectRun) {
   runSmoke().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
+    if (error instanceof MissingAgentsCredentialError) {
+      console.error(
+        "The Agents API credential is not set.\nFrancis/Mark must add OPENAI_API_KEY to tickadoo-mcp repo secrets or ensure the org secret is visible to this repo.\nDo not invent keys. Do not reuse Cloudflare ads keys.",
+      );
+    } else if (error instanceof Error) {
+      console.error(error.message);
+    } else {
+      console.error(String(error));
+    }
     process.exit(1);
   });
 }
