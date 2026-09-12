@@ -3,14 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  BOOKING_URL_PATTERN,
-  MISSING_OPENAI_API_KEY_MESSAGE,
+  MISSING_CREDENTIAL_GUIDANCE,
+  MissingAgentsCredentialError,
   SMOKE_INPUT,
   SMOKE_INSTRUCTIONS,
   TICKADOO_BOOKING_HOST,
   TICKADOO_MCP_TOOL,
   TICKADOO_MCP_URL,
   extractBookingUrl,
+  isTickadooBookingUrl,
   requireOpenAIApiKey,
 } from "../examples/agents-api-tickadoo-smoke.ts";
 
@@ -44,16 +45,21 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(extractBookingUrl("See https://www.tickadoo.com/london/lion-king")).toBe(
       "https://www.tickadoo.com/london/lion-king",
     );
+    expect(extractBookingUrl("https://evil.example/?q=www.tickadoo.com/london")).toBeUndefined();
+    expect(extractBookingUrl("https://www.tickadoo.com.evil.example/x")).toBeUndefined();
+    expect(extractBookingUrl("http://www.tickadoo.com/london/lion-king")).toBeUndefined();
     expect(extractBookingUrl("no link here")).toBeUndefined();
-    expect(BOOKING_URL_PATTERN.test("https://www.tickadoo.com/x")).toBe(true);
+    expect(isTickadooBookingUrl("https://www.tickadoo.com/x")).toBe(true);
+    expect(isTickadooBookingUrl("https://not-tickadoo.example/www.tickadoo.com")).toBe(false);
   });
 
-  it("fails clearly when OPENAI_API_KEY is missing", () => {
-    expect(() => requireOpenAIApiKey({})).toThrow(MISSING_OPENAI_API_KEY_MESSAGE);
-    expect(MISSING_OPENAI_API_KEY_MESSAGE).toContain(
+  it("fails clearly when the Agents API credential is missing", () => {
+    expect(() => requireOpenAIApiKey({})).toThrow(MissingAgentsCredentialError);
+    expect(() => requireOpenAIApiKey({})).toThrow(MISSING_CREDENTIAL_GUIDANCE);
+    expect(MISSING_CREDENTIAL_GUIDANCE).toContain(
       "Francis/Mark must add OPENAI_API_KEY to tickadoo-mcp repo secrets",
     );
-    expect(MISSING_OPENAI_API_KEY_MESSAGE).toContain("Do not reuse Cloudflare ads keys");
+    expect(MISSING_CREDENTIAL_GUIDANCE).toContain("Do not reuse Cloudflare ads keys");
     expect(requireOpenAIApiKey({ OPENAI_API_KEY: " test-key " })).toBe("test-key");
   });
 
