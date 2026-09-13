@@ -100,45 +100,43 @@ function nestedRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-function collectText(value: unknown, into: string[]): void {
-  if (typeof value === "string") {
-    into.push(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const entry of value) collectText(entry, into);
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-      if (
-        key === "text" ||
-        key === "delta" ||
-        key === "output_text" ||
-        key === "content"
-      ) {
-        collectText(entry, into);
-      } else if (key !== "transport" && key !== "headers") {
-        collectText(entry, into);
-      }
+function outputTextFromContent(value: unknown, into: string[]): void {
+  if (!Array.isArray(value)) return;
+  for (const entry of value) {
+    const content = nestedRecord(entry);
+    if (content.type === "output_text" && typeof content.text === "string") {
+      into.push(content.text);
     }
   }
 }
 
-export function collectEventText(event: unknown): string {
+function collectAssistantMessageText(item: unknown): string {
+  const record = nestedRecord(item);
+  if (
+    record.type !== "message" ||
+    record.role !== "assistant" ||
+    record.phase !== "final_answer"
+  ) {
+    return "";
+  }
   const parts: string[] = [];
+  outputTextFromContent(record.content, parts);
+  return parts.join("\n");
+}
+
+export function collectEventText(event: unknown): string {
   const record = eventRecord(event);
   const type = typeof record.type === "string" ? record.type : "";
-  if (
-    type.includes("output_text") ||
-    type.endsWith(".completed") ||
-    type.includes("item")
-  ) {
-    collectText(record, parts);
-  } else if (typeof record.delta === "string") {
-    parts.push(record.delta);
+  if (type === "agent.session.turn.output_text.delta" && typeof record.delta === "string") {
+    return record.delta;
   }
-  return parts.join("\n");
+  if (type === "agent.session.turn.output_text.done" && typeof record.text === "string") {
+    return record.text;
+  }
+  if (type === "agent.session.turn.item.done") {
+    return collectAssistantMessageText(record.item);
+  }
+  return "";
 }
 
 async function collectItemText(client: OpenAI, sessionId: string): Promise<string> {
@@ -148,7 +146,8 @@ async function collectItemText(client: OpenAI, sessionId: string): Promise<strin
     limit: 100,
   });
   for await (const item of items) {
-    collectText(item, parts);
+    const text = collectAssistantMessageText(item);
+    if (text) parts.push(text);
   }
   return parts.join("\n");
 }
