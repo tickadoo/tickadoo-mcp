@@ -1,0 +1,49 @@
+# Calls the shared exact-head reviewer, whose logic and script live only in
+# tickadoo/howard on `main`. This repository cannot alter the code that reviews
+# its own pull requests, and a rule change lands once for every repository.
+#
+# Setup and verification: tickadoo/howard docs/operations/exact-head-review-rollout.md
+name: Exact-head review bot
+run-name: Exact-head review PR #${{ inputs.pr_number }} @ ${{ inputs.expected_head_sha }} [${{ inputs.request_id }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+      expected_head_sha:
+        description: Full exact head SHA to review
+        required: true
+        type: string
+      request_id:
+        description: Unique merge-steward dispatch identifier
+        required: true
+        type: string
+      author_provenance:
+        description: Optional commit-keyed JSON with actual vendor and attributable evidence URL for Cursor commits
+        required: false
+        type: string
+      provenance_confirmation:
+        description: 'ATTEST AUTHOR PROVENANCE #N AT full-head-sha'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exact-head-review-${{ inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    uses: tickadoo/howard/.github/workflows/exact-head-review-reusable.yml@main
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      expected_head_sha: ${{ inputs.expected_head_sha }}
+      request_id: ${{ inputs.request_id }}
+      author_provenance: ${{ inputs.author_provenance }}
+      provenance_confirmation: ${{ inputs.provenance_confirmation }}
+    secrets: inherit
