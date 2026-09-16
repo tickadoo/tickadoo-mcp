@@ -46,4 +46,7 @@ jobs:
       request_id: ${{ inputs.request_id }}
       author_provenance: ${{ inputs.author_provenance }}
       provenance_confirmation: ${{ inputs.provenance_confirmation }}
-    secrets: inherit
+    # Exactly one secret crosses the repository boundary. `inherit` would hand
+    # every deploy credential this repository holds to code in another repo.
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
