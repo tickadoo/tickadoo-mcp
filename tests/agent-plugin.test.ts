@@ -150,12 +150,19 @@ describe("Agent Plugins 1.0.0 package", () => {
     const codexServers = codex.mcpServers as Record<string, Record<string, unknown>>;
     expect(codexServers.tickadoo.type).toBe("http");
     expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    const extensions = portable.extensions as Record<string, Record<string, unknown>>;
+    expect(extensions["com.openai"].interface).toEqual(codex.interface);
     expect(JSON.stringify(codex)).not.toMatch(/bearer|token|secret|password|api[_-]?key|cf-access/i);
   });
 
   it("meets the current OpenAI install-surface metadata gates", async () => {
+    const portable = await readJson(path.join(root, "plugin.json"));
     const codex = await readJson(path.join(root, ".codex-plugin/plugin.json"));
-    const pluginInterface = codex.interface as Record<string, unknown>;
+    const extensions = portable.extensions as Record<string, Record<string, unknown>>;
+    const openai = extensions["com.openai"];
+    const pluginInterface = openai.interface as Record<string, unknown>;
+    expect(Object.keys(openai)).toEqual(["interface"]);
+    expect(pluginInterface).toEqual(codex.interface);
     expect(codex.name).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
     expect(codex.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
     expect(String(pluginInterface.displayName).length).toBeLessThanOrEqual(30);
