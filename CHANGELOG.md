@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Document the OpenAI Agents API → public tickadoo MCP Book path
+  (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
+  London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.
+
 ## [2.1.0] - 2026-09-06
 
 - Refresh the registry metadata from the live MCP endpoint, align every
