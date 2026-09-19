@@ -1,6 +1,8 @@
-# Calls the shared exact-head reviewer, whose logic and script live only in
-# tickadoo/howard on `main`. This repository cannot alter the code that reviews
-# its own pull requests, and a rule change lands once for every repository.
+# Public-repo entry point to the shared reviewer script that lives only in
+# tickadoo/howard. The job runs directly (not `uses:`) because GitHub does not
+# allow a public repository to reuse a workflow from a private repository.
+# The review logic remains centralized in
+# `scripts/review-bot/exact-head-review.mjs` on protected Howard `main`.
 #
 # Setup and verification: tickadoo/howard docs/operations/exact-head-review-rollout.md
 name: Exact-head review bot
@@ -39,17 +41,53 @@ concurrency:
 
 jobs:
   review:
-    uses: tickadoo/howard/.github/workflows/exact-head-review-reusable.yml@main
-    with:
-      pr_number: ${{ inputs.pr_number }}
-      expected_head_sha: ${{ inputs.expected_head_sha }}
-      request_id: ${{ inputs.request_id }}
-      author_provenance: ${{ inputs.author_provenance }}
-      provenance_confirmation: ${{ inputs.provenance_confirmation }}
-    # Exactly three review-only secrets are forwarded. Environment secrets
-    # alone do not reach the reusable job. `inherit` would hand every deploy
-    # credential this repository holds to code in another repo.
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      REVIEW_BOT_PRIVATE_KEY: ${{ secrets.REVIEW_BOT_PRIVATE_KEY }}
+    if: github.ref == 'refs/heads/main' && github.actor == 'francistickadoo' && github.triggering_actor == 'francistickadoo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # This public repository cannot call
+    # tickadoo/howard/.github/workflows/exact-head-review-reusable.yml@main
+    # (`workflow was not found`). Checkout of howard + the App token is the
+    # supported pattern; environment secrets stay on `review-bot`.
+    environment: review-bot
+    steps:
+      - name: Mint least-privilege review-bot token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.REVIEW_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEW_BOT_PRIVATE_KEY }}
+          owner: tickadoo
+          repositories: howard,tickadoo-mcp
+          permission-contents: read
+          permission-pull-requests: write
+          permission-checks: read
+          permission-statuses: read
+
+      - name: Check out the trusted reviewer code from howard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tickadoo/howard
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Independently review and approve the exact head
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_GRAPHQL_URL: ${{ github.graphql_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          AUTHOR_PROVENANCE: ${{ inputs.author_provenance }}
+          PROVENANCE_CONFIRMATION: ${{ inputs.provenance_confirmation }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          REVIEW_BOT_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: bun scripts/review-bot/exact-head-review.mjs
