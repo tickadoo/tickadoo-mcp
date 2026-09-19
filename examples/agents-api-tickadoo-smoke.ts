@@ -8,7 +8,9 @@
  *   - OPENAI_API_KEY (api.agents.read, api.agents.write, api.responses.write)
  *   - openai >= 7.15.0 (adds OpenAI-Beta: agents=v1 on beta.agents calls)
  *
- * Run from the repo root after `npm install`:
+ * CI/dev-only: run from the repo root after a full `npm install` (openai and
+ * tsx are devDependencies). Production `npm install --omit=dev` is not
+ * expected to run this smoke.
  *   export OPENAI_API_KEY="your-api-key"
  *   npm run smoke:agents-api
  *
@@ -143,12 +145,26 @@ export function collectEventText(event: unknown): string {
 
 async function collectItemText(client: OpenAI, sessionId: string): Promise<string> {
   const parts: string[] = [];
-  const items = await client.beta.agents.sessions.items.list(sessionId, {
+  // openai-node list() returns a PagePromise/AbstractPage. `limit` is page size,
+  // not a total cap. AbstractPage.iterPages() / `for await` auto-paginates until
+  // hasNextPage() is false (see openai/openai-node src/core/pagination.ts).
+  const firstPage = await client.beta.agents.sessions.items.list(sessionId, {
     order: "asc",
     limit: 100,
   });
-  for await (const item of items) {
-    collectText(item, parts);
+  let pages = 0;
+  let lastPageHadNext = true;
+  for await (const page of firstPage.iterPages()) {
+    pages += 1;
+    lastPageHadNext = page.hasNextPage();
+    for (const item of page.getPaginatedItems()) {
+      collectText(item, parts);
+    }
+  }
+  if (pages === 0 || lastPageHadNext) {
+    throw new Error(
+      "Session item listing stopped before the last page (pagination incomplete).",
+    );
   }
   return parts.join("\n");
 }

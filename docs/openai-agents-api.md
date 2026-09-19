@@ -111,7 +111,9 @@ Export it locally as `OPENAI_API_KEY`. Never commit the key. Do not copy Cloudfl
 
 ## Run the smoke
 
-From the repo root, after `npm install`:
+`npm run smoke:agents-api` is a **CI/dev-only** script. It belongs with the examples/tests scaffold and depends on `openai` (and `tsx`) in `devDependencies`. Production installs that use `npm install --omit=dev` are **not** expected to run this smoke; the published Agent Plugins tarball does not include the example or this script's runtime.
+
+From the repo root, after a full `npm install` (devDependencies included):
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
@@ -130,7 +132,9 @@ The script creates a session with the MCP tool above, prompts for a Lion King / 
 
 `.github/workflows/agents-api-smoke.yml` runs that smoke with `secrets.OPENAI_API_KEY`.
 
-If the secret is missing, the job **fails clearly**. It does not skip, invent a key, or read Cloudflare ads keys. Francis or Mark must add `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions** on `tickadoo/tickadoo-mcp`, or grant this repository access to the org secret of the same name.
+The job runs on same-repo `pull_request`, `push` to `main`, and `workflow_dispatch`. Fork PRs are skipped (`github.event.pull_request.head.repo.full_name == github.repository`) because GitHub withholds Actions secrets from forks. Same-repo PRs still **fail closed** if `OPENAI_API_KEY` is missing.
+
+If the secret is missing on a same-repo run, the job **fails clearly**. It does not invent a key or read Cloudflare ads keys. Francis or Mark must add `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions** on `tickadoo/tickadoo-mcp`, or grant this repository access to the org secret of the same name.
 
 Regular `npm test` / `npm run test:plugin` do not call the Agents API.
 

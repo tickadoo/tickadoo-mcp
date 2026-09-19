@@ -79,12 +79,35 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(doc).toContain("404");
     expect(doc).toContain("https://mcp.tickadoo.com/mcp");
     expect(doc).toContain("npm run smoke:agents-api");
+    expect(doc).toContain("CI/dev-only");
+    expect(doc).toContain("npm install --omit=dev");
+    expect(doc).toContain(
+      "github.event.pull_request.head.repo.full_name == github.repository",
+    );
     expect(doc).not.toMatch(/server_url": "https:\/\/mcp\.tickadoo\.com"/);
 
     expect(workflow).toContain("secrets.OPENAI_API_KEY");
     expect(workflow).toContain("Francis/Mark must add OPENAI_API_KEY");
     expect(workflow).toContain("Do not invent keys");
     expect(workflow).toContain("npm run smoke:agents-api");
+    expect(workflow).toContain(
+      "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+    );
+
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    expect(pkg.devDependencies?.openai).toBeTruthy();
+    expect(pkg.dependencies?.openai).toBeUndefined();
+
+    const smoke = await readFile(
+      path.join(root, "examples/agents-api-tickadoo-smoke.ts"),
+      "utf8",
+    );
+    expect(smoke).toContain("iterPages()");
+    expect(smoke).toContain("hasNextPage()");
+    expect(smoke).toContain("pagination incomplete");
 
     expect(readme).toContain("docs/openai-agents-api.md");
   });

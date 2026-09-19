@@ -11,6 +11,10 @@ permissions:
 
 jobs:
   agents-api-tickadoo-smoke:
+    # Fork PRs do not receive repo secrets; skip instead of fail-closed forever.
+    # Same-repo pull_request / push / workflow_dispatch still fail closed when
+    # OPENAI_API_KEY is missing.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
