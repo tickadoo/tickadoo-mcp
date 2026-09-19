@@ -67,7 +67,7 @@
         {
           "name": "get_whats_on_this_week",
           "title": "This week",
-          "description": "Use this when the user wants ideas for the coming week in a city. Returns a ranked list of currently on-sale experiences (search rows), not a day-by-day calendar. Assemble any weekly structure yourself and verify specific dates with get_availability.",
+          "description": "Use this when the user wants ideas for the coming week in a city. Returns a ranked list of currently on-sale experiences (search rows) with out-of-season products dropped, not a day-by-day calendar. Assemble any weekly structure yourself and verify specific dates with get_availability.",
           "annotations": {
             "title": "This week",
             "readOnlyHint": true,
@@ -139,7 +139,7 @@
         {
           "name": "get_family_day",
           "title": "Family day",
-          "description": "Use this when the user wants family-suitable options for a day in one city. Returns a flat ranked list of family-appropriate experiences (search rows), not a structured morning/lunch/afternoon/evening plan. Compose the day yourself and verify age suitability per pick via get_experience_details.",
+          "description": "Use this when the user wants family-suitable options for a day in one city. Returns a flat ranked list of experiences (search rows) with family-tagged rows promoted and out-of-season products dropped, not a structured morning/lunch/afternoon/evening plan. `date` selects which season counts as current; `kids_ages` and `budget` are accepted but NOT yet applied, so compose the day yourself and verify age suitability per pick via get_experience_details.",
           "annotations": {
             "title": "Family day",
             "readOnlyHint": true,
@@ -151,7 +151,7 @@
         {
           "name": "get_date_night",
           "title": "Date night",
-          "description": "Use this when the user wants an evening for two. Returns a flat ranked list of evening-appropriate experiences (search rows), not a structured pre-dinner/dinner/show arc, and rows are not guaranteed couples-filtered. Compose the evening yourself (search_by_mood with mood 'romantic' can bias the pool).",
+          "description": "Use this when the user wants an evening for two. Returns a flat ranked list of experiences (search rows) with romantic-tagged rows promoted and out-of-season products dropped, not a structured pre-dinner/dinner/show arc. Promotion is a re-rank, not a filter, so rows are not guaranteed couples-only. `date` selects which season counts as current; `budget` is accepted but NOT yet applied. Compose the evening yourself (search_by_mood with mood 'romantic' can bias the pool further).",
           "annotations": {
             "title": "Date night",
             "readOnlyHint": true,
