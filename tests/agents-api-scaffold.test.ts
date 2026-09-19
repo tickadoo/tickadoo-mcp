@@ -49,17 +49,20 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(extractBookingUrl("Book at https://www.tickadoo.com/london/lion-king.")).toBe(
       "https://www.tickadoo.com/london/lion-king",
     );
+    const withQuery = extractBookingUrl(
+      "See https://www.tickadoo.com/london/lion-king?utm_source=x&token=abc#frag",
+    );
+    expect(withQuery).toBe("https://www.tickadoo.com/london/lion-king");
+    const parsed = new URL(withQuery ?? "");
+    expect(parsed.search).toBe("");
+    expect(parsed.hash).toBe("");
     expect(extractBookingUrl("https://www.tickadoo.com/")).toBeUndefined();
-    expect(extractBookingUrl("https://www.tickadoo.com/london/lion-king?token=abc")).toBeUndefined();
     expect(extractBookingUrl("https://evil.example/?q=www.tickadoo.com/london")).toBeUndefined();
     expect(extractBookingUrl("https://www.tickadoo.com.evil.example/x")).toBeUndefined();
     expect(extractBookingUrl("http://www.tickadoo.com/london/lion-king")).toBeUndefined();
     expect(extractBookingUrl("no link here")).toBeUndefined();
     expect(isTickadooBookingUrl("https://www.tickadoo.com/london/lion-king")).toBe(true);
     expect(isTickadooBookingUrl("https://www.tickadoo.com/")).toBe(false);
-    expect(isTickadooBookingUrl("https://www.tickadoo.com/london/lion-king?token=abc")).toBe(
-      false,
-    );
     expect(isTickadooBookingUrl("https://not-tickadoo.example/www.tickadoo.com")).toBe(false);
   });
 

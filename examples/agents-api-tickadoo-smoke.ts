@@ -70,47 +70,34 @@ export function requireOpenAIApiKey(
   return value;
 }
 
-const CREDENTIAL_QUERY_KEYS = new Set([
-  "token",
-  "session",
-  "key",
-  "secret",
-  "password",
-  "access_token",
-  "api_key",
-  "auth",
-]);
-
 export function isTickadooBookingUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== TICKADOO_BOOKING_HOST ||
-      url.username !== "" ||
-      url.password !== "" ||
-      url.pathname.length <= 1
-    ) {
-      return false;
-    }
-    for (const key of url.searchParams.keys()) {
-      if (CREDENTIAL_QUERY_KEYS.has(key.toLowerCase())) {
-        return false;
-      }
-    }
-    return true;
+    return (
+      url.protocol === "https:" &&
+      url.hostname === TICKADOO_BOOKING_HOST &&
+      url.username === "" &&
+      url.password === "" &&
+      url.pathname.length > 1
+    );
   } catch {
     return false;
   }
+}
+
+/** origin + pathname only — never return or log search/hash. */
+export function normalizeTickadooBookingUrl(value: string): string | undefined {
+  if (!isTickadooBookingUrl(value)) return undefined;
+  const url = new URL(value);
+  return `${url.origin}${url.pathname}`;
 }
 
 export function extractBookingUrl(text: string): string | undefined {
   const candidates = text.match(/https?:\/\/[^\s)"']+/gi) ?? [];
   for (const candidate of candidates) {
     const cleaned = candidate.replace(/[.,;:]+$/, "");
-    if (isTickadooBookingUrl(cleaned)) {
-      return new URL(cleaned).href;
-    }
+    const normalized = normalizeTickadooBookingUrl(cleaned);
+    if (normalized) return normalized;
   }
   return undefined;
 }
