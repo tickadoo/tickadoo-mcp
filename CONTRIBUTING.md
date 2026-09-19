@@ -50,7 +50,9 @@ LIVE=1 npm test
 
 To run the optional OpenAI Agents API → public MCP Book-path smoke (CI/dev-only;
 requires a full `npm install` and `OPENAI_API_KEY`; see
-[`docs/openai-agents-api.md`](docs/openai-agents-api.md)):
+[`docs/openai-agents-api.md`](docs/openai-agents-api.md)). CI runs it on
+`push` to `main` and on manual `workflow_dispatch`, not automatically on pull
+requests:
 
 ```bash
 npm run smoke:agents-api

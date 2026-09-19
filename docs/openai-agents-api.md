@@ -126,15 +126,15 @@ Equivalent:
 npx tsx examples/agents-api-tickadoo-smoke.ts
 ```
 
-The script creates a session with the MCP tool above, prompts for a Lion King / London booking link, streams the first turn, and exits 0 only when the agent output contains a `www.tickadoo.com` URL. If `OPENAI_API_KEY` is unset, it fails immediately with a message that Francis/Mark must add the key to `tickadoo-mcp` repo secrets (or make the org secret visible to this repo).
+The script creates a session with the MCP tool above, prompts for a Lion King / London booking link, streams the first turn, and exits 0 only when the assistant final-answer text contains a `www.tickadoo.com` URL. If `OPENAI_API_KEY` is unset, it fails immediately with a message that Francis/Mark must add the key to `tickadoo-mcp` repo secrets (or make the org secret visible to this repo).
 
 ## CI
 
 `.github/workflows/agents-api-smoke.yml` runs that smoke with `secrets.OPENAI_API_KEY`.
 
-The job runs on same-repo `pull_request`, `push` to `main`, and `workflow_dispatch`. Fork PRs are skipped (`github.event.pull_request.head.repo.full_name == github.repository`) because GitHub withholds Actions secrets from forks. Same-repo PRs still **fail closed** if `OPENAI_API_KEY` is missing.
+The job runs on `push` to `main` and on manual `workflow_dispatch`. It does **not** run automatically on pull requests (including same-repo PRs), so a PR branch cannot receive or exfiltrate `OPENAI_API_KEY` by editing the smoke script. Do not use `pull_request_target`.
 
-If the secret is missing on a same-repo run, the job **fails clearly**. It does not invent a key or read Cloudflare ads keys. Francis or Mark must add `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions** on `tickadoo/tickadoo-mcp`, or grant this repository access to the org secret of the same name.
+If the secret is missing, the job **fails clearly**. It does not invent a key or read Cloudflare ads keys. Francis or Mark must add `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions** on `tickadoo/tickadoo-mcp`, or grant this repository access to the org secret of the same name.
 
 Regular `npm test` / `npm run test:plugin` do not call the Agents API.
 

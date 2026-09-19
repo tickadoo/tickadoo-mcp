@@ -87,8 +87,9 @@ export function isTickadooBookingUrl(value: string): boolean {
 export function extractBookingUrl(text: string): string | undefined {
   const candidates = text.match(/https?:\/\/[^\s)"']+/gi) ?? [];
   for (const candidate of candidates) {
-    if (isTickadooBookingUrl(candidate)) {
-      return new URL(candidate).href;
+    const cleaned = candidate.replace(/[.,;:]+$/, "");
+    if (isTickadooBookingUrl(cleaned)) {
+      return new URL(cleaned).href;
     }
   }
   return undefined;
@@ -102,66 +103,65 @@ function nestedRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-function collectText(value: unknown, into: string[]): void {
-  if (typeof value === "string") {
-    into.push(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const entry of value) collectText(entry, into);
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-      if (
-        key === "text" ||
-        key === "delta" ||
-        key === "output_text" ||
-        key === "content"
-      ) {
-        collectText(entry, into);
-      } else if (key !== "transport" && key !== "headers") {
-        collectText(entry, into);
-      }
+function outputTextFromContent(value: unknown, into: string[]): void {
+  if (!Array.isArray(value)) return;
+  for (const entry of value) {
+    const content = nestedRecord(entry);
+    if (content.type === "output_text" && typeof content.text === "string") {
+      into.push(content.text);
     }
   }
 }
 
-export function collectEventText(event: unknown): string {
+function collectAssistantMessageText(item: unknown): string {
+  const record = nestedRecord(item);
+  if (
+    record.type !== "message" ||
+    record.role !== "assistant" ||
+    record.phase !== "final_answer"
+  ) {
+    return "";
+  }
   const parts: string[] = [];
+  outputTextFromContent(record.content, parts);
+  return parts.join("\n");
+}
+
+export function collectEventText(event: unknown): string {
   const record = eventRecord(event);
   const type = typeof record.type === "string" ? record.type : "";
-  if (
-    type.includes("output_text") ||
-    type.endsWith(".completed") ||
-    type.includes("item")
-  ) {
-    collectText(record, parts);
-  } else if (typeof record.delta === "string") {
-    parts.push(record.delta);
+  if (type === "agent.session.turn.output_text.delta" && typeof record.delta === "string") {
+    return record.delta;
   }
-  return parts.join("\n");
+  if (type === "agent.session.turn.output_text.done" && typeof record.text === "string") {
+    return record.text;
+  }
+  if (type === "agent.session.turn.item.done") {
+    return collectAssistantMessageText(record.item);
+  }
+  return "";
 }
 
 async function collectItemText(client: OpenAI, sessionId: string): Promise<string> {
   const parts: string[] = [];
   // openai-node list() returns a PagePromise/AbstractPage. `limit` is page size,
-  // not a total cap. AbstractPage.iterPages() / `for await` auto-paginates until
-  // hasNextPage() is false (see openai/openai-node src/core/pagination.ts).
+  // not a total cap. AbstractPage.iterPages() auto-paginates until hasNextPage()
+  // is false (see openai/openai-node src/core/pagination.ts). Empty sessions or
+  // zero assistant-final messages return "" and fall through to the booking_url
+  // hard error — do not treat that as incomplete pagination.
   const firstPage = await client.beta.agents.sessions.items.list(sessionId, {
     order: "asc",
     limit: 100,
   });
-  let pages = 0;
-  let lastPageHadNext = true;
+  let lastPageHadNext = false;
   for await (const page of firstPage.iterPages()) {
-    pages += 1;
     lastPageHadNext = page.hasNextPage();
     for (const item of page.getPaginatedItems()) {
-      collectText(item, parts);
+      const text = collectAssistantMessageText(item);
+      if (text) parts.push(text);
     }
   }
-  if (pages === 0 || lastPageHadNext) {
+  if (lastPageHadNext) {
     throw new Error(
       "Session item listing stopped before the last page (pagination incomplete).",
     );
@@ -254,8 +254,6 @@ async function runSmoke(): Promise<void> {
   let saved = "";
   try {
     saved = await collectItemText(client, sessionId);
-  } catch (error) {
-    console.warn("Could not list session items:", error);
   } finally {
     await client.beta.agents.sessions.delete(sessionId).catch(() => undefined);
   }

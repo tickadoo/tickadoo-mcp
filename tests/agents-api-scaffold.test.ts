@@ -10,10 +10,11 @@ import {
   TICKADOO_BOOKING_HOST,
   TICKADOO_MCP_TOOL,
   TICKADOO_MCP_URL,
+  collectEventText,
   extractBookingUrl,
   isTickadooBookingUrl,
   requireOpenAIApiKey,
-} from "../examples/agents-api-tickadoo-smoke.ts";
+} from "../examples/agents-api-tickadoo-smoke.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -45,12 +46,46 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(extractBookingUrl("See https://www.tickadoo.com/london/lion-king")).toBe(
       "https://www.tickadoo.com/london/lion-king",
     );
+    expect(extractBookingUrl("Book at https://www.tickadoo.com/london/lion-king.")).toBe(
+      "https://www.tickadoo.com/london/lion-king",
+    );
     expect(extractBookingUrl("https://evil.example/?q=www.tickadoo.com/london")).toBeUndefined();
     expect(extractBookingUrl("https://www.tickadoo.com.evil.example/x")).toBeUndefined();
     expect(extractBookingUrl("http://www.tickadoo.com/london/lion-king")).toBeUndefined();
     expect(extractBookingUrl("no link here")).toBeUndefined();
     expect(isTickadooBookingUrl("https://www.tickadoo.com/x")).toBe(true);
     expect(isTickadooBookingUrl("https://not-tickadoo.example/www.tickadoo.com")).toBe(false);
+  });
+
+  it("only accepts booking URLs from assistant final-answer text", () => {
+    const toolOnlyEvent = {
+      type: "agent.session.turn.item.done",
+      item: {
+        type: "mcp_call",
+        server_label: "tickadoo",
+        status: "completed",
+        output: "https://www.tickadoo.com/tool-only",
+      },
+    };
+    expect(collectEventText(toolOnlyEvent)).toBe("");
+
+    const assistantFinalEvent = {
+      type: "agent.session.turn.item.done",
+      item: {
+        type: "message",
+        role: "assistant",
+        phase: "final_answer",
+        content: [
+          {
+            type: "output_text",
+            text: "Book at https://www.tickadoo.com/london/lion-king",
+          },
+        ],
+      },
+    };
+    expect(extractBookingUrl(collectEventText(assistantFinalEvent))).toBe(
+      "https://www.tickadoo.com/london/lion-king",
+    );
   });
 
   it("fails clearly when the Agents API credential is missing", () => {
@@ -81,18 +116,20 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(doc).toContain("npm run smoke:agents-api");
     expect(doc).toContain("CI/dev-only");
     expect(doc).toContain("npm install --omit=dev");
-    expect(doc).toContain(
-      "github.event.pull_request.head.repo.full_name == github.repository",
-    );
+    expect(doc).toContain("push");
+    expect(doc).toContain("workflow_dispatch");
+    expect(doc).toContain("does **not** run automatically on pull requests");
+    expect(doc).toContain("Do not use `pull_request_target`");
     expect(doc).not.toMatch(/server_url": "https:\/\/mcp\.tickadoo\.com"/);
 
     expect(workflow).toContain("secrets.OPENAI_API_KEY");
     expect(workflow).toContain("Francis/Mark must add OPENAI_API_KEY");
     expect(workflow).toContain("Do not invent keys");
     expect(workflow).toContain("npm run smoke:agents-api");
-    expect(workflow).toContain(
-      "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
-    );
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("branches: [main]");
+    expect(workflow).not.toMatch(/^on:\s*\n(?:.*\n)*?  pull_request:/m);
+    expect(workflow).not.toContain("pull_request_target");
 
     const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
