@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>tickadoo</title>
+  <rect width="512" height="512" fill="#0F1115"/>
+  <g transform="translate(256 256)">
+    <path d="
+      M -140 -130
+      Q -160 -130 -160 -110
+      L -160 -20
+      Q -140 -20 -140 0
+      Q -140 20 -160 20
+      L -160 110
+      Q -160 130 -140 130
+      L 140 130
+      Q 160 130 160 110
+      L 160 20
+      Q 140 20 140 0
+      Q 140 -20 160 -20
+      L 160 -110
+      Q 160 -130 140 -130
+      Z" fill="#C69B3D"/>
+    <rect x="-14" y="-80" width="28" height="160" rx="8" fill="#0F1115"/>
+    <rect x="-55" y="-45" width="110" height="24" rx="7" fill="#0F1115"/>
+    <path d="M -6 70 L 20 90 L 65 41" stroke="#0F1115" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
