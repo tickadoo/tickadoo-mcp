@@ -46,7 +46,10 @@ jobs:
       request_id: ${{ inputs.request_id }}
       author_provenance: ${{ inputs.author_provenance }}
       provenance_confirmation: ${{ inputs.provenance_confirmation }}
-    # Exactly one secret crosses the repository boundary. `inherit` would hand
-    # every deploy credential this repository holds to code in another repo.
+    # Exactly three review-only secrets are forwarded. Environment secrets
+    # alone do not reach the reusable job. `inherit` would hand every deploy
+    # credential this repository holds to code in another repo.
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      REVIEW_BOT_PRIVATE_KEY: ${{ secrets.REVIEW_BOT_PRIVATE_KEY }}
