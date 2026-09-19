@@ -49,11 +49,17 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(extractBookingUrl("Book at https://www.tickadoo.com/london/lion-king.")).toBe(
       "https://www.tickadoo.com/london/lion-king",
     );
+    expect(extractBookingUrl("https://www.tickadoo.com/")).toBeUndefined();
+    expect(extractBookingUrl("https://www.tickadoo.com/london/lion-king?token=abc")).toBeUndefined();
     expect(extractBookingUrl("https://evil.example/?q=www.tickadoo.com/london")).toBeUndefined();
     expect(extractBookingUrl("https://www.tickadoo.com.evil.example/x")).toBeUndefined();
     expect(extractBookingUrl("http://www.tickadoo.com/london/lion-king")).toBeUndefined();
     expect(extractBookingUrl("no link here")).toBeUndefined();
-    expect(isTickadooBookingUrl("https://www.tickadoo.com/x")).toBe(true);
+    expect(isTickadooBookingUrl("https://www.tickadoo.com/london/lion-king")).toBe(true);
+    expect(isTickadooBookingUrl("https://www.tickadoo.com/")).toBe(false);
+    expect(isTickadooBookingUrl("https://www.tickadoo.com/london/lion-king?token=abc")).toBe(
+      false,
+    );
     expect(isTickadooBookingUrl("https://not-tickadoo.example/www.tickadoo.com")).toBe(false);
   });
 
@@ -143,8 +149,9 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
       "utf8",
     );
     expect(smoke).toContain("iterPages()");
-    expect(smoke).toContain("hasNextPage()");
-    expect(smoke).toContain("pagination incomplete");
+    expect(smoke).toContain("getPaginatedItems()");
+    expect(smoke).not.toContain("hasNextPage()");
+    expect(smoke).not.toContain("pagination incomplete");
 
     expect(readme).toContain("docs/openai-agents-api.md");
   });

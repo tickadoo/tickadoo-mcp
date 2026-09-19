@@ -70,15 +70,35 @@ export function requireOpenAIApiKey(
   return value;
 }
 
+const CREDENTIAL_QUERY_KEYS = new Set([
+  "token",
+  "session",
+  "key",
+  "secret",
+  "password",
+  "access_token",
+  "api_key",
+  "auth",
+]);
+
 export function isTickadooBookingUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return (
-      url.protocol === "https:" &&
-      url.hostname === TICKADOO_BOOKING_HOST &&
-      url.username === "" &&
-      url.password === ""
-    );
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== TICKADOO_BOOKING_HOST ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.pathname.length <= 1
+    ) {
+      return false;
+    }
+    for (const key of url.searchParams.keys()) {
+      if (CREDENTIAL_QUERY_KEYS.has(key.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
   } catch {
     return false;
   }
@@ -145,26 +165,18 @@ export function collectEventText(event: unknown): string {
 async function collectItemText(client: OpenAI, sessionId: string): Promise<string> {
   const parts: string[] = [];
   // openai-node list() returns a PagePromise/AbstractPage. `limit` is page size,
-  // not a total cap. AbstractPage.iterPages() auto-paginates until hasNextPage()
-  // is false (see openai/openai-node src/core/pagination.ts). Empty sessions or
-  // zero assistant-final messages return "" and fall through to the booking_url
-  // hard error — do not treat that as incomplete pagination.
+  // not a total cap. iterPages() walks every page (see openai/openai-node
+  // src/core/pagination.ts). Empty listings yield no assistant-final text and
+  // fail via the existing booking_url hard error. List failures propagate.
   const firstPage = await client.beta.agents.sessions.items.list(sessionId, {
     order: "asc",
     limit: 100,
   });
-  let lastPageHadNext = false;
   for await (const page of firstPage.iterPages()) {
-    lastPageHadNext = page.hasNextPage();
     for (const item of page.getPaginatedItems()) {
       const text = collectAssistantMessageText(item);
       if (text) parts.push(text);
     }
-  }
-  if (lastPageHadNext) {
-    throw new Error(
-      "Session item listing stopped before the last page (pagination incomplete).",
-    );
   }
   return parts.join("\n");
 }
