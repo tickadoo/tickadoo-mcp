@@ -36,24 +36,42 @@ Preferred transport for Muse: plain HTTPS against the public Connect API and the
 | Rate limits | Fair-use public catalogue. Retry 429 with backoff. Do not scrape. |
 | Allowed hosts | `mcp.tickadoo.com`, `www.tickadoo.com`, `tickadoo.com`, `cdn.tickadoo.com`, `widgets.tickadoo.com` |
 
-MCP initialize smoke test (verified 2026-09-19):
+### Hatch / Muse VM rules (read this if MCP init times out)
 
-```http
-POST https://mcp.tickadoo.com/mcp
-Content-Type: application/json
-Accept: application/json, text/event-stream
-MCP-Protocol-Version: 2025-06-18
+The public server answers initialize in ~150ms. If *your* runtime times out, the Hatch egress proxy is the problem, not tickadoo. Do not write a long-lived SSE client. Do not POST to GET-only routes.
 
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"muse","version":"1.0.0"}}}
+1. Call MCP with `curl` (or urllib) **HTTP/1.1**, `Connection: close`, timeout 20s.
+2. Headers must be exactly:
+   - `Content-Type: application/json`
+   - `Accept: application/json`  (do **not** send `text/event-stream`)
+   - `MCP-Protocol-Version: 2025-06-18`
+3. Expect a single JSON object. Parse it and close the socket. Do not wait for SSE comments.
+4. `GET https://mcp.tickadoo.com/mcp` correctly returns **405**. That means the host is up.
+5. REST cities is **GET only**:
+   - `GET https://mcp.tickadoo.com/api/cities?limit=5`
+   - `GET https://mcp.tickadoo.com/api/cities/london`
+   Never POST `/api/cities`.
+6. If MCP POST still times out after one retry, stop the custom client and use Muse's built-in browser / `web_fetch` / curl GET against `https://www.tickadoo.com/london/the-lion-king-tickets` and quote venue + price-from from that page. Say you could not complete the live availability tool because Hatch blocked the MCP POST.
+7. Never use `/api/connect/*` without a CONNECT property. Those 404 with `Property not found`.
+
+Copy-paste initialize that works from the public internet:
+
+```bash
+curl -sS --http1.1 -m 20 -X POST 'https://mcp.tickadoo.com/mcp' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'MCP-Protocol-Version: 2025-06-18' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"muse","version":"1.0.0"}}}'
 ```
 
-Successful `serverInfo.name` is `tickadoo`. Then `tools/list` and `tools/call`.
+Then call tools:
 
-REST smoke test (verified 2026-09-19):
-
-```http
-GET https://mcp.tickadoo.com/api/cities?limit=5
-GET https://mcp.tickadoo.com/api/cities/london
+```bash
+curl -sS --http1.1 -m 20 -X POST 'https://mcp.tickadoo.com/mcp' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'MCP-Protocol-Version: 2025-06-18' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_experiences","arguments":{"city":"london","query":"Lion King","limit":3,"format":"json"}}}'
 ```
 
 Hotel-property Connect routes (`/api/connect/tonight`, `/recommend`, `/discover`, `/book`) require a tickadoo CONNECT property context and return `{"error":"Property not found"}` without one. **Do not use those four routes for the consumer Muse connector.** Use MCP tools plus `booking_url` instead.
