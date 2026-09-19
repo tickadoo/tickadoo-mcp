@@ -6,6 +6,14 @@
 https://mcp.tickadoo.com/mcp
 ```
 
+## Meta Muse connector
+
+Directory submission pack and the brief Muse should fetch live in [`connectors/muse/`](connectors/muse/). Stable brief:
+
+https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/muse.md
+
+Submit at [muse.ai/platform](https://muse.ai/platform) using [`connectors/muse/SUBMISSION.md`](connectors/muse/SUBMISSION.md). No API key. Discovery is this MCP server; checkout stays on tickadoo.com.
+
 ## Agent Plugins 1.0
 
 This repository is also a portable Agent Plugins 1.0.0 package. Compatible
