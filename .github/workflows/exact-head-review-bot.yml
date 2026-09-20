@@ -6,7 +6,7 @@
 #
 # Setup and verification: tickadoo/howard docs/operations/exact-head-review-rollout.md
 name: Exact-head review bot
-run-name: Exact-head review PR #${{ inputs.pr_number }} @ ${{ inputs.expected_head_sha }} [${{ inputs.request_id }}]
+run-name: 'Exact-head review PR #${{ inputs.pr_number }} @ ${{ inputs.expected_head_sha }} [${{ inputs.request_id }}]'
 
 on:
   workflow_dispatch:
