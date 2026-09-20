@@ -64,9 +64,24 @@ Expect: error (currently `Property not found`). Connector must use `whats_on_ton
 | Get two Lion King tickets in London next Saturday | Finds the Lyceum show, checks availability, offers a tickadoo URL, does not charge |
 | What is on tonight in New York? | Returns evening options, confirms before claiming bookable |
 | Rainy family idea near the London Eye | Uses local/mood search, indoor-leaning, booking URL |
-| Compare Wicked and Hamilton in New York | Uses compare path, no invented prices |
+| Compare Chicago and The Book of Mormon in New York | Resolves both live BI titles, compare or availability-check, no invented prices |
+| Compare Wicked and Hamilton in London | Resolves `wicked-tickets` and `hamilton-tickets` (West End), live prices |
 | Book me tickets | Does not ask for a card in chat; opens tickadoo |
+
+Do **not** use “Compare Wicked and Hamilton in New York” as a pass eval. Those Broadway titles have SEO pages on tickadoo.com but no sellable MCP inventory (Nederlander wholesale). A correct agent says not bookable through this connector, not “not in the catalogue.”
+
+## Known catalogue gaps (2026-09-19)
+
+MCP only returns sellable inventory. Website PDPs can exist without a bookable row.
+
+Not bookable via MCP / BI (Nederlander NYC venues): Wicked (Gershwin), Hamilton (Richard Rodgers), The Lion King (Minskoff), MJ the Musical (Neil Simon), SIX (Lena Horne).
+
+Live substitutes for NY theatre compares: Chicago (`BI-CHICAGO`), The Book of Mormon (`BI-BKMORMONTM`), Maybe Happy Ending (`BI-MAYBEHAPPY`), The Great Gatsby (`BI-GATSBY`).
+
+Live West End substitutes: Wicked `wicked-tickets` / `Headout-3037`, Hamilton `hamilton-tickets` / `headout-16818`, Lion King `the-lion-king-tickets` / `headout-3023`.
+
+If `search_experiences` city=`new-york` query=`Wicked` returns observation decks or an aquarium with `fuzzy_name` / `fallback_city_ranked`, treat as a miss, not the Gershwin show.
 
 ## Last live pass
 
-2026-09-19 — initialize OK; Lion King search OK (`headout-3023`, Lyceum, from GBP 43.75, booking URL live); `/api/cities` OK; `/api/connect/tonight` correctly errors without a property.
+2026-09-19 — initialize OK; Lion King London search OK (`headout-3023`, Lyceum, from GBP 43.75, booking URL live); `/api/cities` OK; `/api/connect/tonight` correctly errors without a property. Muse custom-skill e2e: Lion King London pass; NY tonight pass; Wicked/Hamilton NY correctly `not_found` on slug lookup.
