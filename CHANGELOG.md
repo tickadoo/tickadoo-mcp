@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Require Node.js 22 or newer (`engines.node >=22`); Node.js 20 is end-of-life
+  and the bundle already targets `node22`. Take `@modelcontextprotocol/sdk`
+  `^1.30.1` and build with TypeScript 6.0.3.
 - Document the OpenAI Agents API → public tickadoo MCP Book path
   (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
   London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.
