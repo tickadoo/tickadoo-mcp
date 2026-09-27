@@ -22,7 +22,7 @@ https://www.tickadoo.com
 Get two tickets for The Lion King in London this Saturday.
 What is on tonight in New York?
 Find a rainy family afternoon near the London Eye.
-Compare Wicked and Hamilton in New York and book the better-value option for Friday.
+Compare Chicago and The Book of Mormon in New York and book the better-value option for Friday.
 We have a free evening in Paris, nothing too touristy, under €80 each.
 ```
 
@@ -77,5 +77,5 @@ How it works: Muse searches live official-primary inventory, confirms a date and
 
 Do not use /api/connect/* for the consumer listing — those routes need a hotel CONNECT property context.
 
-Verified 19 Sep 2026: London “Lion King” search returns the Lyceum production and a live tickadoo booking URL.
+Verified 19 Sep 2026: London “Lion King” search returns the Lyceum production and a live tickadoo booking URL. New York compare evals should use live Broadway titles (Chicago, Book of Mormon), not SEO-only Nederlander PDPs.
 ```

@@ -64,9 +64,15 @@ Expect: error (currently `Property not found`). Connector must use `whats_on_ton
 | Get two Lion King tickets in London next Saturday | Finds the Lyceum show, checks availability, offers a tickadoo URL, does not charge |
 | What is on tonight in New York? | Returns evening options, confirms before claiming bookable |
 | Rainy family idea near the London Eye | Uses local/mood search, indoor-leaning, booking URL |
-| Compare Wicked and Hamilton in New York | Uses compare path, no invented prices |
+| Compare Wicked and Hamilton in New York | Resolves `wicked` / `hamilton` (BI-WICKED3 / BI-HAMILTON3), compares live rows, availability-checks the date asked, does not invent a missing slot |
 | Book me tickets | Does not ask for a card in chat; opens tickadoo |
+
+New York Wicked (`wicked`, Gershwin) and Hamilton (`hamilton`, Richard Rodgers) **are live** in MCP as of 2026-09-22. Search must return those slugs. A given evening can still be empty — pass if the agent says so and offers the next real slot or the other title; fail if it invents a Friday Hamilton time or price.
+
+Do **not** treat NY Lion King, MJ or SIX as guaranteed-on-sale unless search returns a sellable row that night. London Wicked (`wicked-tickets`) and London Hamilton (`hamilton-tickets`) remain live for West End evals.
+
+Do not run `broadway-nederlander-audit` with `dry_run=false` while Meta review is open — that job can take these two titles off sale.
 
 ## Last live pass
 
-2026-09-19 — initialize OK; Lion King search OK (`headout-3023`, Lyceum, from GBP 43.75, booking URL live); `/api/cities` OK; `/api/connect/tonight` correctly errors without a property.
+2026-09-22 — NY Wicked `BI-WICKED3` and Hamilton `BI-HAMILTON3` return from `search_experiences`. Site widgets no longer show Tickets unavailable. Hamilton calendar can start later than Wicked; confirm per date. Lion King London (`headout-3023`) still the West End smoke test. `/api/connect/tonight` still errors without a property.
