@@ -30,6 +30,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Same age gate as npm: a freshly published action release waits a few days.
+    cooldown:
+      default-days: 3
     groups:
       github-actions-minor-and-patch:
         update-types:

@@ -20,6 +20,21 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      # .node-version pins an exact published release: 24.21.0 is the
+      # 2026-09-07 LTS "Krypton" release listed at
+      # https://nodejs.org/dist/index.json. setup-node fails the job if a
+      # pinned version is not published; this step also fails if the runtime
+      # on PATH is not the pinned one.
+      - name: Confirm the pinned Node runtime
+        run: |
+          pin="$(tr -d '[:space:]' < .node-version)"
+          expected="v${pin#v}"
+          actual="$(node --version)"
+          echo "Node runtime ${actual}, pinned ${expected}"
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Node ${actual} does not match .node-version (${expected})"
+            exit 1
+          fi
       - run: npm ci
       - name: Require OPENAI_API_KEY
         env:
