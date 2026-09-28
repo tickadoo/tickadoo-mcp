@@ -1,3 +1,16 @@
+# Minor and patch updates arrive grouped, one PR per ecosystem. Major updates
+# are deliberately left ungrouped, so each one arrives as its own PR.
+#
+# Review path for a major bump. It uses the same gates as any other PR:
+# green CI plus the exact-head review, and Dependabot never merges on its own.
+# - github-actions: every action is pinned to a full commit SHA with a version
+#   comment, and Dependabot updates both. Before approving, confirm the new SHA
+#   is the upstream tag's commit
+#   (`git ls-remote --tags https://github.com/<owner>/<action> <tag>`).
+# - npm: read the upstream changelog for breaking changes, and check that
+#   `npm run build` and `npm test` pass on the Node version in `.node-version`.
+# - Node itself is not managed here. `.node-version` changes by hand, in its
+#   own PR.
 version: 2
 updates:
   - package-ecosystem: npm
