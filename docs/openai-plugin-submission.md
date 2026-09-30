@@ -2,17 +2,16 @@
 
 ## Reconcile the existing listing before upload
 
-tickadoo currently appears on ChatGPT's public Travel page as **tickadoo** with
-the subtitle **Find & book live experiences**, but it is absent from the Codex
-universal Agent Plugin catalogue. The public copy also differs from the current
-repository metadata. Treat this as an older or partial OpenAI listing until the
-tickadoo Plugins portal shows its active package, MCP snapshot, version and
-direct listing URL.
+Earlier evidence suggested a tickadoo entry on ChatGPT's public Travel page,
+but the current anonymous directory does not expose tickadoo and exact/category
+search is account-gated. Public status is therefore unverified. Treat any prior
+record as an older or partial OpenAI listing until the tickadoo Plugins portal
+shows its active package, MCP snapshot, version and direct listing URL.
 
-Do not create a duplicate blindly. Open the existing tickadoo listing in the
-Plugins portal first and upload the current package as its next version. Create
-a new draft only if the portal confirms that the verified tickadoo organization
-does not own an existing listing.
+Do not create a duplicate blindly. Inspect the tickadoo Plugins portal first;
+if it owns an existing listing, upload the current package as its next version.
+Create a new draft only if the portal confirms that the verified tickadoo
+organization does not own an existing listing.
 
 Agent Plugins packaging, local marketplace installation, npm publication, and
 MCP Registry publication do not update OpenAI's public directory. OpenAI
