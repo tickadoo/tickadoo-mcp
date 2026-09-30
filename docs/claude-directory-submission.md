@@ -96,9 +96,13 @@ performs them in the target tickadoo Claude organization:
    reviewed branch or tag. Validate the exact commit.
 6. Answer data-handling questions accurately. The plugin sends requested city,
    place, query, preference, date, party-size and product identifiers to
-   tickadoo. Precise coordinates are optional and only user-directed. Confirm
-   the remote service's actual operational-log retention with the Howard owner
-   before attesting to a retention period.
+   tickadoo. Precise coordinates can be processed for location searches. Live
+   availability can send the applicable supplier product identifier, date
+   range and currency to that experience supplier. The remote service retains
+   structured tool-call metadata, processes connection telemetry and stores
+   optional quality feedback. Confirm the deployed retention controls with the
+   Howard owner before attesting to a retention period; do not claim that all
+   MCP data is deleted in 30 or 90 days.
 7. Choose scheduled checks or the GitHub webhook. Webhook setup requires
    repository admin access. Review details and submit.
 8. Pair the connector and plugin from the same organization. Track validation,
@@ -109,6 +113,30 @@ performs them in the target tickadoo Claude organization:
 Do not create a second draft after a duplicate-ownership error. If an older
 Console submission cannot be withdrawn, follow Anthropic's documented migration
 route through `directory@anthropic.com` with explicit human approval.
+
+## Data-handling gate
+
+The current implementation needs an owner or DPO decision before final portal
+attestation. Structured tool-call lineage has no automated expiry in the
+audited code. The 30-day purge for recognized AI-client metadata is runtime
+gated and its production activation is not yet verified. External quality
+feedback is scheduled for deletion after 90 days, while general analytics has
+its own retention period. The public privacy policy is general and does not by
+itself prove these MCP-specific settings.
+
+Before submission, approve and verify:
+
+- bounded retention and deletion for structured tool-call lineage;
+- whether exact coordinates, nested human text, idempotency keys and trace IDs
+  should be stored at all;
+- the deployed AI-client telemetry purge and platform log retention;
+- the handling and retention of high-severity feedback notifications; and
+- MCP-specific public privacy language and an erasure process.
+
+Keep the disclosure factual if submission proceeds after those decisions. The
+MCP processes search and location inputs, standard connection telemetry and
+optional feedback. It has no account, checkout, payment, booking or
+customer-record tools.
 
 ## Interim direct connector
 

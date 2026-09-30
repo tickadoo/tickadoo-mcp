@@ -15,17 +15,24 @@ required to explore the catalogue. Checkout and payment happen on
 
 ## Data handling
 
-The plugin connects to `https://mcp.tickadoo.com/mcp`. Tool calls send only the
-inputs needed for the requested search or check, such as a city or place name,
-query, preferences, dates, party size, and selected product identifiers.
-Precise coordinates are used only when the user intentionally supplies them
-through a supported location flow. The plugin does not read Claude memory,
-chat history, conversation summaries or uploaded files, and it does not need
-credentials. The optional `report_quality_signal` tool writes feedback only
-after confirmation and must not include personal data.
+The plugin connects to `https://mcp.tickadoo.com/mcp`. Depending on the tool,
+requests can include search text, city or area, dates, party size, filters,
+product identifiers, and precise coordinates supplied by the client. Live
+availability checks can send the applicable supplier product identifier, date
+range, and currency to that experience supplier. The plugin does not read
+Claude memory, chat history, conversation summaries, or uploaded files, and it
+does not need credentials.
+
+The remote service retains structured tool-call metadata for reliability and
+quality, processes normal connection telemetry, and stores optional feedback
+submitted through `report_quality_signal`. High-severity feedback can notify
+tickadoo's private operations channel. Retention differs by record type, so a
+directory submission must not claim a blanket 30- or 90-day deletion period
+without verifying the deployed controls. The MCP exposes no account, checkout,
+payment, booking, or customer-record tools.
 
 See the [tickadoo privacy policy](https://www.tickadoo.com/privacy) for the
-remote service's data practices and retention. For product support, use the
+general service policy. For product support, use the
 [tickadoo contact page](https://www.tickadoo.com/contact). Source and issue
 tracking are available in the
 [tickadoo-mcp repository](https://github.com/tickadoo/tickadoo-mcp).

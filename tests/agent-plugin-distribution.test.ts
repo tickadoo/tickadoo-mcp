@@ -164,6 +164,7 @@ describe("Agent Plugin distribution", () => {
       mcpServers: Record<string, { type: string; url: string }>;
     };
     const readme = await readFile(path.join(directory, "README.md"), "utf8");
+    const rootReadme = await readFile(path.join(root, "README.md"), "utf8");
     const skill = await readFile(
       path.join(directory, "skills/tickadoo-experiences/SKILL.md"),
       "utf8",
@@ -185,6 +186,11 @@ describe("Agent Plugin distribution", () => {
     expect(readme).toContain("https://www.tickadoo.com/privacy");
     expect(readme).toContain("https://www.tickadoo.com/contact");
     expect(readme).toContain("Checkout and payment happen");
+    expect(readme).toContain("structured tool-call metadata");
+    expect(readme).toContain("must not claim a blanket 30- or 90-day deletion period");
+    expect(readme).not.toMatch(/does not collect, store, or require personal data/i);
+    expect(rootReadme).toContain("structured tool-call metadata");
+    expect(rootReadme).not.toMatch(/does not collect, store, or require personal data/i);
     expect(skill).toMatch(/^---\nname: tickadoo-experiences\n/);
     expect(skill).toMatch(/\ndescription: .+\n---\n/);
     expect(skill).not.toMatch(/\b(?:ChatGPT|Codex|OpenAI)\b/);

@@ -129,7 +129,8 @@ The current tool list is served by the remote MCP server. Visit [mcp.tickadoo.co
 
 ## Privacy & Data Handling
 
-- **No account or API key required.** The server is read-mostly: it exposes tickadoo's public experiences catalogue (search, recommendations, availability, comparison, itineraries) and returns booking links — it does not collect, store, or require personal data to function.
-- **What is sent:** tool arguments (e.g. a city name, query text, or chosen experience id) are forwarded to the tickadoo backend to fulfil the request. The bridge adds no tracking and asks for no credentials.
+- **No account or API key required.** The server is read-mostly: it exposes tickadoo's public experiences catalogue and returns booking links. It has no account, checkout, payment, booking, or customer-record tools.
+- **What is processed:** tool arguments can include search text, city or area, dates, party size, filters, product identifiers, and precise coordinates supplied by the client. Live availability checks can send the applicable supplier product identifier, date range, and currency to that experience supplier. The bridge adds no tracking and asks for no credentials.
+- **Operational records:** the remote service retains structured tool-call metadata for reliability and quality, processes normal connection telemetry, and stores optional feedback submitted through `report_quality_signal`. High-severity feedback can notify tickadoo's private operations channel. Retention differs by record type; do not claim a blanket 30- or 90-day deletion period without verifying the deployed controls.
 - **First-party service.** tickadoo is the operator of the catalogue and backend; supplier inventory is presented as tickadoo. Bookings are completed on tickadoo.com.
-- **Full policy:** [tickadoo.com/privacy](https://tickadoo.com/privacy). Questions: support@tickadoo.com.
+- **Policy:** [tickadoo.com/privacy](https://tickadoo.com/privacy). Directory submissions must also disclose the MCP-specific categories and current retention controls above. Questions: support@tickadoo.com.
