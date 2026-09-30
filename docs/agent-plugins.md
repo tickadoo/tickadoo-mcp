@@ -81,9 +81,10 @@ may score ChatGPT, Claude, Copilot, Cursor, VS Code and Kiro without forking the
 acceptance contract. Nine positive cases include explicit fixture assumptions
 and expected result shapes; three negative cases define the safe fallback and
 why the requested action must not be completed. Tests enforce that split so the
-corpus remains directly reusable by review and evaluation runners. A negative
-case may name a tool when the expected safe behavior permits it only after an
-explicit gate (for example, feedback consent); an empty list means no tool call.
+corpus remains directly reusable by review and evaluation runners. In every
+scenario, `requiredTools` names calls expected for the prompt as written. The
+feedback-consent case therefore has an empty list: explaining a future write
+must not trigger that write, and some client surfaces omit the feedback tool.
 The corpus has its own version so runner integrations can pin its field contract
 independently of the plugin version.
 

@@ -347,7 +347,7 @@ describe("Agent Plugin distribution", () => {
     expect(portableMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
     expect(openaiMcp.mcpServers.tickadoo).toEqual({
       type: "streamable-http",
-      url: "https://mcp.tickadoo.com/mcp/chatgpt",
+      url: "https://mcp.tickadoo.com/mcp/store-cards",
     });
 
     const openai = manifest.extensions["com.openai"];
@@ -358,6 +358,12 @@ describe("Agent Plugin distribution", () => {
     ]) {
       expect(allowlist.files).toContain(reference.replace(/^\.\//, ""));
     }
+
+    const unavailableOpenaiTools = [
+      "find_nearby_experiences",
+      "get_related_experiences",
+      "report_quality_signal",
+    ];
 
     const resolvedRoot = await realpath(root);
     for (const file of allowlist.files) {
@@ -381,6 +387,23 @@ describe("Agent Plugin distribution", () => {
       );
       expect(contents, file).not.toMatch(/(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/);
       expect(contents, file).not.toMatch(/https?:\/\/[^/\s]+:[^@/\s]+@/);
+      if (/^skills\/[^/]+\/SKILL\.md$/.test(file)) {
+        for (const tool of unavailableOpenaiTools) {
+          if (!contents.includes(`\`${tool}\``)) continue;
+          if (tool === "report_quality_signal") {
+            expect(contents, file).toMatch(
+              /(?:not exposed on every client surface|if `report_quality_signal` is available in the connected tool set)/i,
+            );
+          } else {
+            const guardedLine = contents
+              .split("\n")
+              .find((line) => line.includes(`\`${tool}\``));
+            expect(guardedLine, `${file}: ${tool}`).toMatch(
+              /(?:do not (?:use|call).*from ChatGPT|Non-ChatGPT only)/i,
+            );
+          }
+        }
+      }
     }
   });
 
@@ -613,8 +636,6 @@ describe("Agent Plugin distribution", () => {
       expect(corpus.scenarios.some((scenario) => scenario.expectedSkill === skill), `${skill} needs an eval scenario`).toBe(true);
     }
     expect(corpus.scenarios.find((scenario) => scenario.id === "privacy-and-supplier-boundary")?.requiredTools).toEqual([]);
-    expect(corpus.scenarios.find((scenario) => scenario.id === "feedback-consent")?.requiredTools).toEqual([
-      "report_quality_signal",
-    ]);
+    expect(corpus.scenarios.find((scenario) => scenario.id === "feedback-consent")?.requiredTools).toEqual([]);
   });
 });

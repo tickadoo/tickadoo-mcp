@@ -174,7 +174,7 @@ liveIt("lists tools from the live remote through the bridge", async () => {
 });
 
 liveIt("keeps the live OpenAI surface least-privilege", async () => {
-  const { client } = await startBridgeClient("https://mcp.tickadoo.com/mcp/chatgpt");
+  const { client } = await startBridgeClient("https://mcp.tickadoo.com/mcp/store-cards");
   const result = await client.listTools();
   const names = new Set(result.tools.map((tool) => tool.name));
 

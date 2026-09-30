@@ -37,7 +37,7 @@ Use this skill only when none of those is the primary shape of the request.
 | Travel advice | `get_travel_tips` | city, topic? |
 | Browse cities | `list_cities` | country?, limit? (no free-text query — if the city is unclear, ask the user) |
 | Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type, optional render_context.intent_summary |
-| Report an agreed quality issue | `report_quality_signal` | request_id (only if a prior result returned one), signal_type, optional non-personal notes |
+| Report an agreed quality issue when the tool is available | `report_quality_signal` | request_id (only if a prior result returned one), signal_type, optional non-personal notes |
 
 Non-ChatGPT only (do not call from ChatGPT): `find_nearby_experiences` (needs real coordinates), `get_related_experiences` (reserved for a non-ChatGPT widget/client).
 
@@ -57,7 +57,7 @@ Use fields documented by the selected tool and actually present in its response.
 
 ## Quality feedback (a write action)
 
-If the user reports that a surfaced result was stale, unbookable or misleading, explain that you can send feedback to tickadoo. Only after the user agrees, call `report_quality_signal` — and only if a prior tool result actually included a `request_id` (format `rq_…`): pass it with the required `signal_type` and no personal data in notes. If no `request_id` was returned by any prior result, say feedback cannot be filed and never construct one. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links, while `report_quality_signal` records feedback and is therefore a write action.
+`report_quality_signal` is not exposed on every client surface. If it is available in the connected tool set and the user reports that a surfaced result was stale, unbookable or misleading, explain that you can send feedback to tickadoo. Only after the user agrees, call it — and only if a prior tool result actually included a `request_id` (format `rq_…`): pass it with the required `signal_type` and no personal data in notes. If the tool is unavailable or no prior result returned a `request_id`, say feedback cannot be filed through this connection and never construct an identifier. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links, while `report_quality_signal`, where available, records feedback and is therefore a write action.
 
 ## Brand and conduct
 

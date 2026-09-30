@@ -45,10 +45,9 @@ The final command creates
 package file that differs from `HEAD`, includes only the allowlisted portable
 manifest, OpenAI-specific MCP declaration, brand assets, seven skills, and
 license, verifies the ZIP file list, performs a credential-pattern scan, and
-prints the SHA-256 digest. The OpenAI archive uses the reviewed 20-tool
-`/mcp/chatgpt` surface; the vendor-neutral root package continues to use the
-full `/mcp` surface. Record the reviewed commit and printed digest with the
-submission.
+prints the SHA-256 digest. The OpenAI archive uses the last documented accepted
+20-tool endpoint, `/mcp/store-cards`. Record the reviewed commit and printed
+digest with the submission.
 
 Do not upload a source checkout or an npm `.tgz`. They contain unrelated files
 or use the wrong archive format.
@@ -65,13 +64,14 @@ These steps require a human operating the tickadoo OpenAI organization:
    snapshot, then choose **Upload plugin** on that listing. Use **Upload new or
    existing plugin** only if the portal confirms no tickadoo listing exists.
    Select the verified tickadoo identity and upload the exact ZIP and digest.
-3. Inspect the endpoint registered on the existing listing before changing it.
-   The prepared ZIP declares the least-privilege 20-tool endpoint at
-   `https://mcp.tickadoo.com/mcp/chatgpt`. Older tickadoo submissions may use
-   the equivalent `/mcp/store` or `/mcp/store-cards` alias. Preserve the active
-   endpoint until the portal confirms a reviewed migration, and select no
-   authentication. Do not add headers, API keys, bearer tokens, or customer
-   credentials.
+3. Inspect the endpoint registered on the existing listing before uploading.
+   The accepted-submission archive last documented
+   `https://mcp.tickadoo.com/mcp/store-cards`, which is the endpoint declared by
+   this prepared ZIP. If the portal shows `/mcp/chatgpt` or `/mcp/store`
+   instead, stop: OpenAI's current update flow cannot change an existing MCP
+   URL, so contact support and prepare a newly reviewed ZIP matching the active
+   endpoint. Select no authentication. Do not add headers, API keys, bearer
+   tokens, or customer credentials.
 4. Complete the portal's domain challenge. The existing endpoint
    `https://mcp.tickadoo.com/.well-known/openai-apps-challenge` responds with
    plain text. Compare it with the token shown for this exact draft before
@@ -80,7 +80,10 @@ These steps require a human operating the tickadoo OpenAI organization:
 5. Scan the MCP tools and resolve every blocking finding. Confirm the scan
    discovers 20 tools and excludes `find_nearby_experiences`,
    `get_related_experiences`, and `report_quality_signal`. The general `/mcp`
-   endpoint intentionally remains a separate 23-tool vendor-neutral surface.
+   route is a raw integrator endpoint. Do not connect it to a model-host
+   directory: its
+   integrator responses can include supplier-derived identifiers and internal
+   provenance fields.
 6. Add a reviewer-accessible demo recording URL. Reviewer credentials are not
    needed for the public unauthenticated MCP server. If the portal requests
    any secure reviewer-only information, enter it there, never in a manifest,
