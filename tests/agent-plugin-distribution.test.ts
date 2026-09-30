@@ -723,6 +723,8 @@ describe("Agent Plugin distribution", () => {
     expect(builder).toContain("MAX_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024");
     expect(builder).toContain("MAX_UNCOMPRESSED_ZIP_BYTES = 512 * 1024 * 1024");
     expect(builder).toContain("MAX_ARCHIVE_PATH_SEGMENTS = 20");
+    expect(builder).toContain("renameSync(temporaryOutputPath, outputPath)");
+    expect(builder).not.toContain("rmSync(outputPath");
   });
 
   it("keeps new OpenAI extensions and MCP Events behind runtime gates", async () => {
