@@ -1,5 +1,9 @@
 # Muse form — Step 1 Overview (paste exactly)
 
+Status: **prepared only**. The `/mcp/agents` endpoint is not usable until it is
+deployed and verified by the checks in `EVALS.md`. Do not install, connect,
+submit, or claim it is available before then.
+
 Use these values. Do not improvise brand spelling.
 
 ## Connector name
@@ -39,17 +43,17 @@ Tickets are sold. Checkout is on tickadoo.com (existing Stripe). The connector d
 
 ## Your name
 ```
-Francis Hellyer
+Enter the authorized submitter in the portal; do not store it in this file.
 ```
 
 ## Work email
 ```
-francis@tickadoo.com
+Use the authorized submitter's work account; do not store it in this file.
 ```
 
 ## Support email or URL
 ```
-support@tickadoo.com
+https://www.tickadoo.com/contact
 ```
 
 ## Your privacy policy
@@ -67,15 +71,15 @@ https://www.tickadoo.com/terms
 Public connector brief (fetch this first):
 https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/muse.md
 
-MCP (primary, no auth): POST https://mcp.tickadoo.com/mcp
-Protocol 2025-06-18, server tickadoo v1.6.0, 23 tools.
-Contract: https://mcp.tickadoo.com/llms-full.txt
+MCP (primary, no auth): POST https://mcp.tickadoo.com/mcp/agents
+Protocol 2025-06-18, 20 read-only tools. Confirm the live server version during pre-submission validation.
+Contract: discover the 20 read-only schemas with `tools/list` on the MCP endpoint above.
 OpenAPI: https://mcp.tickadoo.com/openapi.json
 Source: https://github.com/tickadoo/tickadoo-mcp/tree/main/connectors/muse
 
-How it works: Muse searches live official-primary inventory, confirms a date and party size with get_availability, then opens the tickadoo.com booking URL in its secure browser. No API key. No OAuth for discovery. Card data stays on tickadoo checkout (Stripe). Mobile tickets are fulfilled by tickadoo.
+How it works: Muse searches the live tickadoo catalogue, confirms a date and party size with get_availability, then opens the returned tickadoo.com booking URL in its secure browser. No API key. No OAuth for discovery. Card data and any post-purchase delivery stay outside Muse; do not claim a ticket type or fulfilment method unless the returned payload or destination page states it.
 
 Do not use /api/connect/* for the consumer listing — those routes need a hotel CONNECT property context.
 
-Verified 19 Sep 2026: London “Lion King” search returns the Lyceum production and a live tickadoo booking URL. New York compare evals should use live Broadway titles (Chicago, Book of Mormon), not SEO-only Nederlander PDPs.
+An earlier general-surface check returned the London Lion King production with a tickadoo booking URL. Re-run the public-agent endpoint after deployment before using any title in the submission evidence.
 ```

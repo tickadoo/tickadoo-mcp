@@ -5,7 +5,7 @@ description: General tickadoo discovery and utility map for city-wide experience
 
 # tickadoo Experiences (general map)
 
-The general map for the tickadoo MCP server (`mcp.tickadoo.com/mcp`). Six specialist workflow skills own the deep flows — route to them first:
+The general map for the MCP connection configured by this package. Six specialist workflow skills own the deep flows — route to them first:
 
 - Multi-day itinerary in one city → `plan-a-trip`
 - One coherent family day → `family-day-out`
@@ -21,31 +21,38 @@ Use this skill only when none of those is the primary shape of the request.
 | User intent | Tool | Key parameters |
 |---|---|---|
 | City-wide discovery | `search_experiences` | city, query, category, tags (array, e.g. `["family"]`), min_rating, max_price, limit |
-| Natural-language ask | `recommend_experiences` | query, city?, date?, pax? |
+| Natural-language ask | `recommend_experiences` | query, city?, limit?, language? |
 | Mood/vibe based | `search_by_mood` | city, mood (enum, e.g. `family_fun`, `romantic`, `rainy_day`) |
 | Near a place (no coordinates) | `search_local_experiences` | place_hint, city?, radius_hint? |
 | Specific experience | `get_experience_details` | product_id or slug |
+| Related alternatives, when exposed by the connected surface | `get_related_experiences` | product_id, optional context and max_results |
 | Live dates/times/prices/spaces | `get_availability` | product_id or slug + city_slug, date_from/to, party_size, fresh |
 | Date-specific link (legacy interface) | `check_availability` | slug, date, party_size |
 | Compare 2-5 specific products | `compare_experiences` | slugs |
 | City overview | `get_city_guide` | city |
 | Tonight / next hours / this week | `whats_on_tonight` / `get_last_minute` / `get_whats_on_this_week` | city |
-| Multi-day plan | `plan_itinerary` | city, days, interests?, audience?, budget?, pace? |
-| Family day | `get_family_day` | city (+ kids_ages array, date, numeric budget where known) |
-| Evening for two | `get_date_night` | city (+ date, budget band low/medium/high where known) |
+| Multi-day plan | `plan_itinerary` | city, days, audience?, language? |
+| Family day | `get_family_day` | city, date?, language? |
+| Evening for two | `get_date_night` | city, date?, language? |
 | Less-popular options (may overlap with headline results) | `get_hidden_gems` | city (optional max_results, default 5) |
-| Travel advice | `get_travel_tips` | city, topic? |
+| Travel-related catalogue candidates | `get_travel_tips` | city, language? |
 | Browse cities | `list_cities` | country?, limit? (no free-text query — if the city is unclear, ask the user) |
-| Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type, optional render_context.intent_summary |
-| Report an agreed quality issue | `report_quality_signal` | request_id (only if a prior result returned one), signal_type, optional non-personal notes |
+| Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type |
 
-Non-ChatGPT only (do not call from ChatGPT): `find_nearby_experiences` (needs real coordinates), `get_related_experiences` (reserved for a non-ChatGPT widget/client).
+The public connection does not expose the precise-coordinate tools
+`find_nearby_experiences` or `get_transfer_info`. Use
+`search_local_experiences(place_hint, city?)` for a named place and
+`get_travel_tips(city)` only for bookable city candidates related to travel. It
+does not return prose travel advice or apply a topic filter. Never ask the user
+for, infer, or guess coordinates.
 
-`get_transfer_info` requires precise destination coordinates: use it only when a supported client supplies them through an approved location channel and the city is supported. Never ask the user for, infer, or guess coordinates in chat; prefer `get_travel_tips(city, topic: "transport")`.
+Keep the user's date, party size, interests, budget, children's ages and pace as
+reasoning and selection constraints. Pass only fields exposed by the connected
+tool schema; verify selected products with the availability tools.
 
 ## The universal card rule
 
-When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only the `product_id` values exactly as returned by the discovery tool in `experience_ids` (IDs are internal — pass them verbatim, never display or read them aloud), pass a required `render_type` allowed by the callable schema, and optionally `render_context.intent_summary`. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `plan_itinerary`, `get_city_guide`, `compare_experiences`).
+When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only the `product_id` values exactly as returned by the discovery tool in `experience_ids` (IDs are internal — pass them verbatim, never display or read them aloud) and a required `render_type` allowed by the callable schema. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `plan_itinerary`, `get_city_guide`, `compare_experiences`).
 
 ## The live-availability rule
 
@@ -55,16 +62,16 @@ Treat discovery results, countdowns, remaining-seat hints and optional urgency m
 
 Use fields documented by the selected tool and actually present in its response. Optional underscore-prefixed helper metadata (`_best_picks`, `_price_tiers`, `_booking_urgency`, etc.) may inform the answer when returned, but never assume it exists, never invent a value and never treat it as a live availability check.
 
-## Quality feedback (a write action)
+## Quality feedback
 
-If the user reports that a surfaced result was stale, unbookable or misleading, explain that you can send feedback to tickadoo. Only after the user agrees, call `report_quality_signal` — and only if a prior tool result actually included a `request_id` (format `rq_…`): pass it with the required `signal_type` and no personal data in notes. If no `request_id` was returned by any prior result, say feedback cannot be filed and never construct one. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links, while `report_quality_signal` records feedback and is therefore a write action.
+The public agent connections shipped by this package are read-only and do not expose `report_quality_signal`. If a user asks to file feedback, say it cannot be submitted through this connection. Never construct a request identifier or imply that feedback was filed. No purchase is completed through the MCP; discovery, planning, availability and rendering calls retrieve data or booking links.
 
 ## Brand and conduct
 
 - Present discovery and the booking route as tickadoo. Never name, infer or expose an upstream inventory supplier. Do not imply that tickadoo operates the venue or experience. Preserve material venue, price, accessibility, cancellation and fulfilment facts returned by tickadoo.
 - State only the exact time, inventory, availability or cancellation fact returned by the latest relevant tool. Review counts show popularity, not scarcity. Never add time pressure or sales pressure.
 - If the user asks to continue to booking, provide the tickadoo link and make clear that any purchase is completed outside ChatGPT.
-- When a tool exposes `format`, use `json` for processing. Pass `language` only when the callable schema exposes it; do not promise localised booking URLs unless the returned data provides one.
+- Pass `language` only when the callable schema exposes it; do not promise localised booking URLs unless the returned data provides one.
 
 ## Coverage
 

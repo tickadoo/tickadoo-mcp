@@ -6,7 +6,7 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 ## What is this repo?
 
-`@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It exposes the live tickadoo experiences catalogue to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp`.
+`@tickadoo/mcp-server` — the npm distribution of the public tickadoo MCP (Model Context Protocol) server. It exposes the live tickadoo experiences catalogue to AI agents (ChatGPT, Claude, Perplexity, etc.) so they can search, browse, recommend, and book on behalf of end users. Installed by clients from the MCP Marketplace / npm, or used directly over Streamable HTTP at `https://mcp.tickadoo.com/mcp/agents`.
 
 Since **v2.0.0** this package is a **thin remote bridge** (GRO-573): the npm command is a stdio transport that proxies to the canonical remote server. It no longer defines tools, formats catalogue data, or calls a backend directly. The remote owns the tool list, schemas, results, and errors. The remote MCP server (and the embeddable widget bundle) now live in the **HowardOS repo** (`github.com/tickadoo/howard`), which is canonical (GRO-574).
 
@@ -17,10 +17,10 @@ Agent-intelligence layer (served by the remote): search tools carry `_best_picks
 - **Runtime**: TypeScript stdio bridge
   - `src/index.ts` → `src/bridge.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`) that proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping` to the remote.
   - `src/config.ts` — bridge config (remote URL via `TICKADOO_MCP_URL`, log level via `TICKADOO_LOG_LEVEL`).
-- **Canonical remote**: `https://mcp.tickadoo.com/mcp` — served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
+- **Public agent remote target**: `https://mcp.tickadoo.com/mcp/agents` — the read-only, public-safe surface owned and deployed from the **howard** repo, not this one. Do not publish this package until the endpoint is deployed and live-validated. The general `/mcp` route remains an integrator compatibility surface. This repo does not deploy a Cloudflare Worker.
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
-- **Registry metadata**: `server.json` is refreshed from the live remote via `npm run sync:server-json`.
-- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for Agent Plugins clients and the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `server.json`; frontmatter `name` must match the folder. BAC-779 adds them to the npm published file set and verifies the exact tarball; OpenAI still snapshots uploaded or MCP-imported skills during its Platform submission flow.
+- **Registry and tool metadata**: `server.json` is the small official MCP Registry manifest; `metadata/public-agent-tools.json` is the frozen full 20-tool descriptor snapshot. Both are refreshed from the validated live remote via `npm run sync:server-json`.
+- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for Agent Plugins clients and the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `metadata/public-agent-tools.json`; frontmatter `name` must match the folder. BAC-779 adds them to the npm published file set and verifies the exact tarball; OpenAI still snapshots uploaded or MCP-imported skills during its Platform submission flow.
 - **Testing**: vitest (`npm test`); `LIVE=1 npm test` runs the optional live integration test against the remote.
 - **No API key required.** Customer never sees supplier names; everything is presented as tickadoo.
 

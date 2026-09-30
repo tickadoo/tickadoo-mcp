@@ -18,6 +18,7 @@ availability statement in the latest relevant tool result.
 | Mood or vibe | `search_by_mood` |
 | Named landmark, neighbourhood or venue | `search_local_experiences` |
 | Product facts and location | `get_experience_details` |
+| Related alternatives | `get_related_experiences` |
 | Live dates, times, prices or spaces | `get_availability` |
 | One-date availability and booking link | `check_availability` |
 | Compare two to five resolved products | `compare_experiences` |
@@ -27,10 +28,9 @@ availability statement in the latest relevant tool result.
 | City orientation or lower-profile ideas | `get_city_guide` or `get_hidden_gems` |
 | Browse supported cities | `list_cities` |
 
-Use `search_local_experiences` for a place name. Use
-`find_nearby_experiences` only when the client already provides exact
-coordinates for the user's request. Do not ask for, infer or invent precise
-coordinates. `get_transfer_info` has the same precise-location boundary.
+Use `search_local_experiences` for a place name. The public connector does not
+expose `find_nearby_experiences` or `get_transfer_info`. Do not ask for, infer
+or invent precise coordinates.
 
 ## Present results clearly
 
@@ -56,9 +56,10 @@ schema says so.
   Do not add scarcity, urgency or sales pressure that the tools did not return.
 - Purchase and payment happen on tickadoo.com, outside the conversation. The
   MCP tools do not create an order or process payment.
-- `report_quality_signal` is a write action. Use it only after the user clearly
-  confirms, only with a real `request_id` returned by an earlier result, and
-  without personal data in notes. Never construct a request identifier.
+- This public connection is read-only and does not expose
+  `report_quality_signal`. If a user asks to file feedback, say it cannot be
+  submitted through this connection. Never construct a request identifier or
+  imply that feedback was filed.
 - Use only fields that the selected tool documents and actually returns.
   Optional underscore-prefixed metadata can inform an answer when present but
   is not a substitute for a live availability check.

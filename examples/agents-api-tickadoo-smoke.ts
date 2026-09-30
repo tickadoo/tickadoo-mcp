@@ -17,14 +17,14 @@
  *   # or
  *   npx tsx examples/agents-api-tickadoo-smoke.ts
  *
- * The bare host https://mcp.tickadoo.com 404s — always use /mcp.
+ * The bare host https://mcp.tickadoo.com is not MCP — use /mcp/agents.
  */
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
 
-export const TICKADOO_MCP_URL = "https://mcp.tickadoo.com/mcp";
+export const TICKADOO_MCP_URL = "https://mcp.tickadoo.com/mcp/agents";
 export const TICKADOO_BOOKING_HOST = "www.tickadoo.com";
 
 export const MISSING_CREDENTIAL_GUIDANCE = [

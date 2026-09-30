@@ -1,5 +1,9 @@
 # tickadoo × Muse — security and data note
 
+Status: **prepared only**. The `/mcp/agents` endpoint is not usable until it is
+deployed and verified by the checks in `EVALS.md`. Do not install, connect,
+submit, or claim it is available before then.
+
 For Meta functional / security / legal review. 19 September 2026.
 
 ## Trust boundary
@@ -25,7 +29,7 @@ Typical tool arguments: city slug, search text, product id, date range, party si
 
 tickadoo does not need, and this connector must not send, Meta account ids, Gmail contents, calendar dumps, or card data to answer a search.
 
-Quality feedback (`report_quality_signal`) is the only write tool. It requires a server-issued `request_id` and explicit user agreement. Notes must contain no personal data.
+The public agent endpoint exposes no write or feedback-submission tool. The connector must never imply that feedback was filed.
 
 ## Payments
 
@@ -43,5 +47,4 @@ Public catalogue, Cloudflare + Howard in front. On 429, back off. Do not bulk-wa
 
 ## Contact for security review
 
-tech@tickadoo.com  
-francis@tickadoo.com
+https://www.tickadoo.com/contact

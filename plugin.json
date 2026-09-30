@@ -63,8 +63,8 @@
             {
               "description": "Plan a family day with age-aware checks",
               "prompt": "Plan a day in Paris for two adults and children aged 6 and 10.",
-              "tools_triggered": "get_family_day, get_experience_details, get_availability",
-              "expected_behavior": "Build a coherent day from returned experiences, verify age suitability in product details, and check live availability for the full party before calling an activity bookable."
+              "tools_triggered": "get_family_day, get_experience_details, render_experience_cards, get_availability",
+              "expected_behavior": "Build a coherent day from returned experiences, verify age suitability in product details, render the grounded candidates, and check live availability for the full party before calling an activity bookable."
             },
             {
               "description": "Find and verify experiences for tonight",
@@ -95,7 +95,7 @@
               "prompt": "Find a sold-out show tonight and guarantee me tickets."
             },
             {
-              "description": "Do not submit a quality-signal write without explicit confirmation and a real prior request identifier",
+              "description": "This connection cannot file feedback: do not call a write tool or imply that feedback was submitted",
               "prompt": "That result was stale. What would happen if I reported it to tickadoo?"
             }
           ]
@@ -104,7 +104,7 @@
         "commerce_description": "The plugin helps users discover ticketed experiences and returns tickadoo booking links. Checkout, order creation and payment happen on tickadoo.com, not through the MCP tools."
       },
       "publication": {
-        "release_notes": "Initial public directory package for tickadoo experience discovery, comparison, live availability, itinerary planning and booking links."
+        "release_notes": "Updates tickadoo experience discovery with current plugin metadata, reviewed skills, comparison, live availability, itinerary planning and booking links."
       }
     }
   }

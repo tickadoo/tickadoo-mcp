@@ -82,12 +82,160 @@ describe("Agent Plugins 1.0.0 package", () => {
     for (const skill of skills) {
       const source = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
       expect(source.match(/^---\n([\s\S]*?)\n---/)?.[1]).toMatch(new RegExp(`(^|\\n)name: ${skill}($|\\n)`));
+      expect(source, `${skill}: endpoint-neutral connection wording`).toContain(
+        "the MCP connection configured by this package",
+      );
+      expect(source, `${skill}: no hardcoded MCP endpoint`).not.toMatch(
+        /(?:https?:\/\/)?mcp\.tickadoo\.com\/mcp(?:\/(?:agents|store-cards))?|(?:^|[\s("'`])\/mcp(?:\/(?:agents|store-cards))?(?=$|[\s)"'`,.;:])/im,
+      );
+    }
+  });
+
+  it("keeps portable skill calls inside the minimized public-agent input contract", async () => {
+    const skillNames = [
+      "compare-before-you-book",
+      "date-night",
+      "family-day-out",
+      "near-a-landmark",
+      "plan-a-trip",
+      "tickadoo-experiences",
+      "tonight-and-last-minute",
+    ];
+    const sources = new Map(
+      await Promise.all(
+        skillNames.map(async (skill) => [
+          skill,
+          await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8"),
+        ] as const),
+      ),
+    );
+    const allSkills = [...sources.values()].join("\n");
+
+    // These fields exist on richer integrator surfaces but are intentionally
+    // absent from the portable /mcp/agents contract shared by every client.
+    for (const removedArgument of [
+      "pax",
+      "kids_ages",
+      "render_context",
+      "idempotency_key",
+      "format",
+    ]) {
+      expect(allSkills, `removed public-agent argument: ${removedArgument}`).not.toMatch(
+        new RegExp(`\\b${removedArgument}\\b`),
+      );
+    }
+    expect(allSkills).not.toMatch(/topic\s*:/i);
+
+    const general = sources.get("tickadoo-experiences") ?? "";
+    expect(general).toContain(
+      "| Natural-language ask | `recommend_experiences` | query, city?, limit?, language? |",
+    );
+    expect(general).toContain(
+      "| Multi-day plan | `plan_itinerary` | city, days, audience?, language? |",
+    );
+    expect(general).toContain("| Family day | `get_family_day` | city, date?, language? |");
+    expect(general).toContain("| Evening for two | `get_date_night` | city, date?, language? |");
+    expect(general).toContain(
+      "| Travel-related catalogue candidates | `get_travel_tips` | city, language? |",
+    );
+    expect(general).toContain(
+      "| Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type |",
+    );
+    const documentedTools = general
+      .match(/## Tool selection map\n\n([\s\S]*?)(?=\n\nThe public connection)/)?.[1]
+      ?.split("\n")
+      .flatMap((line) => [...(line.split("|")[2] ?? "").matchAll(/`([a-z_]+)`/g)])
+      .map((match) => match[1]);
+    expect(documentedTools).toEqual([
+      "search_experiences",
+      "recommend_experiences",
+      "search_by_mood",
+      "search_local_experiences",
+      "get_experience_details",
+      "get_related_experiences",
+      "get_availability",
+      "check_availability",
+      "compare_experiences",
+      "get_city_guide",
+      "whats_on_tonight",
+      "get_last_minute",
+      "get_whats_on_this_week",
+      "plan_itinerary",
+      "get_family_day",
+      "get_date_night",
+      "get_hidden_gems",
+      "get_travel_tips",
+      "list_cities",
+      "render_experience_cards",
+    ]);
+
+    expect(sources.get("plan-a-trip")).toMatch(
+      /call `plan_itinerary` with `city`, `days` and `audience` when known[\s\S]*interests, budget and desired pace as selection and scheduling constraints[\s\S]*do not send them as tool arguments/i,
+    );
+    expect(sources.get("family-day-out")).toMatch(
+      /call `get_family_day` with `city` and `date` when known[\s\S]*children's ages and budget as selection constraints[\s\S]*do not send them as tool arguments/i,
+    );
+    expect(sources.get("date-night")).toMatch(
+      /call `get_date_night` with `city` and `date` when known[\s\S]*budget as a selection constraint[\s\S]*do not send it as a tool argument/i,
+    );
+
+    const requiredWorkflowOrder: Record<string, string[]> = {
+      "compare-before-you-book": [
+        "search_experiences",
+        "compare_experiences",
+        "get_experience_details",
+        "get_availability",
+        "check_availability",
+      ],
+      "date-night": [
+        "get_date_night",
+        "get_experience_details",
+        "get_availability",
+        "check_availability",
+      ],
+      "family-day-out": [
+        "get_family_day",
+        "get_experience_details",
+        "get_availability",
+        "check_availability",
+      ],
+      "near-a-landmark": [
+        "search_local_experiences",
+        "get_experience_details",
+        "get_availability",
+        "check_availability",
+      ],
+      "plan-a-trip": ["get_city_guide", "plan_itinerary", "get_experience_details"],
+      "tonight-and-last-minute": [
+        "whats_on_tonight",
+        "get_experience_details",
+        "get_availability",
+        "check_availability",
+      ],
+    };
+    for (const [skill, expectedTools] of Object.entries(requiredWorkflowOrder)) {
+      const workflow = sources
+        .get(skill)
+        ?.match(/## The workflow \(tool chain\)\n\n([\s\S]*?)(?=\n## )/)?.[1];
+      expect(workflow, `${skill}: workflow section`).toBeTruthy();
+      let cursor = -1;
+      for (const tool of expectedTools) {
+        const next = workflow?.indexOf(tool, cursor + 1) ?? -1;
+        expect(next, `${skill}: ${tool} remains in workflow order`).toBeGreaterThan(cursor);
+        cursor = next;
+      }
     }
   });
 
   it("keeps discovered package files contained within the plugin root", async () => {
     const resolvedRoot = await realpath(root);
-    for (const relative of ["plugin.json", "mcp.json", "skills"]) {
+    for (const relative of [
+      "plugin.json",
+      "mcp.json",
+      "skills",
+      "server.json",
+      "metadata/public-agent-tools.json",
+    ]) {
       const candidate = path.join(root, relative);
       const stat = await lstat(candidate);
       expect(stat.isSymbolicLink()).toBe(false);
@@ -114,7 +262,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     const servers = config.mcpServers as Record<string, Record<string, unknown>>;
     expect(Object.values(servers)).toHaveLength(1);
     expect(servers.tickadoo.type).toBe("streamable-http");
-    expect(servers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(servers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp/agents");
     expect(new URL(String(servers.tickadoo.url)).protocol).toBe("https:");
     expect(new URL(String(servers.tickadoo.url)).username).toBe("");
     expect(new URL(String(servers.tickadoo.url)).password).toBe("");
@@ -146,12 +294,19 @@ describe("Agent Plugins 1.0.0 package", () => {
     const codex = await readJson(path.join(root, ".codex-plugin/plugin.json"));
     expect(codex.name).toBe(portable.name);
     expect(codex.version).toBe(portable.version);
+    expect(codex.keywords).toEqual(portable.keywords);
     expect(codex.skills).toBe("./skills/");
-    const codexServers = codex.mcpServers as Record<string, Record<string, unknown>>;
-    expect(codexServers.tickadoo.type).toBe("http");
-    expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(codex.mcpServers).toBe("./.mcp.json");
+    const codexServers = await readJson(path.join(root, String(codex.mcpServers)));
+    const configuredServers = codexServers.mcpServers as Record<string, Record<string, unknown>>;
+    expect(configuredServers.tickadoo.type).toBe("http");
+    expect(configuredServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp/agents");
     const extensions = portable.extensions as Record<string, Record<string, unknown>>;
-    expect(extensions["com.openai"].interface).toEqual(codex.interface);
+    const portableInterface = extensions["com.openai"].interface as Record<string, unknown>;
+    const { supportURL, ...portableCodexInterface } = portableInterface;
+    expect(supportURL).toBe("https://www.tickadoo.com/contact");
+    expect(codex.interface).toEqual(portableCodexInterface);
+    expect(codex.interface).not.toHaveProperty("supportURL");
     expect(JSON.stringify(codex)).not.toMatch(/bearer|token|secret|password|api[_-]?key|cf-access/i);
   });
 
@@ -167,7 +322,9 @@ describe("Agent Plugins 1.0.0 package", () => {
       "publication",
       "review",
     ]);
-    expect(pluginInterface).toEqual(codex.interface);
+    const { supportURL, ...portableCodexInterface } = pluginInterface;
+    expect(supportURL).toBe("https://www.tickadoo.com/contact");
+    expect(codex.interface).toEqual(portableCodexInterface);
     expect(codex.name).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
     expect(codex.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
     expect(String(pluginInterface.displayName).length).toBeLessThanOrEqual(30);
@@ -252,18 +409,14 @@ describe("Agent Plugins 1.0.0 package", () => {
     const corpus = JSON.parse(
       await readFile(path.join(root, "evals/agent-plugin-scenarios.json"), "utf8"),
     ) as { scenarios: Array<{ prompt: string }> };
-    const server = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
-      _meta: {
-        "io.modelcontextprotocol.registry/publisher-provided": {
-          tools: Array<{ name: string }>;
-        };
-      };
+    const snapshot = JSON.parse(
+      await readFile(path.join(root, "metadata/public-agent-tools.json"), "utf8"),
+    ) as {
+      tools: Array<{ name: string }>;
     };
     const knownPrompts = new Set(corpus.scenarios.map((scenario) => scenario.prompt));
     const knownTools = new Set(
-      server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map(
-        (tool) => tool.name,
-      ),
+      snapshot.tools.map((tool) => tool.name),
     );
     const openaiDeniedTools = new Set([
       "find_nearby_experiences",
@@ -295,10 +448,16 @@ describe("Agent Plugins 1.0.0 package", () => {
       expect(testCase.description.trim()).not.toBe("");
       expect(knownPrompts, testCase.prompt).toContain(testCase.prompt);
     }
+    const feedbackCase = negative.find((testCase) =>
+      testCase.prompt.includes("What would happen if I reported it"),
+    );
+    expect(feedbackCase?.description).toMatch(/connection cannot file feedback/i);
+    expect(feedbackCase?.description).toMatch(/do not .*imply.*submitted/i);
 
     expect(openai.review.commerce).toBe(true);
     expect(openai.review.commerce_description).toContain("not through the MCP tools");
     expect(openai.publication.release_notes.trim()).not.toBe("");
+    expect(openai.publication.release_notes).not.toMatch(/^initial\b/i);
     expect(JSON.stringify(openai.review)).not.toMatch(
       /test_credentials|reviewer_instructions|authorization|bearer|password|api[_-]?key|cf-access/i,
     );
@@ -313,6 +472,8 @@ describe("Agent Plugins 1.0.0 package", () => {
       ".claude-plugin/marketplace.json",
       ".mcp.json",
       "clients/github-copilot/mcp.json",
+      "server.json",
+      "metadata/public-agent-tools.json",
     ];
     for (const file of files) {
       const source = await readFile(path.join(root, file), "utf8");

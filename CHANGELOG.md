@@ -6,8 +6,18 @@
   and the bundle already targets `node22`. Take `@modelcontextprotocol/sdk`
   `^1.30.1` and build with TypeScript 6.0.3.
 - Document the OpenAI Agents API → public tickadoo MCP Book path
-  (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
+  (`https://mcp.tickadoo.com/mcp/agents`, not the bare host) and add a Lion King /
   London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.
+- Default portable manifests, client adapters, the npm bridge, and Registry
+  metadata to the 20-tool read-only `/mcp/agents` surface. Keep the existing
+  OpenAI listing package pinned separately to its reviewed 20-tool surface.
+- Record the 29 September OpenAI plugin-extension and MCP Events release as a
+  gated follow-up: the current package keeps its portable inline MCP Apps UI,
+  and does not claim sidebar entrypoints or automations before their distinct
+  runtime, authorization, storage, webhook-security, and review contracts exist.
+- Add a prepared ChatGPT Live Voice validation lane and enforce OpenAI's
+  published ZIP entry, member, extracted-size, path-depth and compressed-size
+  ceilings in the deterministic submission builder.
 
 ## [2.1.0] - 2026-09-06
 

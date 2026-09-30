@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -11,6 +13,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { createTickadooBridge, type TickadooBridge } from "../src/bridge.js";
 import { DEFAULT_TICKADOO_MCP_URL } from "../src/config.js";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const toolContract = (await import(
+  pathToFileURL(path.join(root, "scripts/public-agent-contract.mjs")).href
+)) as {
+  expectedPublicAgentTools: string[];
+  expectedOpenAIStoreCardTools: string[];
+};
 
 type RemoteHandler = (request: JSONRPCRequest) => {
   error?: {
@@ -35,6 +45,10 @@ afterEach(async () => {
 });
 
 describe("tickadoo stdio bridge", () => {
+  it("defaults to the read-only public agent surface", () => {
+    expect(DEFAULT_TICKADOO_MCP_URL).toBe("https://mcp.tickadoo.com/mcp/agents");
+  });
+
   it("passes tools/list through to the remote server", async () => {
     const remote = await startMockRemote(request => {
       if (request.method === "tools/list") {
@@ -166,25 +180,38 @@ describe("tickadoo stdio bridge", () => {
 
 const liveIt = process.env.LIVE === "1" ? it : it.skip;
 
-liveIt("lists tools from the live remote through the bridge", async () => {
+liveIt("validates the deployed public agent tool closure through the bridge", async () => {
   const { client } = await startBridgeClient(DEFAULT_TICKADOO_MCP_URL);
   const result = await client.listTools();
+  const names = result.tools.map(tool => tool.name);
 
-  expect(result.tools.length).toBeGreaterThan(0);
+  expect(names).toEqual(toolContract.expectedPublicAgentTools);
+  expect(new Set(names).size).toBe(toolContract.expectedPublicAgentTools.length);
+  expect(new Set(names)).toEqual(new Set(toolContract.expectedPublicAgentTools));
+  expect(
+    result.tools.every(
+      tool =>
+        tool.annotations?.readOnlyHint === true &&
+        tool.annotations?.destructiveHint === false,
+    ),
+  ).toBe(true);
 });
 
 liveIt("keeps the live OpenAI surface least-privilege", async () => {
   const { client } = await startBridgeClient("https://mcp.tickadoo.com/mcp/store-cards");
   const result = await client.listTools();
-  const names = new Set(result.tools.map((tool) => tool.name));
+  const names = result.tools.map(tool => tool.name);
 
-  expect(result.tools).toHaveLength(20);
-  expect(names).not.toContain("find_nearby_experiences");
-  expect(names).not.toContain("get_related_experiences");
-  expect(names).not.toContain("report_quality_signal");
-  expect(names).toContain("search_experiences");
-  expect(names).toContain("get_availability");
-  expect(names).toContain("render_experience_cards");
+  expect(names).toEqual(toolContract.expectedOpenAIStoreCardTools);
+  expect(new Set(names).size).toBe(toolContract.expectedOpenAIStoreCardTools.length);
+  expect(new Set(names)).toEqual(new Set(toolContract.expectedOpenAIStoreCardTools));
+  expect(
+    result.tools.every(
+      tool =>
+        tool.annotations?.readOnlyHint === true &&
+        tool.annotations?.destructiveHint === false,
+    ),
+  ).toBe(true);
 });
 
 async function startBridgeClient(remoteUrl: string) {

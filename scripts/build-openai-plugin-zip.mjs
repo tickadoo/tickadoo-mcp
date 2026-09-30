@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,11 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const builderPath = "scripts/build-openai-plugin-zip.mjs";
 const configPath = "scripts/openai-plugin-files.json";
+const MAX_COMPRESSED_ZIP_BYTES = 100_000_000;
+const MAX_ARCHIVE_ENTRIES = 5_000;
+const MAX_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024;
+const MAX_UNCOMPRESSED_ZIP_BYTES = 512 * 1024 * 1024;
+const MAX_ARCHIVE_PATH_SEGMENTS = 20;
 
 function readHeadFile(file) {
   return execFileSync("git", ["show", `HEAD:${file}`], {
@@ -101,6 +106,19 @@ const archivedEntries = execFileSync("unzip", ["-Z1", outputPath], { encoding: "
   .split("\n")
   .filter(Boolean);
 const archivedFiles = archivedEntries.filter((entry) => !entry.endsWith("/"));
+if (statSync(outputPath).size > MAX_COMPRESSED_ZIP_BYTES) {
+  throw new Error("OpenAI plugin ZIP exceeds the 100 MB compressed upload limit");
+}
+if (archivedEntries.length > MAX_ARCHIVE_ENTRIES) {
+  throw new Error("OpenAI plugin ZIP exceeds the 5,000-entry upload limit");
+}
+if (
+  archivedEntries.some(
+    (entry) => entry.split("/").filter(Boolean).length > MAX_ARCHIVE_PATH_SEGMENTS,
+  )
+) {
+  throw new Error("OpenAI plugin ZIP contains a path deeper than 20 segments");
+}
 const expectedDirectories = new Set();
 for (const file of files) {
   const segments = file.split("/");
@@ -122,8 +140,17 @@ const forbidden = [
   /(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/,
   /https?:\/\/[^/\s]+:[^@/\s]+@/,
 ];
+let uncompressedBytes = 0;
 for (const file of archivedFiles) {
-  const source = execFileSync("unzip", ["-p", outputPath, file], { encoding: "utf8" });
+  const sourceBuffer = execFileSync("unzip", ["-p", outputPath, file]);
+  if (sourceBuffer.byteLength > MAX_ARCHIVE_MEMBER_BYTES) {
+    throw new Error(`OpenAI plugin ZIP member exceeds 100 MiB: ${file}`);
+  }
+  uncompressedBytes += sourceBuffer.byteLength;
+  if (uncompressedBytes > MAX_UNCOMPRESSED_ZIP_BYTES) {
+    throw new Error("OpenAI plugin ZIP exceeds the 512 MiB extracted-size limit");
+  }
+  const source = sourceBuffer.toString("utf8");
   if (forbidden.some((pattern) => pattern.test(source))) {
     throw new Error(`Credential-shaped content found in ${file}`);
   }

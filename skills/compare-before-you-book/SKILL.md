@@ -5,7 +5,7 @@ description: Compare 2-5 already-known tickadoo experiences side by side before 
 
 # Compare before you book with tickadoo
 
-Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user is DECIDING between specific options. Turn "X or Y?" into a grounded comparison with a clear recommendation.
+Use the MCP connection configured by this package when the user is DECIDING between specific options. Turn "X or Y?" into a grounded comparison with a clear recommendation.
 
 ## When to use this
 
@@ -32,4 +32,4 @@ Use fields documented by the selected tool and actually present in its response.
 - Present everything as tickadoo. Never name, infer or expose an upstream inventory supplier. Preserve material price, accessibility and cancellation facts.
 - Be honest when it's genuinely close; let the availability check or cancellation policy settle it. Never add time or sales pressure.
 - If the user asks to continue, provide the tickadoo link and make clear any purchase completes outside ChatGPT.
-- If `report_quality_signal` is available in the connected tool set and the user reports stale or misleading comparison data, offer to send feedback; only after they agree, call it only if a prior tool result actually included a `request_id` (format `rq_…`) — pass it with the required `signal_type` and no personal data in notes (a write action). If the tool is unavailable or no `request_id` was returned, say feedback cannot be filed through this connection and never construct one.
+- This public connection is read-only. If the user reports stale or misleading comparison data, say feedback cannot be filed through this connection; never construct a request identifier or imply that feedback was submitted.

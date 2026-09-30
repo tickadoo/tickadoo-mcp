@@ -1,10 +1,14 @@
 # tickadoo MCP Server
 
-`@tickadoo/mcp-server` is the local stdio entrypoint for tickadoo MCP. Since v2.0.0 it is a thin bridge to the canonical remote server at:
+`@tickadoo/mcp-server` is the local stdio entrypoint for tickadoo MCP. It is a thin bridge to the read-only public agent surface at:
 
 ```text
-https://mcp.tickadoo.com/mcp
+https://mcp.tickadoo.com/mcp/agents
 ```
+
+This branch prepares that endpoint as the distribution default. Do not publish
+the package, Registry metadata, or directory bundles until Howard has deployed
+the endpoint and the 20-tool read-only live checks pass.
 
 ## Meta Muse connector
 
@@ -12,7 +16,10 @@ Directory submission pack and the brief Muse should fetch live in [`connectors/m
 
 https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/muse.md
 
-Submit at [muse.ai/platform](https://muse.ai/platform) using [`connectors/muse/SUBMISSION.md`](connectors/muse/SUBMISSION.md). No API key. Discovery is this MCP server; checkout stays on tickadoo.com.
+After the deployment and live-validation gate above passes, submit at
+[muse.ai/platform](https://muse.ai/platform) using
+[`connectors/muse/SUBMISSION.md`](connectors/muse/SUBMISSION.md). No API key.
+Discovery is this MCP server; checkout stays on tickadoo.com.
 
 ## Agent Plugins 1.0
 
@@ -36,7 +43,7 @@ publish steps are documented in
 
 OpenAI Agents API sessions that call the public MCP (Book path) are documented in
 [`docs/openai-agents-api.md`](docs/openai-agents-api.md). Use
-`https://mcp.tickadoo.com/mcp` — the bare host 404s.
+`https://mcp.tickadoo.com/mcp/agents` — the bare host is not an MCP endpoint.
 
 The package no longer defines tools, formats catalogue data, or calls a local tickadoo backend. It connects to the remote Streamable HTTP MCP server and proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping`. The live remote owns the tool list, schemas, results, and errors.
 
@@ -50,7 +57,7 @@ Use the hosted remote directly when your MCP client supports Streamable HTTP:
 {
   "mcpServers": {
     "tickadoo": {
-      "url": "https://mcp.tickadoo.com/mcp"
+      "url": "https://mcp.tickadoo.com/mcp/agents"
     }
   }
 }
@@ -129,8 +136,8 @@ The current tool list is served by the remote MCP server. Visit [mcp.tickadoo.co
 
 ## Privacy & Data Handling
 
-- **No account or API key required.** The server is read-mostly: it exposes tickadoo's public experiences catalogue and returns booking links. It has no account, checkout, payment, booking, or customer-record tools.
-- **What is processed:** tool arguments can include search text, city or area, dates, party size, filters, product identifiers, and precise coordinates supplied by the client. Live availability checks can send the applicable supplier product identifier, date range, and currency to that experience supplier. The bridge adds no tracking and asks for no credentials.
-- **Operational records:** the remote service retains structured tool-call metadata for reliability and quality, processes normal connection telemetry, and stores optional feedback submitted through `report_quality_signal`. High-severity feedback can notify tickadoo's private operations channel. Retention differs by record type; do not claim a blanket 30- or 90-day deletion period without verifying the deployed controls.
+- **No account or API key required.** The public agent surface is read-only: it exposes tickadoo's public experiences catalogue and returns booking links. It has no account, checkout, payment, booking, feedback-write, or customer-record tools.
+- **What is processed:** tool arguments can include search text, city or area, dates, party size, filters and product identifiers. The public-agent surface excludes precise-coordinate tools. Live availability checks can send the applicable supplier product identifier, date range and currency to that experience supplier. The bridge adds no tracking and asks for no credentials.
+- **Operational records:** the remote service retains structured tool-call metadata for reliability and quality and processes normal connection telemetry. The public agent surface does not expose a feedback write tool. Retention differs by record type; do not claim a blanket 30- or 90-day deletion period without verifying the deployed controls.
 - **First-party service.** tickadoo is the operator of the catalogue and backend; supplier inventory is presented as tickadoo. Bookings are completed on tickadoo.com.
 - **Policy:** [tickadoo.com/privacy](https://tickadoo.com/privacy). Directory submissions must also disclose the MCP-specific categories and current retention controls above. Questions: support@tickadoo.com.

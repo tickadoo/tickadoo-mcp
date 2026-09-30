@@ -8,7 +8,7 @@ const REGISTRY_DESCRIPTION =
 const GEMINI_DESCRIPTION =
   "Search and book theatre, attractions, tours, and live experiences worldwide with tickadoo.";
 const MCP_HOMEPAGE = "https://mcp.tickadoo.com";
-const MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
+const MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp/agents`;
 const COUNT_BEARING_COPY =
   /\b\d[\d,]*\+?\s+(?:bookable\s+)?(?:products?|experiences?|cities|tools)\b/i;
 
@@ -53,12 +53,41 @@ const copilotMarketplace = readJson<{
   metadata: { version: string; description: string };
   plugins: Array<{ version: string; description: string }>;
 }>("../.github/plugin/marketplace.json");
+type PublicAgentTool = {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: {
+    type: string;
+    properties: Record<string, unknown>;
+    additionalProperties: boolean;
+  };
+  outputSchema: {
+    type: string;
+    properties: Record<string, unknown>;
+    additionalProperties: boolean;
+  };
+  annotations: {
+    title: string;
+    readOnlyHint: boolean;
+    destructiveHint: boolean;
+    idempotentHint: boolean;
+    openWorldHint: boolean;
+  };
+};
 const serverJson = readJson<{
   version: string;
   description: string;
   websiteUrl: string;
   remotes: Array<{ type: string; url: string }>;
+  _meta: {
+    "io.modelcontextprotocol.registry/publisher-provided": Record<string, unknown>;
+  };
 }>("../server.json");
+const publicAgentSnapshot = readJson<{
+  source: string;
+  tools: PublicAgentTool[];
+}>("../metadata/public-agent-tools.json");
 const smitheryYaml = readFileSync(
   new URL("../smithery.yaml", import.meta.url),
   "utf8",
@@ -145,10 +174,64 @@ describe("public registry metadata", () => {
     expect(syncScript).toContain("url: canonicalRemoteUrl");
     expect(syncScript).not.toContain("url: sourceRemoteUrl.href");
     expect(smitheryYaml).toMatch(
-      /^\s{2}url:\s+https:\/\/mcp\.tickadoo\.com\/mcp\s*$/m,
+      /^\s{2}url:\s+https:\/\/mcp\.tickadoo\.com\/mcp\/agents\s*$/m,
     );
     expect(smitheryYaml).toMatch(
       /^\s{2}documentation:\s+https:\/\/mcp\.tickadoo\.com\/llms\.txt\s*$/m,
     );
+  });
+
+  it("keeps publisher-provided registry metadata below the official 4 KiB limit", () => {
+    const publisherMetadata =
+      serverJson._meta["io.modelcontextprotocol.registry/publisher-provided"];
+    expect(Buffer.byteLength(JSON.stringify(publisherMetadata), "utf8")).toBeLessThanOrEqual(
+      4_096,
+    );
+    expect(publisherMetadata).not.toHaveProperty("tools");
+    expect(publisherMetadata).toEqual({ license: "MIT" });
+  });
+
+  it("ships complete, closed, read-only metadata in the public-agent snapshot", () => {
+    const tools = publicAgentSnapshot.tools;
+    expect(publicAgentSnapshot.source).toBe(
+      "tickadoo/howard@fae9cf5c705b1f24e38d72afb4f4352e22fb0f73",
+    );
+    expect(tools).toHaveLength(20);
+    expect(new Set(tools.map(tool => tool.name)).size).toBe(20);
+    for (const denied of [
+      "report_quality_signal",
+      "find_nearby_experiences",
+      "get_transfer_info",
+    ]) {
+      expect(tools.map(tool => tool.name)).not.toContain(denied);
+    }
+    for (const tool of tools) {
+      expect(tool.title.trim(), `${tool.name}: title`).not.toBe("");
+      expect(tool.description.trim(), `${tool.name}: description`).not.toBe("");
+      expect(tool.annotations.title, `${tool.name}: annotation title`).toBe(tool.title);
+      expect(tool.annotations.readOnlyHint, `${tool.name}: read-only`).toBe(true);
+      expect(tool.annotations.destructiveHint, `${tool.name}: non-destructive`).toBe(false);
+      expect(tool.annotations.openWorldHint, `${tool.name}: closed-world`).toBe(false);
+      expect(typeof tool.annotations.idempotentHint, `${tool.name}: idempotence`).toBe(
+        "boolean",
+      );
+      expect(tool.inputSchema.type, `${tool.name}: input object`).toBe("object");
+      expect(tool.inputSchema.additionalProperties, `${tool.name}: input closure`).toBe(false);
+      expect(tool.inputSchema.properties, `${tool.name}: input properties`).toBeTypeOf(
+        "object",
+      );
+      expect(tool.outputSchema.type, `${tool.name}: output object`).toBe("object");
+      expect(tool.outputSchema.additionalProperties, `${tool.name}: output closure`).toBe(false);
+      expect(tool.outputSchema.properties, `${tool.name}: output properties`).toBeTypeOf(
+        "object",
+      );
+    }
+    expect(syncScript).toContain("publicAgentToolMetadata");
+    expect(syncScript).toContain("metadata/public-agent-tools.json");
+    expect(syncScript).toContain("approvedSourceRemoteUrl");
+    expect(syncScript).toContain("createNoRedirectFetch");
+    expect(syncScript).toContain('redirect: "error"');
+    expect(syncScript).not.toContain("normaliseDescription");
+    expect(syncScript).not.toContain("from ${sourceRemoteUrl.href}");
   });
 });

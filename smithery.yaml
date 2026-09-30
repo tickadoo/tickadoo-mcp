@@ -1,6 +1,6 @@
 startCommand:
   type: http
-  url: https://mcp.tickadoo.com/mcp
+  url: https://mcp.tickadoo.com/mcp/agents
 build:
   dockerfile: null
 metadata:
