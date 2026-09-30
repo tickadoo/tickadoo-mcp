@@ -36,6 +36,7 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "sync:server-json": "node scripts/sync-server-json.mjs",
+    "build:openai-zip": "node scripts/build-openai-plugin-zip.mjs",
     "test": "vitest run",
     "test:plugin": "vitest run tests/agent-plugin.test.ts tests/agent-plugin-distribution.test.ts",
     "smoke:agents-api": "tsx examples/agents-api-tickadoo-smoke.ts",

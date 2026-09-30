@@ -29,6 +29,10 @@ The same command verifies the exact npm tarball contents and the provider-neutra
 acceptance corpus in [`evals/agent-plugin-scenarios.json`](evals/agent-plugin-scenarios.json).
 See [`docs/agent-plugins.md`](docs/agent-plugins.md) for the architecture
 decision, compatibility evidence, update/rollback process, and follow-ups.
+Compatibility does not create a public listing automatically. The exact
+OpenAI upload artifact and the remaining verified-organization, review, and
+publish steps are documented in
+[`docs/openai-plugin-submission.md`](docs/openai-plugin-submission.md).
 
 OpenAI Agents API sessions that call the public MCP (Book path) are documented in
 [`docs/openai-agents-api.md`](docs/openai-agents-api.md). Use
@@ -77,6 +81,11 @@ Use Claude Code's supported marketplace flow:
 claude plugin marketplace add tickadoo/tickadoo-mcp
 claude plugin install tickadoo@tickadoo-agent-plugins
 ```
+
+That repository marketplace is an install path, not a public Claude listing.
+The minimal cross-surface bundle and current connector-plus-plugin submission
+runbook live in [`distribution/claude/`](distribution/claude/) and
+[`docs/claude-directory-submission.md`](docs/claude-directory-submission.md).
 
 ## Configuration
 

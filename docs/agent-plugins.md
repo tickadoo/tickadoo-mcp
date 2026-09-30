@@ -41,6 +41,11 @@ Explicit non-fits:
   the plugin manifest alone owns the version, as Anthropic's
   [version-resolution guidance](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)
   recommends.
+- `distribution/claude/` is the minimal public-directory bundle for Claude
+  chat, desktop, mobile, Cowork and Claude Code. It has no package manager files
+  or executable code, declares the remote server with explicit `type: "http"`,
+  and carries one narrow host-neutral skill, a README and a license. The
+  self-hosted marketplace remains an install path, not global discovery.
 - `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
   for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
   transport spelling and an explicit eight-tool, read-only allowlist. It omits
@@ -271,11 +276,29 @@ plugin that declares MCP configuration as desktop-only, even when the server
 uses a public HTTPS URL. Web availability therefore still requires either the
 public **With MCP** submission flow or an `.app.json` reference to a real
 ChatGPT-registered MCP connection. This repository does not invent an
-`asdk_app_...` identifier. OpenAI's final submission form also requires the
-support URL `https://www.tickadoo.com/contact`; the current local Plugin
-Creator 1.2.3 validator rejects the newly documented `interface.supportURL`
-field, so the value remains a portal field until the installed package schema
-accepts it.
+`asdk_app_...` identifier. The portable `extensions.com.openai` block now owns
+the complete listing interface, including the required support URL, five
+positive and three negative MCP review cases, the commerce boundary, and
+release notes. OpenAI ignores the parallel Codex interface when this portable
+extension is present, so tests keep the shared interface fields identical.
+Reviewer credentials and instructions remain in the secure dashboard, never
+in the package. The reviewer video URL is added only after a real accessible
+recording exists.
+
+`npm run build:openai-zip` creates an exact-head, minimal upload ZIP from an
+explicit allowlist, validates its file closure, scans it for credential-shaped
+content, and prints its SHA-256 digest. The remaining organization, domain
+verification, review, and explicit publish steps live in
+[`openai-plugin-submission.md`](openai-plugin-submission.md).
+
+Anthropic now provides a self-service public directory at
+`claude.ai/directory/manage`. A product that owns a remote MCP server submits
+two entries from the same Claude organization: the server as an MCP connector
+and the GitHub plugin folder as a plugin bundle, then pairs them. The exact
+plugin path, validation gates, account steps and MCP Apps prerequisites are in
+[`claude-directory-submission.md`](claude-directory-submission.md). The
+repository marketplace and the independent MCP Registry do not create a Claude
+directory listing.
 
 Anthropic CLI 1.30.0 introduced [`ant apply`](https://platform.claude.com/docs/en/cli-sdks-libraries/cli/apply)
 for managed resources as code. The current 1.31.0 CLI accepted the exact shipped
@@ -321,7 +344,8 @@ the remote MCP service and npm bridge are unaffected by package rollback.
 
 ## Follow-ups
 
-- Decide marketplace and directory publication only after client-local testing.
+- Complete OpenAI's account-only review and publication steps after the exact
+  ZIP and live MCP scan have human approval.
 - Define distribution integrity/signing once the specification defines it or
   the selected marketplaces provide a suitable mechanism.
 - Track the portable OAuth and credential-reference gap. Do not add Hive until

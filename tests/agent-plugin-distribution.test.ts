@@ -1,11 +1,24 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+async function listFiles(directory: string, prefix = ""): Promise<string[]> {
+  const files: string[] = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const relative = path.posix.join(prefix, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listFiles(path.join(directory, entry.name), relative)));
+    } else {
+      files.push(relative);
+    }
+  }
+  return files.sort();
+}
 
 describe("Agent Plugin distribution", () => {
   it("provides a repo marketplace for ChatGPT and Codex discovery", async () => {
@@ -125,12 +138,88 @@ describe("Agent Plugin distribution", () => {
     );
   });
 
+  it("provides a minimal Claude public-directory plugin folder", async () => {
+    const directory = path.join(root, "distribution/claude");
+    const files = await listFiles(directory);
+    const expectedFiles = [
+      ".claude-plugin/plugin.json",
+      ".mcp.json",
+      "LICENSE",
+      "README.md",
+      "skills/tickadoo-experiences/SKILL.md",
+    ].sort();
+    const manifest = JSON.parse(
+      await readFile(path.join(directory, ".claude-plugin/plugin.json"), "utf8"),
+    ) as {
+      name: string;
+      version: string;
+      description: string;
+      author: { name: string; url: string };
+      license: string;
+    };
+    const rootManifest = JSON.parse(
+      await readFile(path.join(root, ".claude-plugin/plugin.json"), "utf8"),
+    ) as { name: string; version: string };
+    const mcp = JSON.parse(await readFile(path.join(directory, ".mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { type: string; url: string }>;
+    };
+    const readme = await readFile(path.join(directory, "README.md"), "utf8");
+    const skill = await readFile(
+      path.join(directory, "skills/tickadoo-experiences/SKILL.md"),
+      "utf8",
+    );
+
+    expect(files).toEqual(expectedFiles);
+    expect(manifest).toMatchObject({
+      name: rootManifest.name,
+      version: rootManifest.version,
+      author: { name: "tickadoo Inc.", url: "https://www.tickadoo.com" },
+      license: "MIT",
+    });
+    expect(manifest.description.length).toBeGreaterThan(0);
+    expect(manifest.description.length).toBeLessThanOrEqual(2_000);
+    expect(mcp.mcpServers).toEqual({
+      tickadoo: { type: "http", url: "https://mcp.tickadoo.com/mcp" },
+    });
+    expect(readme.match(/\b[\p{L}\p{N}][\p{L}\p{N}'-]*\b/gu)?.length ?? 0).toBeGreaterThanOrEqual(40);
+    expect(readme).toContain("https://www.tickadoo.com/privacy");
+    expect(readme).toContain("https://www.tickadoo.com/contact");
+    expect(readme).toContain("Checkout and payment happen");
+    expect(skill).toMatch(/^---\nname: tickadoo-experiences\n/);
+    expect(skill).toMatch(/\ndescription: .+\n---\n/);
+    expect(skill).not.toMatch(/\b(?:ChatGPT|Codex|OpenAI)\b/);
+    expect(skill).not.toMatch(/immediately\s+after\s+any|always\s+call|exactly\s+once|ignore\s+previous/i);
+
+    const resolvedDirectory = await realpath(directory);
+    for (const file of files) {
+      const candidate = path.join(directory, file);
+      const stat = await lstat(candidate);
+      expect(stat.isFile(), file).toBe(true);
+      expect(stat.isSymbolicLink(), file).toBe(false);
+      expect(stat.size, file).toBeLessThanOrEqual(256 * 1024);
+      expect(await realpath(candidate)).toSatisfy((resolved) =>
+        resolved.startsWith(`${resolvedDirectory}${path.sep}`),
+      );
+      const source = await readFile(candidate, "utf8");
+      expect(source, file).not.toMatch(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/i);
+      expect(source, file).not.toMatch(/"Authorization"\s*:/i);
+      expect(source, file).not.toMatch(
+        /\$\{[^}]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY)[^}]*\}/i,
+      );
+      expect(source, file).not.toMatch(/(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/);
+      expect(source, file).not.toMatch(/https?:\/\/[^/\s]+:[^@/\s]+@/);
+    }
+    expect(await readFile(path.join(directory, "LICENSE"), "utf8")).toBe(
+      await readFile(path.join(root, "LICENSE"), "utf8"),
+    );
+  });
+
   it("matches GitHub Copilot native plugin discovery conventions", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;
     };
     const copilotMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
-      mcpServers: Record<string, { url: string }>;
+      mcpServers: Record<string, { type: string; url: string }>;
     };
     const skills = [
       "compare-before-you-book",
@@ -144,6 +233,7 @@ describe("Agent Plugin distribution", () => {
 
     expect(manifest.name).toBe("tickadoo-experiences");
     expect(Object.keys(copilotMcp.mcpServers)).toEqual(["tickadoo"]);
+    expect(copilotMcp.mcpServers.tickadoo.type).toBe("http");
     expect(copilotMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
     for (const skill of skills) {
       expect(await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")).toContain(
@@ -203,6 +293,71 @@ describe("Agent Plugin distribution", () => {
     );
     expect((packed.get("dist/index.js")?.mode ?? 0) & 0o111).not.toBe(0);
     expect([...packed.keys()].filter((file) => /^skills\/[^/]+\/SKILL\.md$/.test(file))).toHaveLength(7);
+  });
+
+  it("defines a minimal, contained OpenAI submission ZIP", async () => {
+    const allowlist = JSON.parse(
+      await readFile(path.join(root, "scripts/openai-plugin-files.json"), "utf8"),
+    ) as { files: string[] };
+    const expectedFiles = [
+      "plugin.json",
+      "mcp.json",
+      "brand/apps-directory-icon.svg",
+      "brand/apps-directory-icon-monochrome.svg",
+      "skills/compare-before-you-book/SKILL.md",
+      "skills/date-night/SKILL.md",
+      "skills/family-day-out/SKILL.md",
+      "skills/near-a-landmark/SKILL.md",
+      "skills/plan-a-trip/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+      "skills/tonight-and-last-minute/SKILL.md",
+      "LICENSE",
+    ];
+    const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      extensions: {
+        "com.openai": {
+          interface: { composerIcon: string; logo: string };
+          onboardingSkill: string;
+        };
+      };
+    };
+
+    expect(allowlist.files).toEqual(expectedFiles);
+    expect(new Set(allowlist.files).size).toBe(allowlist.files.length);
+    expect(allowlist.files.filter((file) => /^skills\/[^/]+\/SKILL\.md$/.test(file))).toHaveLength(7);
+    expect(allowlist.files).not.toContain(".codex-plugin/plugin.json");
+    expect(allowlist.files).not.toContain(".app.json");
+    expect(allowlist.files).not.toContain("package.json");
+
+    const openai = manifest.extensions["com.openai"];
+    for (const reference of [
+      openai.interface.composerIcon,
+      openai.interface.logo,
+      openai.onboardingSkill,
+    ]) {
+      expect(allowlist.files).toContain(reference.replace(/^\.\//, ""));
+    }
+
+    const resolvedRoot = await realpath(root);
+    for (const file of allowlist.files) {
+      expect(path.isAbsolute(file), file).toBe(false);
+      expect(file.split(path.posix.sep)).not.toContain("..");
+      const candidate = path.join(root, file);
+      const stat = await lstat(candidate);
+      expect(stat.isFile(), file).toBe(true);
+      expect(stat.isSymbolicLink(), file).toBe(false);
+      expect(await realpath(candidate)).toSatisfy((resolved) =>
+        resolved.startsWith(`${resolvedRoot}${path.sep}`),
+      );
+      const source = await readFile(candidate, "utf8");
+      expect(source, file).not.toMatch(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/i);
+      expect(source, file).not.toMatch(/"Authorization"\s*:/i);
+      expect(source, file).not.toMatch(
+        /\$\{[^}]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY)[^}]*\}/i,
+      );
+      expect(source, file).not.toMatch(/(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/);
+      expect(source, file).not.toMatch(/https?:\/\/[^/\s]+:[^@/\s]+@/);
+    }
   });
 
   it("ships a least-privilege GitHub Copilot cloud adapter", async () => {

@@ -19,12 +19,19 @@
   },
   "interface": {
     "displayName": "tickadoo Experiences",
-    "shortDescription": "Find bookable experiences",
-    "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
+    "shortDescription": "Find and book experiences",
+    "longDescription": "Find bookable theatre, tours, attractions and live experiences worldwide. Compare options, check live availability, plan itineraries and get tickadoo booking links. Checkout and payment happen on tickadoo.com.",
     "developerName": "tickadoo",
     "category": "Travel",
-    "capabilities": ["Interactive"],
+    "capabilities": [
+      "Search experiences",
+      "Compare experiences",
+      "Check live availability",
+      "Plan trips",
+      "Get booking links"
+    ],
     "websiteURL": "https://www.tickadoo.com",
+    "supportURL": "https://www.tickadoo.com/contact",
     "privacyPolicyURL": "https://www.tickadoo.com/privacy",
     "termsOfServiceURL": "https://www.tickadoo.com/terms",
     "defaultPrompt": [

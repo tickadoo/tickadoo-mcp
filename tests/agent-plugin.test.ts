@@ -161,7 +161,12 @@ describe("Agent Plugins 1.0.0 package", () => {
     const extensions = portable.extensions as Record<string, Record<string, unknown>>;
     const openai = extensions["com.openai"];
     const pluginInterface = openai.interface as Record<string, unknown>;
-    expect(Object.keys(openai)).toEqual(["interface"]);
+    expect(Object.keys(openai).sort()).toEqual([
+      "interface",
+      "onboardingSkill",
+      "publication",
+      "review",
+    ]);
     expect(pluginInterface).toEqual(codex.interface);
     expect(codex.name).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
     expect(codex.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
@@ -194,7 +199,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(prompts.every((prompt) => prompt.length > 0 && prompt.length <= 128 && !prompt.includes("@"))).toBe(true);
     expect(new Set(prompts.map((prompt) => prompt.normalize().replace(/\s+/g, " ").trim())).size).toBe(prompts.length);
 
-    for (const field of ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+    for (const field of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"]) {
       const value = String(pluginInterface[field]);
       const url = new URL(value);
       expect(value.length, field).toBeLessThanOrEqual(1_024);
@@ -222,6 +227,75 @@ describe("Agent Plugins 1.0.0 package", () => {
       expect(dimensions, `${field} must have a square numeric viewBox`).not.toBeNull();
       expect(Number(dimensions?.[1]), `${field} must be at least 48 by 48`).toBeGreaterThanOrEqual(48);
     }
+  });
+
+  it("packages a complete OpenAI MCP review case set without credentials", async () => {
+    const portable = await readJson(path.join(root, "plugin.json"));
+    const extensions = portable.extensions as Record<string, Record<string, unknown>>;
+    const openai = extensions["com.openai"] as {
+      onboardingSkill: string;
+      review: {
+        test_cases: {
+          positive: Array<{
+            description: string;
+            prompt: string;
+            tools_triggered: string;
+            expected_behavior: string;
+          }>;
+          negative: Array<{ description: string; prompt: string }>;
+        };
+        commerce: boolean;
+        commerce_description: string;
+      };
+      publication: { release_notes: string };
+    };
+    const corpus = JSON.parse(
+      await readFile(path.join(root, "evals/agent-plugin-scenarios.json"), "utf8"),
+    ) as { scenarios: Array<{ prompt: string }> };
+    const server = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
+      _meta: {
+        "io.modelcontextprotocol.registry/publisher-provided": {
+          tools: Array<{ name: string }>;
+        };
+      };
+    };
+    const knownPrompts = new Set(corpus.scenarios.map((scenario) => scenario.prompt));
+    const knownTools = new Set(
+      server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map(
+        (tool) => tool.name,
+      ),
+    );
+    const positive = openai.review.test_cases.positive;
+    const negative = openai.review.test_cases.negative;
+
+    expect(openai.onboardingSkill).toBe("./skills/tickadoo-experiences/SKILL.md");
+    expect(await realpath(path.resolve(root, openai.onboardingSkill))).toBe(
+      path.join(root, "skills/tickadoo-experiences/SKILL.md"),
+    );
+    expect(positive).toHaveLength(5);
+    expect(negative).toHaveLength(3);
+    expect(new Set([...positive, ...negative].map((testCase) => testCase.prompt)).size).toBe(8);
+
+    for (const testCase of positive) {
+      expect(testCase.description.trim()).not.toBe("");
+      expect(testCase.expected_behavior.trim()).not.toBe("");
+      expect(knownPrompts, testCase.prompt).toContain(testCase.prompt);
+      const tools = testCase.tools_triggered.split(",").map((tool) => tool.trim());
+      expect(tools.length).toBeGreaterThan(0);
+      expect(tools.every((tool) => knownTools.has(tool)), testCase.tools_triggered).toBe(true);
+    }
+    for (const testCase of negative) {
+      expect(Object.keys(testCase).sort()).toEqual(["description", "prompt"]);
+      expect(testCase.description.trim()).not.toBe("");
+      expect(knownPrompts, testCase.prompt).toContain(testCase.prompt);
+    }
+
+    expect(openai.review.commerce).toBe(true);
+    expect(openai.review.commerce_description).toContain("not through the MCP tools");
+    expect(openai.publication.release_notes.trim()).not.toBe("");
+    expect(JSON.stringify(openai.review)).not.toMatch(
+      /test_credentials|reviewer_instructions|authorization|bearer|password|api[_-]?key|cf-access/i,
+    );
   });
 
   it("contains no credential-shaped values in portable or client manifests", async () => {

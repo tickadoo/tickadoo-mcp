@@ -1,0 +1,23 @@
+{
+  "name": "tickadoo",
+  "version": "2.1.0",
+  "description": "Find, compare and plan bookable theatre, tours, attractions and live experiences, check current availability, and continue to secure checkout on tickadoo.com.",
+  "author": {
+    "name": "tickadoo Inc.",
+    "url": "https://www.tickadoo.com"
+  },
+  "homepage": "https://www.tickadoo.com",
+  "repository": "https://github.com/tickadoo/tickadoo-mcp",
+  "license": "MIT",
+  "keywords": [
+    "tickadoo",
+    "experiences",
+    "tickets",
+    "theatre",
+    "tours",
+    "attractions",
+    "events",
+    "booking",
+    "travel"
+  ]
+}
