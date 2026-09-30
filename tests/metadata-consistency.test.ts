@@ -74,8 +74,54 @@ const bridgeConfig = readFileSync(
 const agentGuidance = ["../AGENTS.md", "../CLAUDE.md"].map((relativePath) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8"),
 );
+const [agentsGuidance, claudeGuidance] = agentGuidance;
 
 describe("public registry metadata", () => {
+  it("keeps live agent work on GitHub Issues and completed Slack mirrors", () => {
+    const deprecatedLifecycleInstructions = [
+      /\bpost(?:s|ed|ing)?\s+(?:deterministic\s+)?lifecycle (?:updates|mirrors)\b/i,
+      /\buse distinct\b[^\n]{0,160}\b(?:started|review[- ]ready|paused)\b/i,
+      /\bsession (?:active|started|paused)\b/i,
+      /\broutine\b[^\n]{0,100}\b(?:starting|progress update)\b/i,
+      /:\s*(?:started|review[- ]ready|paused)\s*(?:—|-)\s*/i,
+      /(?:^|\n)\s*(?:[-*]\s*)?(?:post|send|write|announce)\s+(?:a\s+)?(?:start(?:ed)?|review[- ]ready|pause(?:d)?)(?:\s+(?:message|update|mirror|chatter))?\b/im,
+    ];
+    const staleLifecycleExamples = [
+      "Post deterministic lifecycle mirrors to #activity",
+      "Use distinct STARTED, REVIEW READY, and PAUSED states",
+      "session active — working on the task",
+      "Routine [weekly]: progress update",
+      "[agent]: STARTED — scope",
+      "Post START message",
+    ];
+
+    for (const example of staleLifecycleExamples) {
+      expect(
+        deprecatedLifecycleInstructions.some((pattern) => pattern.test(example)),
+      ).toBe(true);
+    }
+    expect(
+      deprecatedLifecycleInstructions.every(
+        (pattern) =>
+          !pattern.test(
+            "Do not post start, review-ready, or pause chatter; post one completed-action mirror.",
+          ),
+      ),
+    ).toBe(true);
+
+    for (const guidance of agentGuidance) {
+      expect(guidance).not.toMatch(/[<{]linear[-_ ]?id[}>]/i);
+      for (const pattern of deprecatedLifecycleInstructions) {
+        expect(guidance).not.toMatch(pattern);
+      }
+    }
+
+    expect(agentsGuidance).toContain("GitHub issue number");
+    expect(agentsGuidance).toContain("completed-action mirror");
+    expect(claudeGuidance).toContain("#<github-issue-number>");
+    expect(claudeGuidance).toContain("completed-action mirror");
+  });
+
   it("keeps every release-bearing artifact aligned with package.json", () => {
     expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
     const bridgeVersion = bridgeConfig.match(

@@ -27,30 +27,23 @@ and [`docs/operations/linear-to-github-issues.md`](https://github.com/tickadoo/h
 
 ## Slack human-visibility channel: `#activity` (`C0ATET93PQV`)
 
-Every AI agent posts deterministic lifecycle updates here so Francis and the team can see what happened. Slack is output-only for agents; coordination belongs in Hive and artifact-anchored review belongs on GitHub.
+For completed work, post one concise completed-action mirror before the final
+response. Slack is output-only for agents; coordination belongs in Hive and
+artifact-anchored review belongs on GitHub. Do not post start, review-ready,
+pause, prompt, reasoning, or session/SHA-feed chatter.
 
-Post format by agent type:
+Use a real GitHub issue number and include only deterministic facts:
 
-**Monaco**:
 ```
-🤖 Monaco [{linear-id} {task-slug}]: {lifecycle state} — {message}
-```
-Use distinct `STARTED`, `REVIEW READY`, `MERGED`, `DEPLOYED`, `VERIFIED`, and `PAUSED` states. Do not call an open pull request done or imply deployment from a merge.
-
-**Claude chats** (session-based):
-```
-👋 [howardmcp] session active — working on: <scope>
-✅ [howardmcp] pushed <sha> — <what>
-👋 [howardmcp] session paused — next: <handoff>
+[<agent-identity>@<machine>] tickadoo-mcp #<github-issue-number>: completed <bounded scope>; result: <observable result>; validation: <checks>; mutations: commit <yes/no>, push <yes/no>, deploy/publish <yes/no>
 ```
 
-**Claude Code** (session-based, local):
-```
-👋 [claudecode-tickadoo-mcp] session started in /path/to/repo
-✅ [claudecode-tickadoo-mcp] committed <sha> — <what>
-```
-
-Post via the Slack MCP. If you don't have it available, include your status in your final message and ask the user to relay.
+Merge, deployment, publication, and live verification are separate completed
+states. Never imply one from another. Never include credentials, customer data,
+supplier-confidential information, untrusted message bodies, prompts, or model
+reasoning. Post via the Slack MCP. If Slack is unavailable, do not block or
+weaken completed work; state that the required mirror could not be posted in
+the final response.
 
 ## Commit trailer convention
 
@@ -76,7 +69,7 @@ git log --all --pretty='%h %s %(trailers:key=Claude-Chat,valueonly)'
 ## Agent naming
 
 - Monaco uses `codex-monaco-<task-slug>` and branch
-  `monaco/<linear-id>-<task-slug>`.
+  `monaco/<github-issue-number>-<task-slug>`.
 - Claude chats use a stable human and scope label.
 - Claude Code sessions use `claudecode-<human>-<repo-or-scope>`.
 - Routines use `routine-<routine-name>`.
@@ -119,16 +112,9 @@ Anthropic shipped several new Claude Code capabilities on 17 April. Short versio
 
 - **Opus 4.7** is the current CC default. Default effort is xhigh. Switch to `/effort high` for cost/intelligence balance on simpler tasks.
 - **Auto mode** (Shift+Tab in CC, research preview) — classifier-based permission handling for long autonomous tasks. Use it when the plan is pre-written.
-- **Routines** (research preview) — prompts in `.claude/routines/`, run on CC web infrastructure (no laptop needed), triggered by schedule / API / GitHub webhook. Each routine is an AI agent under this convention: it must post deterministic lifecycle mirrors to `#activity`, and every routine commit carries `Claude-Chat: routine-{routine-name}`. See GRO-196 (setup) and GRO-216 (Slack wiring). Note: most routines live in the HowardOS repo, but this repo may gain its own over time.
-- **`/ultrareview`** — careful-review pass, 3 free runs per account. For this repo, save one for the pre-deploy review of the full 14-tool port in GRO-214 Phase 3.
+- **Routines** (research preview) — prompts in `.claude/routines/`, run on CC web infrastructure (no laptop needed), triggered by schedule / API / GitHub webhook. Each routine follows the completed-action-only `#activity` rule above, and every routine commit carries `Claude-Chat: routine-{routine-name}`. Legacy GRO-196 (setup) and GRO-216 (Slack wiring) are read-only archive references. Note: most routines live in the HowardOS repo, but this repo may gain its own over time.
+- **`/ultrareview`** — careful-review pass, 3 free runs per account. Treat it as optional local evidence, never as a substitute for the exact-head review and approval gates above.
 - **Dispatch** (Pro/Max, research preview) — kick off tasks from phone, runs locally via desktop app.
-
-Routine message format mirrors Codex:
-```
-🤖 Routine [{routine-name}]: starting — triggered by {schedule|webhook|api|manual}
-🤖 Routine [{routine-name}]: {progress update}
-🤖 Routine [{routine-name}]: done — pushed {sha(s)} — {what shipped}
-```
 
 Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 
