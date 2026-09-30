@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "tickadoo": {
-      "url": "https://mcp.tickadoo.com/mcp",
+      "url": "https://mcp.tickadoo.com/mcp/agents",
       "type": "streamable-http"
     }
   }

@@ -9,21 +9,33 @@
   "homepage": "https://mcp.tickadoo.com",
   "repository": "https://github.com/tickadoo/tickadoo-mcp",
   "license": "MIT",
-  "keywords": ["tickadoo", "experiences", "tickets", "travel", "mcp"],
+  "keywords": [
+    "tickadoo",
+    "experiences",
+    "tickets",
+    "theatre",
+    "tours",
+    "attractions",
+    "events",
+    "booking",
+    "travel",
+    "mcp"
+  ],
   "skills": "./skills/",
-  "mcpServers": {
-    "tickadoo": {
-      "type": "http",
-      "url": "https://mcp.tickadoo.com/mcp"
-    }
-  },
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "tickadoo Experiences",
-    "shortDescription": "Find bookable experiences",
-    "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
+    "shortDescription": "Find and book experiences",
+    "longDescription": "Find bookable theatre, tours, attractions and live experiences worldwide. Compare options, check live availability, plan itineraries and get tickadoo booking links. Checkout and payment happen on tickadoo.com.",
     "developerName": "tickadoo",
     "category": "Travel",
-    "capabilities": ["Interactive"],
+    "capabilities": [
+      "Search experiences",
+      "Compare experiences",
+      "Check live availability",
+      "Plan trips",
+      "Get booking links"
+    ],
     "websiteURL": "https://www.tickadoo.com",
     "privacyPolicyURL": "https://www.tickadoo.com/privacy",
     "termsOfServiceURL": "https://www.tickadoo.com/terms",

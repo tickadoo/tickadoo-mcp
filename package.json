@@ -1,7 +1,7 @@
 {
   "name": "@tickadoo/mcp-server",
   "version": "2.1.0",
-  "description": "tickadoo MCP Server: a thin stdio bridge to the live remote MCP server at https://mcp.tickadoo.com/mcp. No API key required.",
+  "description": "tickadoo MCP Server: a thin stdio bridge to the public agent MCP at https://mcp.tickadoo.com/mcp/agents. No API key required.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -21,6 +21,7 @@
     "skills/",
     "schemas/agent-plugins/1.0.0/",
     "evals/agent-plugin-scenarios.json",
+    "metadata/public-agent-tools.json",
     "docs/agent-plugins.md",
     "server.json",
     "README.md",
@@ -36,6 +37,7 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "sync:server-json": "node scripts/sync-server-json.mjs",
+    "build:openai-zip": "node scripts/build-openai-plugin-zip.mjs",
     "test": "vitest run",
     "test:plugin": "vitest run tests/agent-plugin.test.ts tests/agent-plugin-distribution.test.ts",
     "smoke:agents-api": "tsx examples/agents-api-tickadoo-smoke.ts",

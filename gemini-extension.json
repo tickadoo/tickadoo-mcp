@@ -4,7 +4,7 @@
   "description": "Search and book theatre, attractions, tours, and live experiences worldwide with tickadoo.",
   "mcpServers": {
     "tickadoo": {
-      "httpUrl": "https://mcp.tickadoo.com/mcp"
+      "httpUrl": "https://mcp.tickadoo.com/mcp/agents"
     }
   }
 }

@@ -10,8 +10,8 @@ As verified on 2026-09-06, npm `latest` is still 1.4.3. Its bridge defaults to
 the retired `https://api.tickadoo.com` host and its packed `server.json` says
 1.4.1. The Official MCP Registry still serves 1.3.0 with count-bearing catalogue
 copy. The 2.1.0 candidate replaces that dead local implementation with the
-reviewed thin bridge to `https://mcp.tickadoo.com/mcp` and packages the portable
-Agent Plugins distribution.
+reviewed thin bridge to `https://mcp.tickadoo.com/mcp/agents` and packages the
+portable Agent Plugins distribution.
 
 ## Approval boundary
 
@@ -72,10 +72,13 @@ The candidate must satisfy all of the following:
   Gemini manifests, Copilot marketplace entry, and `server.json` all report
   2.1.0;
 - the tarball contains the bridge, portable and client manifests, seven skills,
-  pinned Agent Plugins schemas, provider-neutral evals, and OpenAI brand assets;
+  pinned Agent Plugins schemas, provider-neutral evals, the frozen public-agent
+  tool snapshot, and OpenAI brand assets;
 - the publish dry-run reports the `mcp-server` executable at `dist/index.js`
   without npm auto-correcting or removing package metadata;
-- live MCP tests pass against `https://mcp.tickadoo.com/mcp`;
+- after Howard deploys the public-agent endpoint, live MCP tests pass against
+  `https://mcp.tickadoo.com/mcp/agents` and `tools/list` returns the exact reviewed
+  20-tool read-only contract;
 - `mcp-publisher validate` succeeds without publishing;
 - independent exact-head review reports `AI_REVIEW: NO_BLOCKERS_FOUND`.
 
@@ -92,9 +95,10 @@ Only after the approval boundary is satisfied:
    candidate. Reject rather than approve any mismatch.
 3. Only after that comparison, a maintainer may approve the exact stage with 2FA.
    The OIDC workflow must not approve its own stage.
-4. Read back npm `latest`, version, integrity, packed `server.json`, provenance
-   source commit/build link, and public-ledger attestation. Verify the installed
-   package's registry signature and provenance with a current npm CLI.
+4. Read back npm `latest`, version, integrity, packed `server.json`, packed
+   `metadata/public-agent-tools.json`, provenance source commit/build link, and
+   public-ledger attestation. Verify the installed package's registry signature
+   and provenance with a current npm CLI.
 5. Install the public tarball in a clean temporary directory and verify
    `tools/list`, `search_experiences`, and `list_cities` through the stdio
    bridge.

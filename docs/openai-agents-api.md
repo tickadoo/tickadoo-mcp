@@ -1,5 +1,8 @@
 # OpenAI Agents API → tickadoo Public MCP
 
+Status: prepared only. Run this integration only after `/mcp/agents` is deployed
+and its 20-tool read-only contract has passed live validation.
+
 This is the money-first **Book** path: an OpenAI [Agents API](https://developers.openai.com/api/docs/guides/agents-api/overview) session that calls the public tickadoo MCP over HTTP and returns a `www.tickadoo.com` `booking_url`. It is complementary to voice. It is not a payment integration — tickadoo MCP has no payment tool; checkout stays on tickadoo.com.
 
 Use this when you want OpenAI to host the agent and reach tickadoo from OpenAI’s network (`connection_origin: "service"`). Agent Plugins / ChatGPT Plugin Directory remain a separate install surface; this document does not change `plugin.json` or `npm run test:plugin`.
@@ -9,10 +12,10 @@ Use this when you want OpenAI to host the agent and reach tickadoo from OpenAI�
 Always use:
 
 ```text
-https://mcp.tickadoo.com/mcp
+https://mcp.tickadoo.com/mcp/agents
 ```
 
-The bare host `https://mcp.tickadoo.com` is not the Streamable HTTP endpoint and **404s**. The `/mcp` path is required (openai-node [PR #2719](https://github.com/openai/openai-node/pull/2719) / [v7.15.0](https://github.com/openai/openai-node/releases/tag/v7.15.0) Agents API MCP transport).
+The bare host `https://mcp.tickadoo.com` is not the Streamable HTTP endpoint. Use the exact `/mcp/agents` path for the 20-tool read-only public surface (openai-node [PR #2719](https://github.com/openai/openai-node/pull/2719) / [v7.15.0](https://github.com/openai/openai-node/releases/tag/v7.15.0) Agents API MCP transport).
 
 No tickadoo API key is required. Do not attach Cloudflare Access headers, ads keys, or other credentials.
 
@@ -28,7 +31,7 @@ Attach tickadoo as a required HTTP MCP tool. OpenAI connects from its service ne
   "server_label": "tickadoo",
   "transport": {
     "type": "http",
-    "server_url": "https://mcp.tickadoo.com/mcp"
+    "server_url": "https://mcp.tickadoo.com/mcp/agents"
   },
   "connection_origin": "service",
   "required": true
@@ -53,7 +56,7 @@ const session = await client.beta.agents.sessions.create({
         server_label: "tickadoo",
         transport: {
           type: "http",
-          server_url: "https://mcp.tickadoo.com/mcp",
+          server_url: "https://mcp.tickadoo.com/mcp/agents",
         },
         connection_origin: "service",
         required: true,
@@ -83,7 +86,7 @@ curl --fail-with-body https://api.openai.com/v1/agents/sessions \
           "server_label": "tickadoo",
           "transport": {
             "type": "http",
-            "server_url": "https://mcp.tickadoo.com/mcp"
+            "server_url": "https://mcp.tickadoo.com/mcp/agents"
           },
           "connection_origin": "service",
           "required": true
