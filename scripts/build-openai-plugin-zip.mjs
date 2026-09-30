@@ -44,14 +44,22 @@ execFileSync(
   { cwd: repositoryRoot, stdio: "inherit" },
 );
 
-const archivedFiles = execFileSync("unzip", ["-Z1", outputPath], { encoding: "utf8" })
+const archivedEntries = execFileSync("unzip", ["-Z1", outputPath], { encoding: "utf8" })
   .trim()
   .split("\n")
   .filter(Boolean);
-const expectedFiles = [...files].sort();
-if (JSON.stringify([...archivedFiles].sort()) !== JSON.stringify(expectedFiles)) {
+const archivedFiles = archivedEntries.filter((entry) => !entry.endsWith("/"));
+const expectedDirectories = new Set();
+for (const file of files) {
+  const segments = file.split("/");
+  for (let index = 1; index < segments.length; index += 1) {
+    expectedDirectories.add(`${segments.slice(0, index).join("/")}/`);
+  }
+}
+const expectedEntries = [...expectedDirectories, ...files].sort();
+if (JSON.stringify([...archivedEntries].sort()) !== JSON.stringify(expectedEntries)) {
   throw new Error(
-    `OpenAI plugin ZIP closure mismatch:\nexpected ${expectedFiles.join("\n")}\nactual ${archivedFiles.join("\n")}`,
+    `OpenAI plugin ZIP closure mismatch:\nexpected ${expectedEntries.join("\n")}\nactual ${archivedEntries.join("\n")}`,
   );
 }
 
