@@ -74,7 +74,7 @@ describe("public agent metadata sync guard", () => {
   it("accepts exactly the frozen 20-tool Howard public-agent contract", async () => {
     const tools = await snapshotTools();
     expect(contract.publicAgentContractSource).toBe(
-      "tickadoo/howard@fae9cf5c705b1f24e38d72afb4f4352e22fb0f73",
+      "tickadoo/howard@4bbc8b213c4230e31cb65e10634b99a146d4f530",
     );
     expect(contract.expectedPublicAgentTools).toHaveLength(20);
     expect(new Set(contract.expectedPublicAgentTools).size).toBe(20);

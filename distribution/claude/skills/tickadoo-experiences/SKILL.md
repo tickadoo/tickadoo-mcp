@@ -21,7 +21,7 @@ availability statement in the latest relevant tool result.
 | Related alternatives | `get_related_experiences` |
 | Live dates, times, prices or spaces | `get_availability` |
 | One-date availability and booking link | `check_availability` |
-| Compare two to five resolved products | `compare_experiences` |
+| Compare two to five resolved products | `compare_experiences` with city-scoped paths and distinct product slugs |
 | Tonight, the next few hours or this week | `whats_on_tonight`, `get_last_minute`, or `get_whats_on_this_week` |
 | Multi-day trip | `plan_itinerary` |
 | Family day or date night | `get_family_day` or `get_date_night` |
@@ -43,8 +43,9 @@ text. Do not send output from unsupported tools such as `plan_itinerary` or
 
 Discovery results, countdowns and remaining-seat hints are preliminary. Before
 calling a selected experience bookable for a date or party, check it with
-`get_availability`. Use `check_availability` when the user asks for a specific
-date and booking link. Treat slot prices as minor currency units when the tool
+`get_availability`. Use `check_availability` with `slug` set to
+`city_slug/product_slug` when the user asks for a specific date and booking
+link. Treat slot prices as minor currency units when the tool
 schema says so.
 
 ## Safety and user control

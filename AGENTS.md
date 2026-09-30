@@ -33,7 +33,7 @@ Post format by agent type:
 
 **Monaco**:
 ```
-🤖 Monaco [{linear-id} {task-slug}]: {lifecycle state} — {message}
+🤖 Monaco [#{issue-number} {task-slug}]: {lifecycle state} — {message}
 ```
 Use distinct `STARTED`, `REVIEW READY`, `MERGED`, `DEPLOYED`, `VERIFIED`, and `PAUSED` states. Do not call an open pull request done or imply deployment from a merge.
 
@@ -76,7 +76,7 @@ git log --all --pretty='%h %s %(trailers:key=Claude-Chat,valueonly)'
 ## Agent naming
 
 - Monaco uses `codex-monaco-<task-slug>` and branch
-  `monaco/<linear-id>-<task-slug>`.
+  `monaco/<issue-number>-<task-slug>`.
 - Claude chats use a stable human and scope label.
 - Claude Code sessions use `claudecode-<human>-<repo-or-scope>`.
 - Routines use `routine-<routine-name>`.
@@ -120,7 +120,7 @@ Anthropic shipped several new Claude Code capabilities on 17 April. Short versio
 - **Opus 4.7** is the current CC default. Default effort is xhigh. Switch to `/effort high` for cost/intelligence balance on simpler tasks.
 - **Auto mode** (Shift+Tab in CC, research preview) — classifier-based permission handling for long autonomous tasks. Use it when the plan is pre-written.
 - **Routines** (research preview) — prompts in `.claude/routines/`, run on CC web infrastructure (no laptop needed), triggered by schedule / API / GitHub webhook. Each routine is an AI agent under this convention: it must post deterministic lifecycle mirrors to `#activity`, and every routine commit carries `Claude-Chat: routine-{routine-name}`. See GRO-196 (setup) and GRO-216 (Slack wiring). Note: most routines live in the HowardOS repo, but this repo may gain its own over time.
-- **`/ultrareview`** — careful-review pass, 3 free runs per account. For this repo, save one for the pre-deploy review of the full 14-tool port in GRO-214 Phase 3.
+- **`/ultrareview`** — careful-review pass, 3 free runs per account. For this repo, save one for the final pre-deploy review of a sensitive release.
 - **Dispatch** (Pro/Max, research preview) — kick off tasks from phone, runs locally via desktop app.
 
 Routine message format mirrors Codex:

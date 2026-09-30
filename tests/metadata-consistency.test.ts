@@ -194,7 +194,7 @@ describe("public registry metadata", () => {
   it("ships complete, closed, read-only metadata in the public-agent snapshot", () => {
     const tools = publicAgentSnapshot.tools;
     expect(publicAgentSnapshot.source).toBe(
-      "tickadoo/howard@fae9cf5c705b1f24e38d72afb4f4352e22fb0f73",
+      "tickadoo/howard@4bbc8b213c4230e31cb65e10634b99a146d4f530",
     );
     expect(tools).toHaveLength(20);
     expect(new Set(tools.map(tool => tool.name)).size).toBe(20);

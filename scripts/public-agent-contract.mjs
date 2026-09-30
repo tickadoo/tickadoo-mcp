@@ -46,13 +46,13 @@ export const expectedOpenAIStoreCardTools = [
   "render_experience_cards",
 ];
 
-// Frozen from tickadoo/howard commit fae9cf5c705b1f24e38d72afb4f4352e22fb0f73.
+// Frozen from tickadoo/howard commit 4bbc8b213c4230e31cb65e10634b99a146d4f530.
 // The digest covers the published name, title, description, complete input and
 // output schemas, and the five standard MCP annotations. A sync therefore fails
 // closed if Howard adds a tool, restores a removed argument, relaxes schema
 // closure, or changes safety metadata without a reviewed distribution update.
 export const publicAgentContractSource =
-  "tickadoo/howard@fae9cf5c705b1f24e38d72afb4f4352e22fb0f73";
+  "tickadoo/howard@4bbc8b213c4230e31cb65e10634b99a146d4f530";
 
 export const expectedPublicAgentToolDigests = Object.freeze({
   search_experiences: "8ff27cdb48a1cb5d601de263f32eb62765440bb67037821b44835b80c75026df",
@@ -63,7 +63,7 @@ export const expectedPublicAgentToolDigests = Object.freeze({
   recommend_experiences: "2650e709d09fdb58ccf0e7ade506c8fe9d2da4f515b0ac702f3a753e1f5edf22",
   get_city_guide: "ddd15b5df0ffa1a239641aa3f04f4c21adac917abcf2fb32146593f4f88bf0f5",
   get_travel_tips: "f74a2bde22cbf872513c71cfd6cf9831f75d15715301183447178aa60e579e7b",
-  compare_experiences: "5e460abf68c7966e2ae6b71de02572d1cc757e34a358e7491e370986dd613780",
+  compare_experiences: "1bae541fcc0e5768a6f4d039b04bb93531a09580c46f257456e2fae14df40f38",
   get_hidden_gems: "dc1f6520af62c38528580deeac64d8e77362bf5cadafbfb344e372a3cd8fb485",
   get_family_day: "4ae74d4d8d779ad88bea2a9757752f1c149853838af43a381cf7093cbd5ae121",
   get_date_night: "bae3a79d944259a672148fd5095d89973725230c2487f925cc20c9a9f08c4699",
@@ -72,7 +72,7 @@ export const expectedPublicAgentToolDigests = Object.freeze({
   get_experience_details: "1977a61603d22d8c4c43ee9660782ebe107a06cb755990b9e19950d78145d2d2",
   get_related_experiences: "583d2c1001826e02f0c2f50dfb44c647e4082b61cad8d79426f270b5321ff32f",
   get_availability: "e73cd3abd4c36d9560e15f51ee89c029cb4e95c9846315f5c836cb050b9ed827",
-  check_availability: "512c6522e10fad5c05dc707351edd0e740ac083abf593f82149027a4b43ab0a5",
+  check_availability: "e8390c1b2e1000621c3152bb11baf23989757d6df2ff345630d55899529ca56a",
   search_by_mood: "f40715c86bc0a2498c488e341747e1b170a8dd3112e4425724d38f6b3db63dac",
   render_experience_cards: "7e8847e29c53bcf32b0ec1da847f3cac21f4f7e516a22af66c9e4b29e9663700",
 });

@@ -141,6 +141,24 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(general).toContain(
       "| Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type |",
     );
+    expect(general).toContain(
+      "| Date-specific link (legacy interface) | `check_availability` | slug as `city_slug/product_slug`, date, party_size |",
+    );
+    expect(general).toContain(
+      "| Compare 2-5 specific products | `compare_experiences` | city-scoped `city_slug/product_slug` values with distinct product slugs |",
+    );
+    expect(sources.get("compare-before-you-book")).toMatch(
+      /compare_experiences\(slugs\)[\s\S]*city_slug\/product_slug/i,
+    );
+    expect(sources.get("compare-before-you-book")).toMatch(
+      /every `product_slug` component must be distinct/i,
+    );
+    for (const [skill, source] of sources) {
+      if (!source.includes("check_availability")) continue;
+      expect(source, `${skill}: city-scoped availability slug`).toContain(
+        "city_slug/product_slug",
+      );
+    }
     const documentedTools = general
       .match(/## Tool selection map\n\n([\s\S]*?)(?=\n\nThe public connection)/)?.[1]
       ?.split("\n")

@@ -224,6 +224,15 @@ in the portal during this submission:
 
 The implementation and acceptance gates are recorded in
 [`agent-plugins.md`](agent-plugins.md#2026-09-29-openai-extensions-and-mcp-events-decision).
+The planner entrypoint is tracked in
+[Howard issue #6802](https://github.com/tickadoo/howard/issues/6802), and the
+authenticated event design is tracked in
+[Howard issue #6801](https://github.com/tickadoo/howard/issues/6801). The
+current extension platform matrix treats web as the ChatGPT Work browser rather
+than classic ChatGPT web: global and thread entrypoints reach desktop, Work web,
+iOS and Android, while composer mentions are desktop-only. Pin the
+OpenAI-specific extension spec revision recorded in `agent-plugins.md` before
+implementation.
 After either feature is implemented and deployed, rescan the exact endpoint and
 submit it as a separately reviewed plugin version rather than editing the live
 listing copy ahead of runtime support.

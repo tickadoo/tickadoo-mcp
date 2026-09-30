@@ -20,7 +20,7 @@ Agent-intelligence layer (served by the remote): search tools carry `_best_picks
 - **Public agent remote target**: `https://mcp.tickadoo.com/mcp/agents` — the read-only, public-safe surface owned and deployed from the **howard** repo, not this one. Do not publish this package until the endpoint is deployed and live-validated. The general `/mcp` route remains an integrator compatibility surface. This repo does not deploy a Cloudflare Worker.
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
 - **Registry and tool metadata**: `server.json` is the small official MCP Registry manifest; `metadata/public-agent-tools.json` is the frozen full 20-tool descriptor snapshot. Both are refreshed from the validated live remote via `npm run sync:server-json`.
-- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for Agent Plugins clients and the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `metadata/public-agent-tools.json`; frontmatter `name` must match the folder. BAC-779 adds them to the npm published file set and verifies the exact tarball; OpenAI still snapshots uploaded or MCP-imported skills during its Platform submission flow.
+- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for Agent Plugins clients and the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `metadata/public-agent-tools.json`; frontmatter `name` must match the folder. GitHub issue #141 tracks public-listing readiness and PR #142 adds the skills to the npm file set with exact-tarball validation; OpenAI still snapshots uploaded or MCP-imported skills during its Platform submission flow.
 - **Testing**: vitest (`npm test`); `LIVE=1 npm test` runs the optional live integration test against the remote.
 - **No API key required.** Customer never sees supplier names; everything is presented as tickadoo.
 
@@ -47,8 +47,8 @@ COORDINATION:
 - Read AGENTS.md at task start and check Hive presence/reservations
 - Reserve the paths you will edit; release them after handoff or completion
 - Post deterministic lifecycle mirrors to Slack #activity (C0ATET93PQV):
-  🤖 Monaco [<linear-id> <task-slug>]: STARTED — <scope and risk lane>
-  🤖 Monaco [<linear-id> <task-slug>]: REVIEW READY — <exact SHA and validation>
+  🤖 Monaco [#<issue-number> <task-slug>]: STARTED — <scope and risk lane>
+  🤖 Monaco [#<issue-number> <task-slug>]: REVIEW READY — <exact SHA and validation>
 - Every commit carries trailer: Claude-Chat: codex-monaco-<task-slug>
 - Before each push: git pull --rebase origin main again
 - If Hive is unavailable, treat presence as unknown and use the documented fallback

@@ -14,9 +14,9 @@ Use a pair of clearly identified product names or previously shown cards. If eit
 ## The workflow (tool chain)
 
 1. **Resolve 2-5 specific contenders** — search each prose name with `search_experiences(city, query)`. If a search returns several plausible products or ticket variants, show the distinctions and ask the user to choose. Never take the first slug silently. If the contenders came from a prior result set, reuse those exact slugs.
-2. **Compare** — `compare_experiences(slugs)` with 2-5 slugs. It returns a comparison table plus documented per-axis winners (value, rating, popularity, family-fit) — echo those, don't bury them.
+2. **Compare** — `compare_experiences(slugs)` with 2-5 `city_slug/product_slug` values assembled from the selected results. Every `product_slug` component must be distinct, even when contenders are in different cities. It returns a comparison table plus documented per-axis winners (value, rating, popularity, family-fit) — echo those, don't bury them.
 3. **Check before recommending** — if accessibility, cancellation terms or a fixed date could change the decision, fetch `get_experience_details` for both finalists and live-check both (`get_availability` with the date and party size, fresh when supported) BEFORE making the final recommendation. The eventual winner may be unavailable while the runner-up is bookable.
-4. **Recommend and close** — one clear recommendation tied to the user's stated priority, then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link.
+4. **Recommend and close** — one clear recommendation tied to the user's stated priority, then `check_availability(slug: "city_slug/product_slug", date, party_size)` only when the user wants the date-specific booking link.
 5. **Weak field?** — run `recommend_experiences` with the city and the user's priorities, or `search_experiences` with a precise query, to resolve one new specific contender, then compare again. Do not call `get_related_experiences` from ChatGPT.
 
 ## Show results as cards

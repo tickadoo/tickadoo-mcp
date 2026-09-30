@@ -24,7 +24,7 @@ Only the renderer-supported search calls in this workflow (`search_experiences`,
 
 ## Availability discipline (composite plan)
 
-Treat the returned plan as proposed until every selected bookable slot has been checked for the user's date and party size: `get_availability` per slot (product_id, or slug + city_slug; pass the date range and party size; request a fresh check when the schema supports it), then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link. If the user has not asked to check every slot, label unchecked slots as suggestions rather than confirmed bookable plans.
+Treat the returned plan as proposed until every selected bookable slot has been checked for the user's date and party size: `get_availability` per slot (product_id, or slug + city_slug; pass the date range and party size; request a fresh check when the schema supports it), then `check_availability(slug: "city_slug/product_slug", date, party_size)` only when the user wants the date-specific booking link. If the user has not asked to check every slot, label unchecked slots as suggestions rather than confirmed bookable plans.
 
 ## Optional metadata
 

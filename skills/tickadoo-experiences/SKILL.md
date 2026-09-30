@@ -27,8 +27,8 @@ Use this skill only when none of those is the primary shape of the request.
 | Specific experience | `get_experience_details` | product_id or slug |
 | Related alternatives, when exposed by the connected surface | `get_related_experiences` | product_id, optional context and max_results |
 | Live dates/times/prices/spaces | `get_availability` | product_id or slug + city_slug, date_from/to, party_size, fresh |
-| Date-specific link (legacy interface) | `check_availability` | slug, date, party_size |
-| Compare 2-5 specific products | `compare_experiences` | slugs |
+| Date-specific link (legacy interface) | `check_availability` | slug as `city_slug/product_slug`, date, party_size |
+| Compare 2-5 specific products | `compare_experiences` | city-scoped `city_slug/product_slug` values with distinct product slugs |
 | City overview | `get_city_guide` | city |
 | Tonight / next hours / this week | `whats_on_tonight` / `get_last_minute` / `get_whats_on_this_week` | city |
 | Multi-day plan | `plan_itinerary` | city, days, audience?, language? |
@@ -56,7 +56,7 @@ When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonigh
 
 ## The live-availability rule
 
-Treat discovery results, countdowns, remaining-seat hints and optional urgency metadata as preliminary. For each selected bookable experience, call `get_availability` using `product_id` when available, or `slug` plus `city_slug`. For a fixed-date or same-day claim, pass the relevant date range and party size and request a fresh check when the callable schema supports it. If the user wants a date-specific booking link, then call `check_availability` with the slug, the experience's local calendar date and party size. State only facts returned by the most recent relevant check.
+Treat discovery results, countdowns, remaining-seat hints and optional urgency metadata as preliminary. For each selected bookable experience, call `get_availability` using `product_id` when available, or `slug` plus `city_slug`. For a fixed-date or same-day claim, pass the relevant date range and party size and request a fresh check when the callable schema supports it. If the user wants a date-specific booking link, then call `check_availability` with `slug` set to `city_slug/product_slug`, the experience's local calendar date and party size. State only facts returned by the most recent relevant check.
 
 ## Optional metadata
 

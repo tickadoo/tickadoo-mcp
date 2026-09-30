@@ -130,7 +130,7 @@ Discovery rows are preliminary. Confirm the pick with `get_availability` before 
 This is the live supplier check.
 
 - MCP: `get_availability` — prefer `product_id`; else `slug` + `city_slug`. Optional `date_from`, `date_to`, `party_size`, `fresh`
-- Single date booking link: `check_availability` (`slug`, `date`, `party_size`)
+- Single date booking link: `check_availability` (`slug` as `city_slug/product_slug`, `date`, `party_size`)
 - Slot `price.amount` is in **minor units**. `13125` + `GBP` means £131.25. Times are venue-local. When `timezone` is present it is an IANA name.
 
 ### 8. Hand off to book
@@ -171,7 +171,7 @@ The public-agent contract has no payment or booking-mutation tool. Only continue
 ### D. "Compare Wicked and Hamilton in New York"
 
 1. Resolve slugs via `search_experiences`.
-2. `compare_experiences` with those slugs.
+2. `compare_experiences` with each contender as `city_slug/product_slug`; every `product_slug` component must be distinct.
 3. Availability-check the winner before booking.
 
 ## Rules of the road

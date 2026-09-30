@@ -1,5 +1,5 @@
 {
-  "source": "tickadoo/howard@fae9cf5c705b1f24e38d72afb4f4352e22fb0f73",
+  "source": "tickadoo/howard@4bbc8b213c4230e31cb65e10634b99a146d4f530",
   "tools": [
     {
       "name": "search_experiences",
@@ -6908,7 +6908,7 @@
     {
       "name": "compare_experiences",
       "title": "Compare experiences",
-      "description": "Use this when the user wants a side-by-side comparison of 2-5 specific products. Pass the slug for each. Returns a comparison table plus per-axis winners (value, rating, popularity, family-fit).",
+      "description": "Compare 2-5 selected experiences from one or more cities. Pass every value as city_slug/product_slug using the city and slug returned by an earlier public-agent result; each product_slug component must be distinct.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -6917,9 +6917,12 @@
             "minItems": 2,
             "maxItems": 5,
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,254}/[a-z0-9][a-z0-9-]{0,254}$",
+              "maxLength": 511
             },
-            "description": "Product slugs from earlier search or recommend results."
+            "description": "City-scoped public paths in city_slug/product_slug form from earlier results. Each product_slug component must be distinct.",
+            "uniqueItems": true
           },
           "language": {
             "type": "string",
@@ -12340,13 +12343,15 @@
     {
       "name": "check_availability",
       "title": "Check availability",
-      "description": "Use this when the user has picked a specific experience and asks about exactly one date: whether it is available that day, what it costs for a party, or a booking link for that date. For browsing a date range or listing upcoming times and live slot prices, use get_availability.",
+      "description": "Check one selected experience on exactly one date. Pass slug as city_slug/product_slug using the city and slug returned by an earlier public-agent result.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "slug": {
             "type": "string",
-            "description": "Product slug or legacy booking path, e.g. \"london-dungeon-tickets\" or \"/london/london-dungeon-tickets\"."
+            "description": "City-scoped public path in city_slug/product_slug form from an earlier result.",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,254}/[a-z0-9][a-z0-9-]{0,254}$",
+            "maxLength": 511
           },
           "date": {
             "type": "string",

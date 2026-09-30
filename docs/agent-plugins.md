@@ -383,6 +383,17 @@ tool calls, while its 23 September release makes installed plugins usable in
   decisions, and SSRF-safe redirect-free networking. Howard already implements
   the protocol generation; that does not implement the event lifecycle.
 
+The extension rollout is not one undifferentiated "web and mobile" surface.
+The current OpenAI specification says that web means the ChatGPT Work browser,
+not classic ChatGPT web. Global and thread entrypoints are supported on desktop,
+Work web, iOS and Android; file entrypoints, local-file access and composer
+mentions are desktop-only; rich form elicitation is desktop and Work web only;
+and deep links are not yet supported on Android. Free and Go web support is
+still described as forthcoming. Prototype work must pin the separate
+[`openai/mcp-extensions` specification](https://github.com/openai/mcp-extensions/blob/e314720a0daac326217d1f123fcf51647868fa9f/docs/spec.md)
+at commit `e314720a0daac326217d1f123fcf51647868fa9f`; the Agent Plugins schema pin does
+not pin this OpenAI-specific contract.
+
 The current package deliberately advertises neither feature. This is a
 truthfulness boundary, not a missed manifest flag:
 
@@ -426,7 +437,9 @@ Implementation order is fixed:
 2. Prototype a distinct empty-input planner entrypoint against OpenAI's public
    extension specification. Keep standard MCP Apps metadata canonical,
    feature-detect OpenAI-only APIs, and test the ordinary headless path plus
-   ChatGPT desktop, web and mobile behavior before advertising the entrypoint.
+   ChatGPT desktop, ChatGPT Work web, iOS and Android behavior before
+   advertising the entrypoint. Test desktop-only composer behavior separately;
+   do not infer classic-web support from Work web.
 3. Exercise the current plugin through ChatGPT Live Voice on web and mobile,
    including a no-results case and the external-checkout handoff. Voice is a
    client validation lane, not a separate MCP surface.
@@ -469,10 +482,15 @@ the remote MCP service and npm bridge are unaffected by package rollback.
 ## Follow-ups
 
 - Complete OpenAI's account-only review and publication steps after the exact
-  ZIP and live MCP scan have human approval.
+  ZIP and live MCP scan have human approval. Track the release and listing
+  gates in [GitHub issue #120](https://github.com/tickadoo/tickadoo-mcp/issues/120)
+  and [GitHub issue #141](https://github.com/tickadoo/tickadoo-mcp/issues/141).
 - Build the separately reviewed OpenAI planner-entrypoint prototype and the
   authenticated availability-event design above; do not advertise either in
-  the current plugin version.
+  the current plugin version. Their implementation tracks are
+  [Howard issue #6802](https://github.com/tickadoo/howard/issues/6802) and
+  [Howard issue #6801](https://github.com/tickadoo/howard/issues/6801),
+  respectively.
 - Define distribution integrity/signing once the specification defines it or
   the selected marketplaces provide a suitable mechanism.
 - Track the portable OAuth and credential-reference gap. Do not add Hive until
