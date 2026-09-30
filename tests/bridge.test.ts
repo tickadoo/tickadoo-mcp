@@ -173,6 +173,20 @@ liveIt("lists tools from the live remote through the bridge", async () => {
   expect(result.tools.length).toBeGreaterThan(0);
 });
 
+liveIt("keeps the live OpenAI surface least-privilege", async () => {
+  const { client } = await startBridgeClient("https://mcp.tickadoo.com/mcp/chatgpt");
+  const result = await client.listTools();
+  const names = new Set(result.tools.map((tool) => tool.name));
+
+  expect(result.tools).toHaveLength(20);
+  expect(names).not.toContain("find_nearby_experiences");
+  expect(names).not.toContain("get_related_experiences");
+  expect(names).not.toContain("report_quality_signal");
+  expect(names).toContain("search_experiences");
+  expect(names).toContain("get_availability");
+  expect(names).toContain("render_experience_cards");
+});
+
 async function startBridgeClient(remoteUrl: string) {
   const { bridge, clientTransport, serverTransport } = await createBridgeTransports(remoteUrl);
   await bridge.server.connect(serverTransport);

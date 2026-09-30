@@ -265,6 +265,11 @@ describe("Agent Plugins 1.0.0 package", () => {
         (tool) => tool.name,
       ),
     );
+    const openaiDeniedTools = new Set([
+      "find_nearby_experiences",
+      "get_related_experiences",
+      "report_quality_signal",
+    ]);
     const positive = openai.review.test_cases.positive;
     const negative = openai.review.test_cases.negative;
 
@@ -283,6 +288,7 @@ describe("Agent Plugins 1.0.0 package", () => {
       const tools = testCase.tools_triggered.split(",").map((tool) => tool.trim());
       expect(tools.length).toBeGreaterThan(0);
       expect(tools.every((tool) => knownTools.has(tool)), testCase.tools_triggered).toBe(true);
+      expect(tools.every((tool) => !openaiDeniedTools.has(tool)), testCase.tools_triggered).toBe(true);
     }
     for (const testCase of negative) {
       expect(Object.keys(testCase).sort()).toEqual(["description", "prompt"]);

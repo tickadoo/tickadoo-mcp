@@ -304,7 +304,7 @@ describe("Agent Plugin distribution", () => {
   it("defines a minimal, contained OpenAI submission ZIP", async () => {
     const allowlist = JSON.parse(
       await readFile(path.join(root, "scripts/openai-plugin-files.json"), "utf8"),
-    ) as { files: string[] };
+    ) as { files: string[]; sourceOverrides: Record<string, string> };
     const expectedFiles = [
       "plugin.json",
       "mcp.json",
@@ -334,6 +334,21 @@ describe("Agent Plugin distribution", () => {
     expect(allowlist.files).not.toContain(".codex-plugin/plugin.json");
     expect(allowlist.files).not.toContain(".app.json");
     expect(allowlist.files).not.toContain("package.json");
+    expect(allowlist.sourceOverrides).toEqual({
+      "mcp.json": "distribution/openai/mcp.json",
+    });
+
+    const portableMcp = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    const openaiMcp = JSON.parse(
+      await readFile(path.join(root, allowlist.sourceOverrides["mcp.json"]), "utf8"),
+    ) as { mcpServers: Record<string, { type: string; url: string }> };
+    expect(portableMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(openaiMcp.mcpServers.tickadoo).toEqual({
+      type: "streamable-http",
+      url: "https://mcp.tickadoo.com/mcp/chatgpt",
+    });
 
     const openai = manifest.extensions["com.openai"];
     for (const reference of [
@@ -348,21 +363,24 @@ describe("Agent Plugin distribution", () => {
     for (const file of allowlist.files) {
       expect(path.isAbsolute(file), file).toBe(false);
       expect(file.split(path.posix.sep)).not.toContain("..");
-      const candidate = path.join(root, file);
+      const source = allowlist.sourceOverrides[file] ?? file;
+      expect(path.isAbsolute(source), source).toBe(false);
+      expect(source.split(path.posix.sep)).not.toContain("..");
+      const candidate = path.join(root, source);
       const stat = await lstat(candidate);
       expect(stat.isFile(), file).toBe(true);
       expect(stat.isSymbolicLink(), file).toBe(false);
       expect(await realpath(candidate)).toSatisfy((resolved) =>
         resolved.startsWith(`${resolvedRoot}${path.sep}`),
       );
-      const source = await readFile(candidate, "utf8");
-      expect(source, file).not.toMatch(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/i);
-      expect(source, file).not.toMatch(/"Authorization"\s*:/i);
-      expect(source, file).not.toMatch(
+      const contents = await readFile(candidate, "utf8");
+      expect(contents, file).not.toMatch(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/i);
+      expect(contents, file).not.toMatch(/"Authorization"\s*:/i);
+      expect(contents, file).not.toMatch(
         /\$\{[^}]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY)[^}]*\}/i,
       );
-      expect(source, file).not.toMatch(/(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/);
-      expect(source, file).not.toMatch(/https?:\/\/[^/\s]+:[^@/\s]+@/);
+      expect(contents, file).not.toMatch(/(?:sk|ghp|github_pat|AKIA)[-_A-Za-z0-9]{12,}/);
+      expect(contents, file).not.toMatch(/https?:\/\/[^/\s]+:[^@/\s]+@/);
     }
   });
 

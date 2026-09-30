@@ -2,45 +2,97 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const manifest = JSON.parse(readFileSync(path.join(repositoryRoot, "plugin.json"), "utf8"));
-const { files } = JSON.parse(
-  readFileSync(path.join(scriptDirectory, "openai-plugin-files.json"), "utf8"),
-);
+const builderPath = "scripts/build-openai-plugin-zip.mjs";
+const configPath = "scripts/openai-plugin-files.json";
 
-if (!Array.isArray(files) || files.length === 0 || files.some((file) => typeof file !== "string")) {
-  throw new Error("scripts/openai-plugin-files.json must contain a non-empty string array");
+function readHeadFile(file) {
+  return execFileSync("git", ["show", `HEAD:${file}`], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  });
+}
+
+function isContainedRepositoryPath(file) {
+  return (
+    typeof file === "string" &&
+    file.length > 0 &&
+    !path.posix.isAbsolute(file) &&
+    path.posix.normalize(file) === file &&
+    !file.split("/").includes("..") &&
+    !file.endsWith("/")
+  );
+}
+
+const manifest = JSON.parse(readHeadFile("plugin.json"));
+const { files, sourceOverrides = {} } = JSON.parse(readHeadFile(configPath));
+
+if (!Array.isArray(files) || files.length === 0 || files.some((file) => !isContainedRepositoryPath(file))) {
+  throw new Error("OpenAI plugin ZIP allowlist must contain safe repository-relative file paths");
 }
 if (new Set(files).size !== files.length) {
   throw new Error("OpenAI plugin ZIP allowlist contains duplicate paths");
 }
+if (
+  !sourceOverrides ||
+  Array.isArray(sourceOverrides) ||
+  typeof sourceOverrides !== "object" ||
+  Object.entries(sourceOverrides).some(
+    ([archivePath, sourcePath]) =>
+      !files.includes(archivePath) || !isContainedRepositoryPath(sourcePath),
+  )
+) {
+  throw new Error("OpenAI plugin ZIP source overrides must map allowlisted paths to safe sources");
+}
+
+const sourceFiles = files.map((file) => sourceOverrides[file] ?? file);
+const controlledFiles = [builderPath, configPath, ...new Set(sourceFiles)];
 
 const dirty = execFileSync(
   "git",
-  ["status", "--porcelain=v1", "--untracked-files=all", "--", ...files],
+  ["status", "--porcelain=v1", "--untracked-files=all", "--", ...controlledFiles],
   { cwd: repositoryRoot, encoding: "utf8" },
 ).trim();
 if (dirty) {
   throw new Error(`Refusing to archive package files that differ from HEAD:\n${dirty}`);
 }
 
-const defaultOutput = path.join(
-  repositoryRoot,
-  "artifacts",
-  `${manifest.name}-${manifest.version}-openai.zip`,
-);
-const outputPath = path.resolve(process.cwd(), process.argv[2] ?? defaultOutput);
-mkdirSync(path.dirname(outputPath), { recursive: true });
+const artifactsRoot = path.join(repositoryRoot, "artifacts");
+const requestedOutput =
+  process.argv[2] ?? `artifacts/${manifest.name}-${manifest.version}-openai.zip`;
+const outputPath = path.resolve(repositoryRoot, requestedOutput);
+if (
+  path.dirname(outputPath) !== artifactsRoot ||
+  path.extname(outputPath).toLowerCase() !== ".zip"
+) {
+  throw new Error("OpenAI plugin ZIP output must be a .zip file directly inside the repository artifacts directory");
+}
+mkdirSync(artifactsRoot, { recursive: true });
+if (lstatSync(artifactsRoot).isSymbolicLink()) {
+  throw new Error("Refusing to use a symbolic-link artifacts directory");
+}
 rmSync(outputPath, { force: true });
 
+const virtualFiles = Object.entries(sourceOverrides).map(([archivePath, sourcePath]) =>
+  `--add-virtual-file=${archivePath}:${readHeadFile(sourcePath)}`,
+);
+const directFiles = files.filter((file) => !Object.hasOwn(sourceOverrides, file));
 execFileSync(
   "git",
-  ["archive", "--format=zip", `--output=${outputPath}`, "HEAD", "--", ...files],
+  [
+    "archive",
+    "--format=zip",
+    `--output=${outputPath}`,
+    ...virtualFiles,
+    "HEAD",
+    "--",
+    ...directFiles,
+  ],
   { cwd: repositoryRoot, stdio: "inherit" },
 );
 

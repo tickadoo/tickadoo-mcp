@@ -12,5 +12,8 @@
     "skills/tickadoo-experiences/SKILL.md",
     "skills/tonight-and-last-minute/SKILL.md",
     "LICENSE"
-  ]
+  ],
+  "sourceOverrides": {
+    "mcp.json": "distribution/openai/mcp.json"
+  }
 }
