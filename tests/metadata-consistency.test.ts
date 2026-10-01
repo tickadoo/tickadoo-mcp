@@ -74,8 +74,126 @@ const bridgeConfig = readFileSync(
 const agentGuidance = ["../AGENTS.md", "../CLAUDE.md"].map((relativePath) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8"),
 );
+const [agentsGuidance, claudeGuidance] = agentGuidance;
 
 describe("public registry metadata", () => {
+  it("keeps live agent work on GitHub Issues and completed Slack mirrors", () => {
+    const prohibitiveContext =
+      /\b(?:do not|don't|never|must not|mustn't|should not|shouldn't|avoid|forbid|prohibit|no longer)\b/i;
+    const historicalContext =
+      /\b(?:read[- ]only|historical|archive(?:d)?|frozen|legacy|retired|pre-cutover)\b/i;
+    const linearWorkflowPlaceholder = /[<{]linear[-_ ]?id[}>]/i;
+    const activeLinearWorkflowActions = [
+      /\b(?:assign|close|comment(?:\s+on)?|create|link|open|transition|update)\s+(?:an?\s+|the\s+)?linear(?:\s+(?:issue|ticket|project|workflow|workspace))?\b/i,
+      /\b(?:use|adopt)\s+linear\b/i,
+      /\b(?:file|log|record)\s+(?:an?\s+|the\s+)?(?:issue|ticket)\s+(?:in|on)\s+linear\b/i,
+      /\b(?:manage|track|triage)\b[^.;!?]{0,60}\b(?:in|on|with)\s+linear\b/i,
+      /\b(?:link|move|transition)\b[^.;!?]{0,60}\b(?:into|to)\s+linear\b/i,
+    ];
+    const deprecatedLifecycleInstructions = [
+      /\b(?:deterministic\s+)?(?:human-visible\s+)?lifecycle (?:events|updates|mirrors)\b/i,
+      /\buse distinct\b[^\n]{0,160}\b(?:started|review[- ]ready|paused)\b/i,
+      /\bsession (?:active|started|paused)\b/i,
+      /\broutine\b[^\n]{0,100}\b(?:starting|progress update)\b/i,
+      /:\s*(?:started|review[- ]ready|paused)\s*(?:—|-)\s*/i,
+      /(?:^|\n)\s*(?:[-*]\s*)?(?:post|send|write|announce)\s+(?:a\s+)?(?:start(?:ed)?|review[- ]ready|pause(?:d)?)(?:\s+(?:message|update|mirror|chatter))?\b/im,
+    ];
+    const staleLifecycleExamples = [
+      "Post deterministic lifecycle mirrors to #activity",
+      "Use distinct STARTED, REVIEW READY, and PAUSED states",
+      "session active — working on the task",
+      "Routine [weekly]: progress update",
+      "[agent]: STARTED — scope",
+      "Post START message",
+      "Slack provides visibility after deterministic lifecycle events.",
+    ];
+    const allowedHistoricalOrProhibitiveExamples = [
+      "Do not post deterministic lifecycle updates to #activity.",
+      "Never announce STARTED, REVIEW READY, or PAUSED states.",
+      "Avoid session active notices.",
+      "Agents must not post routine progress updates.",
+      "Legacy routine progress update formats are archived.",
+      "Linear has been frozen; do not open Linear issues.",
+      "Legacy GRO-196 is a read-only historical reference.",
+      "Use GitHub rather than Linear for live tracking.",
+      "Use GitHub instead of Linear for issue tracking.",
+      "Move work from Linear to GitHub.",
+    ];
+    const activeLinearWorkflowExamples = [
+      "Create a Linear issue for this work.",
+      "Update the Linear ticket before review.",
+      "Track live work in Linear.",
+      "Use Linear for issue tracking.",
+      "File a ticket in Linear.",
+    ];
+    const activeLinearMixedContextExamples = [
+      "Never disclose secrets; create a Linear issue for live work.",
+      "Legacy IDs are archived; file a ticket in Linear for this work.",
+      "Do not omit validation, and use Linear for issue tracking.",
+      "Legacy notes are retained, but create a Linear issue for new work.",
+    ];
+    const staleLifecycleMixedContextExamples = [
+      "Never disclose secrets; post deterministic lifecycle events.",
+      "Legacy formats are archived; announce session active for this run.",
+      "Never omit validation, and post STARTED — scope.",
+      "Historical formats are archived, but announce session active now.",
+    ];
+
+    const instructionClauses = (text: string) =>
+      text
+        .split(/\r?\n/)
+        .flatMap((line) =>
+          line.split(/;\s+|[.!?]\s+|,\s+(?:and|but)\s+|\s+but\s+/i),
+        )
+        .map((clause) => clause.trim())
+        .filter(Boolean);
+    const isHistoricalOrProhibitive = (clause: string) =>
+      prohibitiveContext.test(clause) || historicalContext.test(clause);
+    const hasDeprecatedLifecycleInstruction = (text: string) =>
+      instructionClauses(text).some(
+        (clause) =>
+          !isHistoricalOrProhibitive(clause) &&
+          deprecatedLifecycleInstructions.some((pattern) =>
+            pattern.test(clause),
+          ),
+      );
+    const hasActiveLinearWorkflowInstruction = (text: string) =>
+      instructionClauses(text).some(
+        (clause) =>
+          !isHistoricalOrProhibitive(clause) &&
+          activeLinearWorkflowActions.some((pattern) => pattern.test(clause)),
+      );
+
+    for (const example of staleLifecycleExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(true);
+    }
+    for (const example of activeLinearWorkflowExamples) {
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(true);
+    }
+    for (const example of activeLinearMixedContextExamples) {
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(true);
+    }
+    for (const example of staleLifecycleMixedContextExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(true);
+    }
+    for (const example of allowedHistoricalOrProhibitiveExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(false);
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(false);
+      expect(example, example).not.toMatch(linearWorkflowPlaceholder);
+    }
+
+    for (const guidance of agentGuidance) {
+      expect(guidance).not.toMatch(linearWorkflowPlaceholder);
+      expect(hasDeprecatedLifecycleInstruction(guidance)).toBe(false);
+      expect(hasActiveLinearWorkflowInstruction(guidance)).toBe(false);
+    }
+
+    expect(agentsGuidance).toContain("GitHub issue number");
+    expect(agentsGuidance).toContain("completed-action mirror");
+    expect(claudeGuidance).toContain("#<github-issue-number>");
+    expect(claudeGuidance).toContain("completed-action mirror");
+  });
+
   it("keeps every release-bearing artifact aligned with package.json", () => {
     expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
     const bridgeVersion = bridgeConfig.match(
