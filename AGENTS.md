@@ -90,7 +90,7 @@ This repository applies it in three layers:
 
 1. GitHub pull requests hold bounded, artifact-anchored technical review.
 2. Hive carries presence, reservations, inboxes, handoffs, and blockers.
-3. Slack `#activity` provides calm human visibility after deterministic lifecycle events.
+3. Slack `#activity` provides calm human visibility through completed-action mirrors.
 
 One vendor authors and a different vendor reviews the bounded diff. Verdicts
 are `AI_REVIEW: NO_BLOCKERS_FOUND` or `AI_REVIEW: CHANGES_REQUIRED` with
@@ -130,7 +130,7 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`.
 
 ## Related repos
 
-- **`tickadoo/howard`** — internal backend, customer-facing platform, agent fleet. Shared conventions live in its `CLAUDE.md` and `AGENTS.md`. Cross-repo coordination uses Hive; Slack carries deterministic human-visible lifecycle mirrors only.
+- **`tickadoo/howard`** — internal backend, customer-facing platform, agent fleet. Shared conventions live in its `CLAUDE.md` and `AGENTS.md`. Cross-repo coordination uses Hive; Slack carries deterministic human-visible completed-action mirrors only.
 
 ## Monorepo migration preservation
 

@@ -72,7 +72,7 @@ Dashboard: `claude.ai/code/routines`. Docs: `code.claude.com/docs/en/routines`. 
 - HowardOS backend: `github.com/tickadoo/howard`
 - Shared conventions: `github.com/tickadoo/howard/blob/main/CLAUDE.md` (section "Multi-chat coordination") and `github.com/tickadoo/howard/blob/main/AGENTS.md`
 - Canonical engineering policy: `github.com/tickadoo/claude-platform/blob/main/docs/engineering-operating-policy.md`
-- Slack `#activity` (`C0ATET93PQV`) for deterministic human-visible lifecycle mirrors
+- Slack `#activity` (`C0ATET93PQV`) for deterministic human-visible completed-action mirrors
 
 ## This is a living document
 
