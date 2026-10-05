@@ -2,7 +2,7 @@
   "mcpServers": {
     "tickadoo": {
       "type": "http",
-      "url": "https://mcp.tickadoo.com/mcp",
+      "url": "https://mcp.tickadoo.com/mcp/agents",
       "tools": [
         "search_experiences",
         "search_local_experiences",

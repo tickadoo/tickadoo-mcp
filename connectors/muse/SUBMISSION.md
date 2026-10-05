@@ -1,19 +1,25 @@
 # Muse Connector Platform — tickadoo submission pack
 
-Submit at https://muse.ai/platform (button: Submit a connector).
+Status: **prepared only**. The `/mcp/agents` endpoint is not usable until it is
+deployed and verified by the checks in `EVALS.md`. Do not install, connect,
+submit, or claim it is available before then.
 
-The live form currently gates on a Meta work-email login ("Sign in or create an account with your work email"). A Grok session cannot complete that login. Paste the fields below after you sign in with `francis@tickadoo.com` or another @tickadoo.com address.
+After that gate passes, submit at https://muse.ai/platform (button: Submit a
+connector). The form requires a Meta work-email login. Paste the fields below
+only after an authorized tickadoo submitter signs in; do not store their name
+or account address in this repository.
 
-Prepared 19 September 2026. Live-tested the same morning against `mcp.tickadoo.com`.
+Prepared 19 September 2026. Any earlier live checks covered a different MCP
+surface and are not evidence that `/mcp/agents` is available.
 
 ---
 
-## Account to use
+## Account requirements
 
-- Work email: francis@tickadoo.com
+- Submitter: an authorized tickadoo employee using their own work account
 - Company: tickadoo
 - Website: https://www.tickadoo.com
-- Backup contacts: tech@tickadoo.com, support@tickadoo.com
+- Public support: https://www.tickadoo.com/contact
 
 ---
 
@@ -23,7 +29,8 @@ tickadoo
 
 ## Short description (what it does)
 
-Find and book official primary tickets for West End theatre, Broadway, attractions, tours and experiences in 1,100+ cities. Muse searches live inventory, confirms dates and prices, then opens checkout on tickadoo.
+Discover theatre, attractions, tours and experiences, compare grounded options,
+check live dates and prices, then continue to checkout on tickadoo.com.
 
 ## How users will use it
 
@@ -43,9 +50,12 @@ Flow for every bookable ask:
 2. Search or recommend against live catalogue.
 3. Confirm the chosen product with a live availability check (party size + date).
 4. Show venue, time and price. Open the tickadoo booking URL in Muse's secure browser.
-5. User pays on tickadoo. Mobile ticket is delivered by tickadoo.
+5. User pays on tickadoo. Describe a ticket, QR code, wallet pass or delivery
+   method only when actual checkout data returned by tickadoo explicitly states it;
+   otherwise make no fulfilment claim.
 
-No tickadoo account is required for Muse to search. No API key. Purchase is first-party.
+No tickadoo account is required for Muse to search. No API key. Purchase
+continues on tickadoo.com.
 
 ## Category
 
@@ -55,10 +65,10 @@ Travel / events / tickets / local experiences
 
 Two public surfaces, same catalogue:
 
-1. **MCP (primary for this connector)**  
-   `POST https://mcp.tickadoo.com/mcp`  
-   Streamable HTTP JSON-RPC. Server `tickadoo` v1.6.0. Protocol `2025-06-18` (also `2025-11-25`, `2026-07-28`). No auth. 23 tools including `search_experiences`, `whats_on_tonight`, `recommend_experiences`, `get_availability`, `check_availability`, `compare_experiences`.  
-   Contract: https://mcp.tickadoo.com/llms-full.txt  
+1. **MCP (primary for this connector)**
+   `POST https://mcp.tickadoo.com/mcp/agents`
+   Streamable HTTP JSON-RPC. Protocol `2025-06-18` (also `2025-11-25`, `2026-07-28`). No auth. 20 read-only tools including `search_experiences`, `whats_on_tonight`, `recommend_experiences`, `get_availability`, `check_availability`, `compare_experiences`. Confirm the live server version before submission.
+   Contract: the endpoint's `tools/list` response is authoritative for its 20 read-only schemas.
    Source: https://github.com/tickadoo/tickadoo-mcp
 
 2. **HTTPS + OpenAPI (cities + future Connect)**  
@@ -86,16 +96,19 @@ If Meta wants in-agent pay via Link, we will map an approved Connect book sessio
 ## Security
 
 - TLS only. Cloudflare in front of Howard.
-- Public catalogue endpoints are read-mostly.
+- The public agent endpoint is read-only.
 - Allowed hosts are declared in `connectors/muse/SKILL.md`.
-- Write surface is limited to optional quality feedback (`report_quality_signal`) after user consent.
+- No write or feedback-submission tool is exposed.
 - No scraping contract. Standard fair-use / 429 backoff.
 - Full note: `connectors/muse/security.md`
 
 ## Legal
 
-- Merchant of record for tickets sold on tickadoo.com is tickadoo.
-- Inventory is official primary stock, not a resale exchange.
+- Confirm merchant-of-record and inventory-source wording with the current
+  product/legal owner before submission; repository metadata cannot attest to
+  those commercial facts.
+- Do not describe every item as primary, official or non-resale unless that
+  statement has been verified for the submitted catalogue.
 - Connector listing must not imply Meta is the ticket seller.
 - Terms: https://www.tickadoo.com/terms (confirm live URL on submit)
 - Privacy: https://www.tickadoo.com/privacy
@@ -118,11 +131,11 @@ Exact cases are in `connectors/muse/EVALS.md`. Minimum set:
 | Platform submit | https://muse.ai/platform |
 | This pack | https://github.com/tickadoo/tickadoo-mcp/tree/main/connectors/muse |
 | Brief | https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/muse.md |
-| MCP | https://mcp.tickadoo.com/mcp |
+| MCP | https://mcp.tickadoo.com/mcp/agents |
 | OpenAPI | https://mcp.tickadoo.com/openapi.json |
 | Product | https://www.tickadoo.com |
 | Privacy | https://www.tickadoo.com/privacy |
-| Install prompt (custom connector, works before directory approval) | INSTALL.md in this folder |
+| Prepared install prompt (usable only after the deployment gate; directory approval is not required after that) | INSTALL.md in this folder |
 
 ## After you click submit
 

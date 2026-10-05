@@ -1,0 +1,19 @@
+{
+  "files": [
+    "plugin.json",
+    "mcp.json",
+    "brand/apps-directory-icon.svg",
+    "brand/apps-directory-icon-monochrome.svg",
+    "skills/compare-before-you-book/SKILL.md",
+    "skills/date-night/SKILL.md",
+    "skills/family-day-out/SKILL.md",
+    "skills/near-a-landmark/SKILL.md",
+    "skills/plan-a-trip/SKILL.md",
+    "skills/tickadoo-experiences/SKILL.md",
+    "skills/tonight-and-last-minute/SKILL.md",
+    "LICENSE"
+  ],
+  "sourceOverrides": {
+    "mcp.json": "distribution/openai/mcp.json"
+  }
+}

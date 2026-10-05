@@ -5,7 +5,7 @@ description: Find experiences in a city tonight or within the next few hours wit
 
 # Tonight & last-minute with tickadoo
 
-Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user wants to do something NOW or tonight. Be fast, lead with what starts soonest, and confirm current availability before stating anything is bookable — same-day inventory is exactly what goes stale.
+Use the MCP connection configured by this package when the user wants to do something NOW or tonight. Be fast, lead with what starts soonest, and confirm current availability before stating anything is bookable — same-day inventory is exactly what goes stale.
 
 ## When to use this
 
@@ -15,12 +15,12 @@ Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user wants to do so
 
 1. **Pull time-sensitive options** — by horizon: `whats_on_tonight(city)` for tonight, `get_last_minute(city, hours?)` for the next few hours. Use `start_time` and `countdown_text` when present in the response; do not assume they exist or invent them.
 2. **Narrow to a pick** — `get_experience_details(product_id or slug)` on the one they react to; keep it quick.
-3. **Live-check the pick** — `get_availability` for the selected product with the party size, requesting a fresh check when the callable schema supports it (this is the live supplier check; a countdown hint is not). Use the local calendar date contained in the selected result's `start_time` — do not derive "today" from the assistant's system timezone. Then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link.
+3. **Live-check the pick** — `get_availability` for the selected product with the party size, requesting a fresh check when the callable schema supports it (this is the live supplier check; a countdown hint is not). Use the local calendar date contained in the selected result's `start_time` — do not derive "today" from the assistant's system timezone. Then `check_availability(slug: "city_slug/product_slug", date, party_size)` only when the user wants the date-specific booking link.
 4. **Fallback** — if the first pick is unavailable or has started, refresh `get_last_minute` or `whats_on_tonight`, then live-check the next candidate. Do not call `get_related_experiences` from ChatGPT.
 
 ## Show results as cards
 
-When a `whats_on_tonight` / `get_last_minute` set will be shown, immediately call `render_experience_cards` exactly once for it: only the `product_id` values exactly as returned by the discovery tool (IDs are internal — pass them verbatim, never display or read them aloud), a required `render_type` from the callable schema, optionally `render_context.intent_summary` ("tonight in <city>"). Do not re-list the same experiences in text. Do not assume a particular field appears on the cards unless the renderer response confirms it.
+When a `whats_on_tonight` / `get_last_minute` set will be shown, immediately call `render_experience_cards` exactly once for it: only the `product_id` values exactly as returned by the discovery tool (IDs are internal — pass them verbatim, never display or read them aloud) and a required `render_type` from the callable schema. Do not re-list the same experiences in text. Do not assume a particular field appears on the cards unless the renderer response confirms it.
 
 ## Optional metadata
 
@@ -31,4 +31,4 @@ Use fields documented by the selected tool and actually present in its response.
 - Present everything as tickadoo. Never name, infer or expose an upstream inventory supplier.
 - State only the exact time, inventory, availability or cancellation fact returned by the latest relevant check. Review counts show popularity, not scarcity. Never add time pressure or sales pressure.
 - If the live check comes back sold out or past start time, say so plainly and offer the next candidate. If the user asks to continue, provide the tickadoo link and make clear any purchase completes outside ChatGPT.
-- If the user reports a stale or misleading result, offer to send feedback; only after they agree, call `report_quality_signal` only if a prior tool result actually included a `request_id` (format `rq_…`) — pass it with the required `signal_type` and no personal data in notes (a write action). If no `request_id` was returned, say feedback cannot be filed for that result and never construct one.
+- This public connection is read-only. If the user reports a stale or misleading result, say feedback cannot be filed through this connection; never construct a request identifier or imply that feedback was submitted.

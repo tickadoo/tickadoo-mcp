@@ -1,4 +1,4 @@
-export const DEFAULT_TICKADOO_MCP_URL = "https://mcp.tickadoo.com/mcp";
+export const DEFAULT_TICKADOO_MCP_URL = "https://mcp.tickadoo.com/mcp/agents";
 export const TICKADOO_MCP_URL =
   process.env.TICKADOO_MCP_URL?.trim() || DEFAULT_TICKADOO_MCP_URL;
 

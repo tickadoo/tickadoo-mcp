@@ -1,5 +1,9 @@
 # Agent Plugins 1.0 package
 
+Status: **prepared only**. The package now targets Howard's `/mcp/agents`
+surface, but no listing or package may be published until that endpoint is
+deployed and its 20-tool read-only contract passes the live checks below.
+
 ## Decision
 
 The canonical portable package lives at the root of `tickadoo/tickadoo-mcp`.
@@ -26,12 +30,13 @@ Explicit non-fits:
 
 - `plugin.json` targets the immutable Agent Plugins schema identifier `1.0.0`.
 - `skills/*/SKILL.md` are discovered from the standard fixed location.
-- `mcp.json` points directly to the public Streamable HTTP endpoint. It has no
-  headers, credentials, environment-variable substitutions, or customer data.
+- `mcp.json` points directly to the 20-tool read-only public-agent Streamable
+  HTTP endpoint. It has no headers, credentials, environment-variable
+  substitutions, or customer data.
 - The official schemas are vendored under `schemas/agent-plugins/1.0.0/` so CI
   never depends on retrieving mutable network content while loading a plugin.
   `SHA256SUMS` records the reviewed schema bytes and the tests enforce them.
-- `.codex-plugin/plugin.json` maps the same skills and public endpoint into the
+- `.codex-plugin/plugin.json` maps the same skills and public-agent endpoint into the
   current Codex marketplace shape. Its client-specific transport spelling is
   `http`; the portable manifest uses the normative `streamable-http` spelling.
   Tests pin both spellings and the identical endpoint.
@@ -41,10 +46,15 @@ Explicit non-fits:
   the plugin manifest alone owns the version, as Anthropic's
   [version-resolution guidance](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)
   recommends.
+- `distribution/claude/` is the minimal public-directory bundle for Claude
+  chat, desktop, mobile, Cowork and Claude Code. It has no package manager files
+  or executable code, declares the remote server with explicit `type: "http"`,
+  and carries one narrow host-neutral skill, a README and a license. The
+  self-hosted marketplace remains an install path, not global discovery.
 - `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
   for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
   transport spelling and an explicit eight-tool, read-only allowlist. It omits
-  the consent-gated feedback tool, the ChatGPT card renderer, wildcards,
+  write tools, the ChatGPT card renderer, wildcards,
   headers, environment variables and credentials.
 
 The package does not reimplement MCP protocol behavior. The canonical remote
@@ -70,27 +80,30 @@ not alter MCP configuration merely by existing under `node_modules`.
 The portable root `mcp.json` remains authoritative for Agent Plugins clients.
 
 `evals/agent-plugin-scenarios.json` defines the same discovery, grounding,
-availability, privacy, feedback-consent and booking-handoff expectations for
+availability, privacy, unavailable-feedback and booking-handoff expectations for
 every client. It is intentionally provider-neutral: client-specific runners
 may score ChatGPT, Claude, Copilot, Cursor, VS Code and Kiro without forking the
 acceptance contract. Nine positive cases include explicit fixture assumptions
 and expected result shapes; three negative cases define the safe fallback and
 why the requested action must not be completed. Tests enforce that split so the
-corpus remains directly reusable by review and evaluation runners. A negative
-case may name a tool when the expected safe behavior permits it only after an
-explicit gate (for example, feedback consent); an empty list means no tool call.
+corpus remains directly reusable by review and evaluation runners. In every
+scenario, `requiredTools` names calls expected for the prompt as written. The
+feedback case therefore has an empty list: the public connections are read-only,
+so the agent must explain that feedback cannot be filed through the connection.
 The corpus has its own version so runner integrations can pin its field contract
 independently of the plugin version.
 
-The MCP Registry export preserves each live tool's standard title and
+The packaged `metadata/public-agent-tools.json` snapshot preserves each
+public-agent tool's standard title and
 annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, and
-`openWorldHint`). This lets downstream registries evaluate safety and tool
-selection from the published artifact instead of receiving only names and
-descriptions. The feedback tool remains explicitly non-read-only; catalogue,
-planning, availability and rendering tools remain read-only.
-`report_quality_signal` is also explicitly open-world because it submits the
-user-approved quality signal to the remote service; it remains non-destructive
-and idempotent.
+`openWorldHint`). This lets package consumers and validation tooling evaluate
+safety and tool selection without overloading the official MCP Registry
+manifest. The snapshot is closed over exactly 20 tools; every advertised tool
+must be explicitly read-only and non-destructive, and
+`report_quality_signal`, `find_nearby_experiences`, and `get_transfer_info` must
+be absent. The two coordinate tools remain available only on the raw integrator
+surface until exact coordinates are transient, are not echoed in responses,
+and have an approved consent and retention contract.
 
 Client setup verified from primary documentation and installed CLIs on
 2026-08-06:
@@ -143,7 +156,8 @@ Copy `clients/github-copilot/mcp.json` into that repository setting. The public
 tickadoo endpoint requires no authentication, so this adapter needs no Agents
 secret, header or environment variable. It deliberately exposes only the core
 discovery, comparison, details and live-availability journey. The tests prove
-that every allowlisted tool remains present and read-only in `server.json`, the
+that every allowlisted tool remains present and read-only in
+`metadata/public-agent-tools.json`, the
 URL remains identical to portable `mcp.json`, and the published npm tarball
 contains the adapter. This repository does not apply settings automatically;
 enabling it remains an explicit repository-administrator action.
@@ -151,25 +165,27 @@ enabling it remains an explicit repository-administrator action.
 Record exact live client results in the PR. A schema/discovery test is not a
 claim that a particular GUI successfully connected.
 
-Transport verification on 2026-08-06 sent a read-only MCP 2026-07-28
-`server/discover` request to the exact URL in `mcp.json`. It returned HTTP 200,
-advertised `2026-07-28`, `2025-11-25`, and `2025-06-18`, and exposed tools and
-resources capabilities. This validates endpoint/transport compatibility
-without duplicating the protocol implementation in this repository.
+Transport verification on 2026-08-06 covered the earlier general MCP endpoint,
+not the new public-agent endpoint. After `/mcp/agents` is deployed, repeat the
+read-only MCP 2026-07-28 `server/discover`, initialize, `tools/list`, resource,
+alias, and field-stripping checks against the exact URL in `mcp.json`. Do not
+claim live compatibility until those checks pass from clean clients.
 
 ## Existing MCP and OpenAI/ChatGPT work reviewed
 
 The implementation was checked against the existing work rather than creating
 a parallel runtime:
 
-- Howard owns the public `/mcp` protocol, tool registry, surface adapter,
+- Howard owns the MCP protocol, the public `/mcp/agents` surface, the general
+  integrator compatibility surface, tool registry, surface adapters,
   public-field stripping, supplier aliases, telemetry, feedback controls, and
-  ChatGPT cards resources/widgets. Its recent history includes the MCP
+  card resources/widgets. Its recent history includes the MCP
   2026-07-28 migration, live conformance tests, Apps SDK widget metadata,
   domain verification, and adversarial privacy/honesty fixes. None belongs in
   this package.
-- `tickadoo-mcp` v2.0.0 is intentionally a thin npm stdio bridge. Its
-  `server.json`, `.claude-plugin/plugin.json`, `.mcp.json`, Smithery metadata,
+- `tickadoo-mcp` is intentionally a thin npm stdio bridge. Its
+  small Registry `server.json`, frozen `metadata/public-agent-tools.json`,
+  `.claude-plugin/plugin.json`, `.mcp.json`, Smithery metadata,
   seven Plugin Directory skills, metadata consistency tests, and live-audited
   ChatGPT-specific tool guidance already cover registry and legacy client
   distribution. The portable files reuse those assets and do not fork them.
@@ -271,11 +287,29 @@ plugin that declares MCP configuration as desktop-only, even when the server
 uses a public HTTPS URL. Web availability therefore still requires either the
 public **With MCP** submission flow or an `.app.json` reference to a real
 ChatGPT-registered MCP connection. This repository does not invent an
-`asdk_app_...` identifier. OpenAI's final submission form also requires the
-support URL `https://www.tickadoo.com/contact`; the current local Plugin
-Creator 1.2.3 validator rejects the newly documented `interface.supportURL`
-field, so the value remains a portal field until the installed package schema
-accepts it.
+`asdk_app_...` identifier. The portable `extensions.com.openai` block now owns
+the complete listing interface, including the required support URL, five
+positive and three negative MCP review cases, the commerce boundary, and
+release notes. OpenAI ignores the parallel Codex interface when this portable
+extension is present, so tests keep the shared interface fields identical.
+Reviewer credentials and instructions remain in the secure dashboard, never
+in the package. The reviewer video URL is added only after a real accessible
+recording exists.
+
+`npm run build:openai-zip` creates an exact-head, minimal upload ZIP from an
+explicit allowlist, validates its file closure, scans it for credential-shaped
+content, and prints its SHA-256 digest. The remaining organization, domain
+verification, review, and explicit publish steps live in
+[`openai-plugin-submission.md`](openai-plugin-submission.md).
+
+Anthropic now provides a self-service public directory at
+`claude.ai/directory/manage`. A product that owns a remote MCP server submits
+two entries from the same Claude organization: the server as an MCP connector
+and the GitHub plugin folder as a plugin bundle, then pairs them. The exact
+plugin path, validation gates, account steps and MCP Apps prerequisites are in
+[`claude-directory-submission.md`](claude-directory-submission.md). The
+repository marketplace and the independent MCP Registry do not create a Claude
+directory listing.
 
 Anthropic CLI 1.30.0 introduced [`ant apply`](https://platform.claude.com/docs/en/cli-sdks-libraries/cli/apply)
 for managed resources as code. The current 1.31.0 CLI accepted the exact shipped
@@ -294,6 +328,132 @@ Code 2.1.259 introduced the machine-readable validation used above. Copilot CLI
 1.0.83 discovered this exact root package as an external plugin and also
 improved MCP lifecycle and OAuth support; both remain client concerns around
 the same credential-free public endpoint.
+
+## 2026-09-30 upstream release audit
+
+The official Agent Plugins repository still identifies 1.0.0 as the current
+published release and [1.1.0](https://github.com/agentplugins/agent-plugins-spec/blob/main/spec/1.1.0.md)
+as a working draft. A fresh normative-text and schema diff found no portable
+feature change: the draft currently changes only version identifiers, status
+wording and schema descriptions. GitHub Copilot documents recognition of both
+schema identifiers, but that single-client support does not justify moving a
+cross-client package onto a draft. tickadoo therefore remains pinned to 1.0.0
+and keeps the draft as a monitored compatibility target.
+
+Anthropic launched the unified Claude Marketplace on 2026-09-23 and its
+self-service directory workflow on 2026-09-25. Public discovery now requires a
+connector submission and a plugin-bundle submission from the same Claude
+organization; a repository marketplace alone is not a public Claude listing.
+The prepared package and account-only gates are maintained in
+[`claude-directory-submission.md`](claude-directory-submission.md).
+
+OpenAI's current upload flow can update an existing public plugin, but the
+active tickadoo listing, registered MCP URL and used versions must first be
+reconciled in the portal. The current policy audit also found two stop gates:
+experience-ticket commerce needs explicit eligibility confirmation under the
+current physical-goods wording, and the current ChatGPT surface exposes raw
+city and coordinate inputs that conflict with the new location-input guidance.
+The package keeps `commerce: true` and the external
+checkout disclosure because hiding either would be inaccurate. Exact fixes and
+human-only checks are maintained in
+[`openai-plugin-submission.md`](openai-plugin-submission.md).
+
+Codex's current compatibility manifest expects `mcpServers` to reference the
+client-native `./.mcp.json` file rather than embedding an inline server object.
+The parallel `.codex-plugin/plugin.json` now uses that reference while the root
+portable `mcp.json` remains the Agent Plugins 1.0 source of truth.
+
+## 2026-09-29 OpenAI extensions and MCP Events decision
+
+OpenAI's 29 September release adds two material opportunities beyond ordinary
+tool calls, while its 23 September release makes installed plugins usable in
+[ChatGPT Voice](https://help.openai.com/en/articles/6825453-chatgpt-release-notes):
+
+- [OpenAI MCP Extensions](https://developers.openai.com/plugins/build/extensions)
+  can expose an MCP App from ChatGPT's global sidebar or a thread side panel,
+  and can also add structured settings, deep links, composer mentions, rich
+  forms, and file viewers. The existing tickadoo experience-card and
+  availability widgets already use the portable MCP Apps foundation and remain
+  useful without an OpenAI-only extension.
+- [MCP Events](https://developers.openai.com/plugins/build/mcp-events) lets a
+  user ask ChatGPT to react when a connected service emits a subscribed event.
+  It requires MCP `2026-07-28`, `events/list`, `events/subscribe`,
+  `events/unsubscribe`, persistent subscriptions, verified HTTPS callbacks,
+  signed webhook delivery, expiry/refresh, idempotence, authorization, replay
+  decisions, and SSRF-safe redirect-free networking. Howard already implements
+  the protocol generation; that does not implement the event lifecycle.
+
+The extension rollout is not one undifferentiated "web and mobile" surface.
+The current OpenAI specification says that web means the ChatGPT Work browser,
+not classic ChatGPT web. Global and thread entrypoints are supported on desktop,
+Work web, iOS and Android; file entrypoints, local-file access and composer
+mentions are desktop-only; rich form elicitation is desktop and Work web only;
+and deep links are not yet supported on Android. Free and Go web support is
+still described as forthcoming. Prototype work must pin the separate
+[`openai/mcp-extensions` specification](https://github.com/openai/mcp-extensions/blob/e314720a0daac326217d1f123fcf51647868fa9f/docs/spec.md)
+at commit `e314720a0daac326217d1f123fcf51647868fa9f`; the Agent Plugins schema pin does
+not pin this OpenAI-specific contract.
+
+The current package deliberately advertises neither feature. This is a
+truthfulness boundary, not a missed manifest flag:
+
+- Global and thread UI entrypoints are invoked with `{}`. The current
+  `render_experience_cards` tool requires product IDs from a grounded search,
+  so marking it as a static entrypoint would open an empty or invalid app. A
+  future sidebar or thread experience needs a separate purpose-built planner
+  resource and entrypoint tool that accepts `{}`, has a distinct human-readable
+  title and icon, and preserves the existing headless search workflow.
+- The public `/mcp/agents` endpoint is unauthenticated and stateless. Adding
+  subscriptions there would create an unowned storage and outbound-webhook
+  amplification surface. An event implementation must use a separately
+  authenticated connection, bind every subscription to an authorized
+  principal, encrypt callback secrets at rest, redact them from logs and
+  errors, and apply callback verification, private-address blocking, redirect
+  rejection, rate limits, expiry, idempotent unsubscribe, bounded retries and
+  duplicate suppression.
+- File viewing is not a ticket-discovery need and is out of scope. Rich forms
+  are only useful after a reviewed planner entrypoint exists; registered
+  OpenAI MCP servers also require the documented multi-round-trip contract.
+- Voice needs no new manifest claim. Once the active OpenAI listing is
+  reconciled, test the existing read-only discovery workflow in Live Voice on
+  web and mobile: speak a short provider-neutral comparison, leave cards and
+  booking links in the written chat, never request raw coordinates, and keep
+  checkout on tickadoo.com. Record this as validation evidence only after the
+  live test succeeds.
+
+The highest-value event candidate is a provider-neutral availability update for
+an opaque tickadoo product and user-selected date. Its payload must contain
+only the minimum public state needed to re-run a normal availability check. It
+must not contain customer data, exact location, supplier identity, raw product
+IDs, internal provenance, callback credentials, checkout state, or instructions
+to the model. An automation may notify or summarize; it must never reserve,
+buy, guarantee inventory, or complete checkout.
+
+Implementation order is fixed:
+
+1. Deploy and live-validate the current read-only `/mcp/agents` contract, then
+   complete the existing OpenAI listing reconciliation. Do not make an
+   undeployed extension a dependency of public discovery.
+2. Prototype a distinct empty-input planner entrypoint against OpenAI's public
+   extension specification. Keep standard MCP Apps metadata canonical,
+   feature-detect OpenAI-only APIs, and test the ordinary headless path plus
+   ChatGPT desktop, ChatGPT Work web, iOS and Android behavior before
+   advertising the entrypoint. Test desktop-only composer behavior separately;
+   do not infer classic-web support from Work web.
+3. Exercise the current plugin through ChatGPT Live Voice on web and mobile,
+   including a no-results case and the external-checkout handoff. Voice is a
+   client validation lane, not a separate MCP surface.
+4. Design events on a separately authenticated MCP connection. Threat-model
+   authorization, webhook SSRF, signing-key storage, retries, revocation,
+   feedback loops and deletion before adding `events` to `server/discover`.
+5. Add conformance, adversarial, restart, expiry, duplicate-delivery and
+   account-disconnection tests; rescan the exact deployed endpoint in the
+   Plugins portal; only then add event/automation copy to package metadata.
+
+`.app.json` remains local registered-connection metadata. It may contain a
+portal-issued `plugin_asdk_app...` identifier for developer testing, so it is
+not part of the portable package or public upload ZIP and must never be invented
+or used as an authentication secret.
 
 ### Claude Managed Agents setup
 
@@ -321,7 +481,16 @@ the remote MCP service and npm bridge are unaffected by package rollback.
 
 ## Follow-ups
 
-- Decide marketplace and directory publication only after client-local testing.
+- Complete OpenAI's account-only review and publication steps after the exact
+  ZIP and live MCP scan have human approval. Track the release and listing
+  gates in [GitHub issue #120](https://github.com/tickadoo/tickadoo-mcp/issues/120)
+  and [GitHub issue #141](https://github.com/tickadoo/tickadoo-mcp/issues/141).
+- Build the separately reviewed OpenAI planner-entrypoint prototype and the
+  authenticated availability-event design above; do not advertise either in
+  the current plugin version. Their implementation tracks are
+  [Howard issue #6802](https://github.com/tickadoo/howard/issues/6802) and
+  [Howard issue #6801](https://github.com/tickadoo/howard/issues/6801),
+  respectively.
 - Define distribution integrity/signing once the specification defines it or
   the selected marketplaces provide a suitable mechanism.
 - Track the portable OAuth and credential-reference gap. Do not add Hive until

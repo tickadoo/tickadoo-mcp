@@ -19,14 +19,14 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
-  it("pins the /mcp Streamable HTTP URL and service-origin tool", () => {
-    expect(TICKADOO_MCP_URL).toBe("https://mcp.tickadoo.com/mcp");
+  it("pins the /mcp/agents Streamable HTTP URL and service-origin tool", () => {
+    expect(TICKADOO_MCP_URL).toBe("https://mcp.tickadoo.com/mcp/agents");
     expect(TICKADOO_MCP_TOOL).toEqual({
       type: "mcp",
       server_label: "tickadoo",
       transport: {
         type: "http",
-        server_url: "https://mcp.tickadoo.com/mcp",
+        server_url: "https://mcp.tickadoo.com/mcp/agents",
       },
       connection_origin: "service",
       required: true,
@@ -107,7 +107,7 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(requireOpenAIApiKey({ OPENAI_API_KEY: " test-key " })).toBe("test-key");
   });
 
-  it("documents the /mcp correction, beta header, and CI secret requirement", async () => {
+  it("documents the /mcp/agents endpoint, beta header, and CI secret requirement", async () => {
     const doc = await readFile(path.join(root, "docs/openai-agents-api.md"), "utf8");
     const workflow = await readFile(
       path.join(root, ".github/workflows/agents-api-smoke.yml"),
@@ -115,13 +115,13 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     );
     const readme = await readFile(path.join(root, "README.md"), "utf8");
 
-    expect(doc).toContain('"server_url": "https://mcp.tickadoo.com/mcp"');
+    expect(doc).toContain('"server_url": "https://mcp.tickadoo.com/mcp/agents"');
     expect(doc).toContain('"connection_origin": "service"');
     expect(doc).toContain('"required": true');
     expect(doc).toContain("OpenAI-Beta: agents=v1");
     expect(doc).toMatch(/openai.*≥ 7\.15\.0|openai-node.*v7\.15\.0/i);
-    expect(doc).toContain("404");
-    expect(doc).toContain("https://mcp.tickadoo.com/mcp");
+    expect(doc).toContain("20-tool read-only public surface");
+    expect(doc).toContain("https://mcp.tickadoo.com/mcp/agents");
     expect(doc).toContain("npm run smoke:agents-api");
     expect(doc).toContain("CI/dev-only");
     expect(doc).toContain("npm install --omit=dev");

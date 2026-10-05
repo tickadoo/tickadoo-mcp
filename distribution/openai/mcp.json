@@ -3,7 +3,7 @@
   "mcpServers": {
     "tickadoo": {
       "type": "streamable-http",
-      "url": "https://mcp.tickadoo.com/mcp/agents"
+      "url": "https://mcp.tickadoo.com/mcp/store-cards"
     }
   }
 }

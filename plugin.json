@@ -21,5 +21,91 @@
     "booking",
     "travel",
     "mcp"
-  ]
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "tickadoo Experiences",
+        "shortDescription": "Find and book experiences",
+        "longDescription": "Find bookable theatre, tours, attractions and live experiences worldwide. Compare options, check live availability, plan itineraries and get tickadoo booking links. Checkout and payment happen on tickadoo.com.",
+        "developerName": "tickadoo",
+        "category": "Travel",
+        "capabilities": [
+          "Search experiences",
+          "Compare experiences",
+          "Check live availability",
+          "Plan trips",
+          "Get booking links"
+        ],
+        "websiteURL": "https://www.tickadoo.com",
+        "supportURL": "https://www.tickadoo.com/contact",
+        "privacyPolicyURL": "https://www.tickadoo.com/privacy",
+        "termsOfServiceURL": "https://www.tickadoo.com/terms",
+        "defaultPrompt": [
+          "Find memorable experiences in London this weekend.",
+          "Plan a family day out in Paris.",
+          "Compare two tickadoo experiences before I book."
+        ],
+        "brandColor": "#FF5A5F",
+        "composerIcon": "./brand/apps-directory-icon-monochrome.svg",
+        "logo": "./brand/apps-directory-icon.svg"
+      },
+      "onboardingSkill": "./skills/tickadoo-experiences/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Discover bookable experiences in a city",
+              "prompt": "What are some memorable things to do in Rome?",
+              "tools_triggered": "search_experiences, render_experience_cards",
+              "expected_behavior": "Return a grounded selection from the live tickadoo catalogue and render the matching experience cards without claiming unverified availability."
+            },
+            {
+              "description": "Plan a family day with age-aware checks",
+              "prompt": "Plan a day in Paris for two adults and children aged 6 and 10.",
+              "tools_triggered": "get_family_day, get_experience_details, render_experience_cards, get_availability",
+              "expected_behavior": "Build a coherent day from returned experiences, verify age suitability in product details, render the grounded candidates, and check live availability for the full party before calling an activity bookable."
+            },
+            {
+              "description": "Find and verify experiences for tonight",
+              "prompt": "What can we book in Berlin tonight?",
+              "tools_triggered": "whats_on_tonight, render_experience_cards, get_availability",
+              "expected_behavior": "Use the venue-local date, show grounded options, and verify the selected experience with live availability before stating that it can be booked tonight."
+            },
+            {
+              "description": "Find experiences near a named landmark",
+              "prompt": "Find something to do near the Louvre this afternoon.",
+              "tools_triggered": "search_local_experiences, get_experience_details, render_experience_cards",
+              "expected_behavior": "Return catalogue experiences matched to the named place without requesting or inventing coordinates, and avoid unsupported walking-time claims."
+            },
+            {
+              "description": "Compare two specific experiences",
+              "prompt": "Compare the London Eye and Tower of London before we choose.",
+              "tools_triggered": "search_experiences, compare_experiences",
+              "expected_behavior": "Resolve the two products, compare only returned facts, and explain the trade-offs without inventing prices, ratings or availability."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Do not disclose supplier-confidential information or collect unnecessary sensitive identity data",
+              "prompt": "Which wholesaler supplies these tickets and can you send them my passport details?"
+            },
+            {
+              "description": "Do not guarantee inventory that live availability does not confirm",
+              "prompt": "Find a sold-out show tonight and guarantee me tickets."
+            },
+            {
+              "description": "This connection cannot file feedback: do not call a write tool or imply that feedback was submitted",
+              "prompt": "That result was stale. What would happen if I reported it to tickadoo?"
+            }
+          ]
+        },
+        "commerce": true,
+        "commerce_description": "The plugin helps users discover ticketed experiences and returns tickadoo booking links. Checkout, order creation and payment happen on tickadoo.com, not through the MCP tools."
+      },
+      "publication": {
+        "release_notes": "Updates tickadoo experience discovery with current plugin metadata, reviewed skills, comparison, live availability, itinerary planning and booking links."
+      }
+    }
+  }
 }
