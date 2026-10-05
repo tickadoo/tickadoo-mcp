@@ -118,8 +118,8 @@ Client setup verified from primary documentation and installed CLIs on
   `tickadoo-experiences`. GitHub now also documents direct installation from a
   repository or local path and declarative enablement through
   `.github/copilot/settings.json`. Copilot discovers the portable root
-  `plugin.json`, standard `skills/`, and the credential-free `.mcp.json`
-  adapter without a second Copilot-specific manifest. On 2026-08-30, Copilot
+  `plugin.json`, standard `skills/`, and the credential-free `mcp.json`
+  without a second Copilot-specific manifest. On 2026-08-30, Copilot
   CLI 1.0.80 installed the checkout and reported all seven skills, but warned
   that direct installs are deprecated. The repository therefore also carries
   `.github/plugin/marketplace.json` for the supported marketplace installation
@@ -219,7 +219,7 @@ published 1.0.0 line until a reviewed draft change adds material value.
 
 GitHub Copilot now documents plugins as first-class bundles across Copilot CLI,
 the cloud agent, and the GitHub Copilot app. Its discovery conventions include
-root `plugin.json`, `skills/`, and root `.mcp.json`, all of which this package
+root `plugin.json`, `skills/`, and root `mcp.json`, all of which this package
 already ships. The separately tested `clients/github-copilot/mcp.json` remains
 useful for repository administrators who want the narrower eight-tool,
 default-deny cloud configuration rather than the full plugin tool surface.
