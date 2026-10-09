@@ -183,7 +183,7 @@ If a future Connect property session is provisioned for Meta and `/api/connect/b
 
 ## Optional extras
 
-MCP tools the connector may also call when they match the ask: `get_city_guide`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `plan_itinerary`, `get_related_experiences`, `get_travel_tips`, `get_transfer_info` (supported cities only, and only with real destination coordinates), `render_experience_cards` (if Muse has a card renderer).
+MCP tools the connector may also call when they match the ask: `get_city_highlights`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `get_itinerary_candidates`, `get_related_experiences`, `search_experiences_by_topic`, `get_transfer_info` (supported cities only, and only with real destination coordinates), `render_experience_cards` (if Muse has a card renderer).
 
 ## Also available as MCP
 
