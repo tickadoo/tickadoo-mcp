@@ -1,0 +1,46 @@
+# Publish server.json to the Official MCP Registry via GitHub OIDC.
+#
+# Why this exists: `mcp-publisher login github` (device flow) cannot publish
+# the io.github.tickadoo/* namespace while the tickadoo org restricts
+# third-party OAuth apps. OIDC from Actions runs as the repo itself, so no
+# OAuth app approval is needed.
+#
+# Run manually: Actions -> "Publish to MCP Registry" -> Run workflow.
+
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -sL "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" -o /tmp/mcp-publisher.tar.gz
+          echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  /tmp/mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf /tmp/mcp-publisher.tar.gz -C /tmp mcp-publisher
+          /tmp/mcp-publisher --version
+
+      - name: Validate server.json
+        run: /tmp/mcp-publisher validate server.json
+
+      - name: Login via OIDC and publish
+        run: |
+          set -euo pipefail
+          /tmp/mcp-publisher login github-oidc
+          /tmp/mcp-publisher publish server.json
+
+      - name: Verify listing read-back
+        run: |
+          set -euo pipefail
+          curl -sS "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.tickadoo/tickadoo-mcp" | tee /tmp/registry.json
+          grep -q "io.github.tickadoo/tickadoo-mcp" /tmp/registry.json
