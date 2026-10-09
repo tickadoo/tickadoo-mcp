@@ -5,14 +5,14 @@
 # third-party OAuth apps. OIDC from Actions runs as the repo itself, so no
 # OAuth app approval is needed.
 #
-# SECURITY: the job is bound to the `mcp-registry` GitHub environment, whose
-# deployment-branch policy allows ONLY the `main` branch. Without this,
-# workflow_dispatch would let any repo writer run the workflow from their own
-# branch and publish a tampered server.json under the tickadoo namespace
-# (the OIDC token grants io.github.tickadoo/* based on repository_owner
-# alone). Create the environment once in repo Settings -> Environments ->
-# New environment `mcp-registry` -> Deployment branches -> Selected
-# branches -> add `main`. The workflow fails closed until it exists.
+# SECURITY: configure the `mcp-registry` environment before dispatching this
+# job: allow only the `main` branch (no tags) and require maintainer review.
+# A missing environment is automatically created WITHOUT protection rules.
+# These controls govern jobs that declare this environment; they do not
+# prevent a writer from removing the declaration in another branch workflow.
+# The Registry's OIDC exchange grants io.github.tickadoo/* based on
+# repository_owner alone, so the environment is not a Registry-side trust
+# restriction. That owner-wide trust exists independently of this workflow.
 #
 # Run manually: Actions -> "Publish to MCP Registry" -> Run workflow.
 
@@ -50,18 +50,24 @@ jobs:
           /tmp/mcp-publisher login github-oidc
           /tmp/mcp-publisher publish server.json
 
-      - name: Verify exact version in registry
+      - name: Verify exact version and latest in registry
         run: |
           set -euo pipefail
-          VERSION=$(python3 -c 'import json;print(json.load(open("server.json"))["version"])')
-          echo "Expecting version: $VERSION"
-          curl -sS "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.tickadoo%2Ftickadoo-mcp/versions/${VERSION}" -o /tmp/ver.json
-          VERSION="$VERSION" python3 - <<'EOF'
-          import json, os
-          v = os.environ['VERSION']
-          raw = open('/tmp/ver.json').read()
-          d = json.loads(raw)
-          assert 'io.github.tickadoo/tickadoo-mcp' in raw, 'server name missing in version record'
-          assert d.get('version') == v, f"version mismatch: {d.get('version')} != {v}"
-          print(f'registry now serves version {v}')
+          python3 - <<'EOF'
+          import json
+          from urllib.parse import quote
+          from urllib.request import urlopen
+
+          with open('server.json', encoding='utf-8') as manifest_file:
+              manifest = json.load(manifest_file)
+          name, version = manifest['name'], manifest['version']
+          base = f'https://registry.modelcontextprotocol.io/v0.1/servers/{quote(name, safe="")}/versions'
+
+          for lookup in (version, 'latest'):
+              with urlopen(f'{base}/{quote(lookup, safe="")}', timeout=30) as response:
+                  record = json.load(response)
+              server = record['server']
+              if server.get('name') != name or server.get('version') != version:
+                  raise ValueError(f'{lookup}: expected {name}@{version}, got {server.get("name")}@{server.get("version")}')
+              print(f'Registry {lookup} read-back verified: {name}@{version}')
           EOF
