@@ -90,7 +90,12 @@ Set `TICKADOO_LOG_LEVEL=none` to silence bridge status logs on stderr.
 
 ## Local Development
 
+Use Node.js 22+ and install Python 3 with a `python3` executable on `PATH`
+before running the checks. The registry read-back tests execute the workflow's
+Python verifier against local fixtures; the stdio bridge itself only needs Node.js.
+
 ```bash
+python3 --version
 npm install
 npm run build
 npm test
