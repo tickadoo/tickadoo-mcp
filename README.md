@@ -1,5 +1,7 @@
 # tickadoo MCP Server
 
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/tickadoo/tickadoo-mcp)
+
 `@tickadoo/mcp-server` is the local stdio entrypoint for tickadoo MCP. Since v2.0.0 it is a thin bridge to the canonical remote server at:
 
 ```text
