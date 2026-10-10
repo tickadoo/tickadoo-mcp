@@ -77,7 +77,7 @@
       "kind": "positive",
       "prompt": "Plan three relaxed days of activities in Amsterdam.",
       "expectedSkill": "plan-a-trip",
-      "requiredTools": ["get_city_guide", "plan_itinerary"],
+      "requiredTools": ["get_city_highlights", "get_itinerary_candidates"],
       "fixture": "Live public Amsterdam catalogue for a three-day, relaxed-pace itinerary.",
       "expectedResultShape": "A day-by-day itinerary whose catalogue-backed items are distinguishable from unchecked suggestions.",
       "requirements": ["Arrange returned candidates into days", "Label unchecked itinerary slots as suggestions"]

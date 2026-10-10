@@ -75,7 +75,7 @@
           }
         },
         {
-          "name": "get_city_guide",
+          "name": "get_city_highlights",
           "title": "City guide",
           "annotations": {
             "readOnlyHint": true,
@@ -85,7 +85,7 @@
           }
         },
         {
-          "name": "get_travel_tips",
+          "name": "search_experiences_by_topic",
           "title": "Travel tips",
           "annotations": {
             "readOnlyHint": true,
@@ -135,7 +135,7 @@
           }
         },
         {
-          "name": "plan_itinerary",
+          "name": "get_itinerary_candidates",
           "title": "Plan itinerary",
           "annotations": {
             "readOnlyHint": true,

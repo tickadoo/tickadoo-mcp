@@ -17,7 +17,7 @@ Use this skill when the user wants a full or substantial single-day family plan 
 2. **Widen if asked** — `search_experiences(city, tags: ["family"])` for a broader family list (tags is an array; `family` is the canonical tag), or `search_by_mood(city, mood: "family_fun")` for a vibe-led pull.
 3. **Enrich the picks** — `get_experience_details(product_id or slug)` for age restrictions and accessibility fields before committing the family to anything.
 4. **Check every selected product** — a family day has multiple bookable products (morning and afternoon at least). For each selected one: `get_availability` with the date range and the FULL party size (count the kids), requesting a fresh check when the schema supports it; then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link. Label unchecked slots as suggestions.
-5. **Logistics** — `get_travel_tips(city, topic: "transport")` for getting around with kids. Use `get_transfer_info` only when an approved client supplies destination coordinates through a controlled location channel and the city is supported; never ask the user for, infer or guess precise coordinates in chat.
+5. **Logistics** — `search_experiences_by_topic(city, topic: "transport")` for getting around with kids. Use `get_transfer_info` only when an approved client supplies destination coordinates through a controlled location channel and the city is supported; never ask the user for, infer or guess precise coordinates in chat.
 
 ## Show results as cards
 

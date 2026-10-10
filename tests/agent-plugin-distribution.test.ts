@@ -441,4 +441,46 @@ describe("Agent Plugin distribution", () => {
       "report_quality_signal",
     ]);
   });
+
+  it("keeps shipped skills and Muse guidance on the live howard tool names", async () => {
+    const retiredTools = ["get_city_guide", "get_travel_tips", "plan_itinerary"] as const;
+    const guidanceFiles = [
+      ".claude/skills/tickadoo-experiences/SKILL.md",
+      "connectors/muse/muse.md",
+      "evals/agent-plugin-scenarios.json",
+      "skills/family-day-out/SKILL.md",
+      "skills/near-a-landmark/SKILL.md",
+      "skills/plan-a-trip/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+    ];
+
+    for (const relative of guidanceFiles) {
+      const source = await readFile(path.join(root, relative), "utf8");
+      for (const tool of retiredTools) {
+        expect(source.includes(tool), `${relative} still references retired ${tool}`).toBe(false);
+      }
+    }
+
+    const cityHighlightFiles = [
+      ".claude/skills/tickadoo-experiences/SKILL.md",
+      "skills/plan-a-trip/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+    ];
+    for (const relative of cityHighlightFiles) {
+      const source = await readFile(path.join(root, relative), "utf8");
+      expect(source, relative).toContain("get_city_highlights");
+    }
+
+    const topicSearchFiles = [
+      ".claude/skills/tickadoo-experiences/SKILL.md",
+      "connectors/muse/muse.md",
+      "skills/family-day-out/SKILL.md",
+      "skills/near-a-landmark/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+    ];
+    for (const relative of topicSearchFiles) {
+      const source = await readFile(path.join(root, relative), "utf8");
+      expect(source, relative).toContain("search_experiences_by_topic");
+    }
+  });
 });
