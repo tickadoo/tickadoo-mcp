@@ -86,6 +86,8 @@ Set `TICKADOO_MCP_URL` to point the bridge at another compatible Streamable HTTP
 TICKADOO_MCP_URL=http://127.0.0.1:8787/mcp npx -y @tickadoo/mcp-server
 ```
 
+> Only point `TICKADOO_MCP_URL` at endpoints you trust: the bridge forwards your tool arguments (city names, queries, experience IDs) to whichever endpoint is configured.
+
 Set `TICKADOO_LOG_LEVEL=none` to silence bridge status logs on stderr.
 
 ## Local Development
