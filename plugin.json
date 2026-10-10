@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "tickadoo-experiences",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
   "author": {
     "name": "tickadoo Inc.",
