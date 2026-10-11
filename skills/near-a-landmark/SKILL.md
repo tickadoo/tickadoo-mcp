@@ -17,7 +17,7 @@ The user names a landmark, neighbourhood, square, venue or area: "near the Louvr
 2. **Say what "near" meant** — prefer exact venue or neighbourhood matches over city-centre fallback results, and say which you got ("I couldn't anchor to that exact spot, so these are central-Paris options"). Do not claim or rank by walking time unless returned location data supports it.
 3. **Enrich the picks** — `get_experience_details(product_id or slug)` for the actual location before making any proximity claim.
 4. **Check the pick** — `get_availability` for the selected product (date range, party size, fresh when supported), then `check_availability(slug, date, party_size)` only when the user wants the date-specific booking link. For a same-day check ("this afternoon"), use the venue-local calendar date (e.g. from the selected result's `start_time`), never the assistant's system timezone.
-5. **"While you are there" pair** — run a new `search_local_experiences` call anchored to the selected venue or area. `get_travel_tips(city, topic: "transport")` if they ask how to get there.
+5. **"While you are there" pair** — run a new `search_local_experiences` call anchored to the selected venue or area. `search_experiences_by_topic(city, topic: "transport")` if they ask how to get there.
 
 ## Show results as cards
 
