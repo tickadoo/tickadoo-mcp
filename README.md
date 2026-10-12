@@ -1,3 +1,31 @@
+# tickadoo MCP: bookable experiences for AI assistants
+
+tickadoo's MCP server lets any AI assistant discover, compare, and book real
+experiences (theatre, tours, attractions, hidden gems) across 1,100+ cities
+worldwide, with live availability and booking links. No account, no API key.
+
+## Try it
+
+- "What's on in London tonight?"
+- "Plan a 3-day food itinerary in Paris."
+- "Compare walking tours in Rome."
+
+## Connect
+
+Remote (Streamable HTTP), no install:
+
+```json
+{ "mcpServers": { "tickadoo": { "url": "https://mcp.tickadoo.com/mcp" } } }
+```
+
+Or the npm bridge for stdio clients:
+
+```bash
+npx -y @tickadoo/mcp-server
+```
+
+---
+
 # tickadoo MCP Server
 
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/tickadoo/tickadoo-mcp)
