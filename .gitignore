@@ -20,3 +20,6 @@ CODEX_TASK.md
 mcp-publisher
 .env*.local
 .env.production
+
+# Local Claude Code worktrees (never commit; they were once added as stray gitlinks)
+.claude/worktrees/
