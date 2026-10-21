@@ -47,6 +47,81 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
 }
 
+const OPENAI_CATEGORIES = [
+  "Productivity",
+  "Creativity",
+  "Developer Tools",
+  "Business & Operations",
+  "Data & Analytics",
+  "Communication",
+  "Education & Research",
+  "Security",
+  "Finance",
+  "Healthcare",
+  "Travel",
+  "Entertainment",
+  "Other",
+];
+
+const COUNT_BEARING_COPY =
+  /\b\d[\d,]*\+?\s+(?:bookable\s+)?(?:products?|experiences?|cities|tools)\b/i;
+
+async function assertOpenAiListing(
+  pluginInterface: Record<string, unknown>,
+  options: { requireSupportURL: boolean },
+) {
+  expect(String(pluginInterface.displayName).length).toBeLessThanOrEqual(30);
+  expect(String(pluginInterface.shortDescription).length).toBeLessThanOrEqual(30);
+  expect(String(pluginInterface.longDescription).length).toBeLessThanOrEqual(4_000);
+  expect(String(pluginInterface.longDescription)).not.toMatch(COUNT_BEARING_COPY);
+  expect(String(pluginInterface.developerName).length).toBeLessThanOrEqual(80);
+  expect(OPENAI_CATEGORIES).toContain(pluginInterface.category);
+
+  const capabilities = pluginInterface.capabilities as string[];
+  expect(capabilities.length).toBeLessThanOrEqual(20);
+  expect(capabilities.every((capability) => capability.length > 0 && capability.length <= 120)).toBe(true);
+
+  const prompts = pluginInterface.defaultPrompt as string[];
+  expect(prompts.length).toBeLessThanOrEqual(3);
+  expect(prompts.every((prompt) => prompt.length > 0 && prompt.length <= 128 && !prompt.includes("@"))).toBe(true);
+  expect(new Set(prompts.map((prompt) => prompt.normalize().replace(/\s+/g, " ").trim())).size).toBe(prompts.length);
+
+  const urlFields = ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"];
+  if (options.requireSupportURL) {
+    urlFields.push("supportURL");
+  } else {
+    expect(pluginInterface).not.toHaveProperty("supportURL");
+  }
+  for (const field of urlFields) {
+    const value = String(pluginInterface[field]);
+    const url = new URL(value);
+    expect(value.length, field).toBeLessThanOrEqual(1_024);
+    expect(url.protocol, field).toBe("https:");
+    expect(url.username, field).toBe("");
+    expect(url.password, field).toBe("");
+  }
+
+  const brandColor = String(pluginInterface.brandColor);
+  expect(brandColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  expect(1.05 / (relativeLuminance(brandColor) + 0.05)).toBeGreaterThanOrEqual(2);
+
+  const resolvedRoot = await realpath(root);
+  for (const field of ["composerIcon", "logo"]) {
+    const relative = String(pluginInterface[field]);
+    expect(relative).toMatch(/^\.\/brand\/.+\.svg$/);
+    const asset = path.resolve(root, relative);
+    const assetStat = await lstat(asset);
+    expect(assetStat.isSymbolicLink(), `${field} must not be a symlink`).toBe(false);
+    expect(assetStat.size, `${field} must not exceed 5 MiB`).toBeLessThanOrEqual(5 * 1024 * 1024);
+    expect(await realpath(asset)).toSatisfy((resolved) => resolved.startsWith(`${resolvedRoot}${path.sep}`));
+    const svg = await readFile(asset, "utf8");
+    expect(svg, `${field} must have an SVG root`).toMatch(/^\s*<svg\b/);
+    const dimensions = svg.match(/<svg\b[^>]*\bviewBox="0 0 (\d+) \1"/);
+    expect(dimensions, `${field} must have a square numeric viewBox`).not.toBeNull();
+    expect(Number(dimensions?.[1]), `${field} must be at least 48 by 48`).toBeGreaterThanOrEqual(48);
+  }
+}
+
 describe("Agent Plugins 1.0.0 package", () => {
   it("validates the closed portable manifest against the vendored official schema", async () => {
     const manifest = await validate("plugin");
@@ -151,6 +226,27 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(codexServers.tickadoo.type).toBe("http");
     expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
     expect(JSON.stringify(codex)).not.toMatch(/bearer|token|secret|password|api[_-]?key|cf-access/i);
+
+    const extension = (portable.extensions as Record<string, Record<string, unknown>>)["com.openai"];
+    const portableInterface = (extension.interface ?? {}) as Record<string, unknown>;
+    const codexInterface = codex.interface as Record<string, unknown>;
+    for (const field of [
+      "displayName",
+      "shortDescription",
+      "longDescription",
+      "developerName",
+      "category",
+      "capabilities",
+      "websiteURL",
+      "privacyPolicyURL",
+      "termsOfServiceURL",
+      "defaultPrompt",
+      "brandColor",
+      "composerIcon",
+      "logo",
+    ]) {
+      expect(codexInterface[field], field).toEqual(portableInterface[field]);
+    }
   });
 
   it("meets the current OpenAI install-surface metadata gates", async () => {
@@ -158,62 +254,142 @@ describe("Agent Plugins 1.0.0 package", () => {
     const pluginInterface = codex.interface as Record<string, unknown>;
     expect(codex.name).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
     expect(codex.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
-    expect(String(pluginInterface.displayName).length).toBeLessThanOrEqual(30);
-    expect(String(pluginInterface.shortDescription).length).toBeLessThanOrEqual(30);
-    expect(String(pluginInterface.longDescription).length).toBeLessThanOrEqual(4_000);
-    expect(String(pluginInterface.developerName).length).toBeLessThanOrEqual(80);
-    expect([
-      "Productivity",
-      "Creativity",
-      "Developer Tools",
-      "Business & Operations",
-      "Data & Analytics",
-      "Communication",
-      "Education & Research",
-      "Security",
-      "Finance",
-      "Healthcare",
-      "Travel",
-      "Entertainment",
-      "Other",
-    ]).toContain(pluginInterface.category);
+    await assertOpenAiListing(pluginInterface, { requireSupportURL: false });
+  });
 
-    const capabilities = pluginInterface.capabilities as string[];
-    expect(capabilities.length).toBeLessThanOrEqual(20);
-    expect(capabilities.every((capability) => capability.length > 0 && capability.length <= 120)).toBe(true);
+  it("prefills the OpenAI directory from the portable manifest", async () => {
+    const manifest = await validate("plugin");
+    const author = manifest.author as Record<string, unknown>;
+    expect(author.email).toBe("support@tickadoo.com");
+    expect(author.name).toBe("tickadoo Inc.");
 
-    const prompts = pluginInterface.defaultPrompt as string[];
-    expect(prompts.length).toBeLessThanOrEqual(3);
-    expect(prompts.every((prompt) => prompt.length > 0 && prompt.length <= 128 && !prompt.includes("@"))).toBe(true);
-    expect(new Set(prompts.map((prompt) => prompt.normalize().replace(/\s+/g, " ").trim())).size).toBe(prompts.length);
-
-    for (const field of ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"]) {
-      const value = String(pluginInterface[field]);
-      const url = new URL(value);
-      expect(value.length, field).toBeLessThanOrEqual(1_024);
-      expect(url.protocol, field).toBe("https:");
-      expect(url.username, field).toBe("");
-      expect(url.password, field).toBe("");
+    const extensions = manifest.extensions as Record<string, Record<string, unknown>>;
+    expect(Object.keys(extensions)).toEqual(["com.openai"]);
+    const openai = extensions["com.openai"];
+    expect(Object.keys(openai).sort()).toEqual(["interface", "review"]);
+    for (const behaviorField of ["apps", "hooks", "onboardingSkill", "mcpServers", "skills"]) {
+      expect(openai).not.toHaveProperty(behaviorField);
     }
 
-    const brandColor = String(pluginInterface.brandColor);
-    expect(brandColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
-    expect(1.05 / (relativeLuminance(brandColor) + 0.05)).toBeGreaterThanOrEqual(2);
+    const pluginInterface = openai.interface as Record<string, unknown>;
+    await assertOpenAiListing(pluginInterface, { requireSupportURL: true });
+    expect(pluginInterface.displayName).toBe("tickadoo Experiences");
+    expect(pluginInterface.developerName).toBe("tickadoo");
+    expect(pluginInterface.category).toBe("Travel");
+    expect(pluginInterface.websiteURL).toBe("https://www.tickadoo.com");
+    expect(pluginInterface.supportURL).toBe("https://www.tickadoo.com/contact");
+    expect(pluginInterface.privacyPolicyURL).toBe("https://www.tickadoo.com/privacy");
+    expect(pluginInterface.termsOfServiceURL).toBe("https://www.tickadoo.com/terms");
+    expect(pluginInterface.logo).toBe("./brand/apps-directory-icon.svg");
+    expect(pluginInterface.composerIcon).toBe("./brand/apps-directory-icon-monochrome.svg");
+    expect(pluginInterface.brandColor).toBe("#FF5A5F");
+    const longDescription = String(pluginInterface.longDescription);
+    expect(longDescription).toContain("https://mcp.tickadoo.com/mcp");
+    expect(longDescription).toContain("https://mcp.tickadoo.com/llms.txt");
+    expect(longDescription).toContain("no authentication");
+    expect(longDescription).toContain("does not collect payment");
 
-    const resolvedRoot = await realpath(root);
-    for (const field of ["composerIcon", "logo"]) {
-      const relative = String(pluginInterface[field]);
-      expect(relative).toMatch(/^\.\/brand\/.+\.svg$/);
-      const asset = path.resolve(root, relative);
-      const assetStat = await lstat(asset);
-      expect(assetStat.isSymbolicLink(), `${field} must not be a symlink`).toBe(false);
-      expect(assetStat.size, `${field} must not exceed 5 MiB`).toBeLessThanOrEqual(5 * 1024 * 1024);
-      expect(await realpath(asset)).toSatisfy((resolved) => resolved.startsWith(`${resolvedRoot}${path.sep}`));
-      const svg = await readFile(asset, "utf8");
-      expect(svg, `${field} must have an SVG root`).toMatch(/^\s*<svg\b/);
-      const dimensions = svg.match(/<svg\b[^>]*\bviewBox="0 0 (\d+) \1"/);
-      expect(dimensions, `${field} must have a square numeric viewBox`).not.toBeNull();
-      expect(Number(dimensions?.[1]), `${field} must be at least 48 by 48`).toBeGreaterThanOrEqual(48);
+    const review = openai.review as Record<string, unknown>;
+    expect(Object.keys(review).sort()).toEqual(["commerce", "commerce_description", "test_cases"]);
+    expect(review.commerce).toBe(false);
+    expect(review.commerce_description).toBe(
+      "This plugin does not collect payment or run checkout. It returns tickadoo booking links, and a person confirms the booking on https://www.tickadoo.com.",
+    );
+    expect(review).not.toHaveProperty("demo_recording_url");
+    expect(review).not.toHaveProperty("test_credentials");
+    expect(review).not.toHaveProperty("reviewer_instructions");
+
+    const testCases = review.test_cases as {
+      positive: Array<Record<string, string>>;
+      negative: Array<Record<string, string>>;
+    };
+    expect(testCases.positive).toHaveLength(5);
+    expect(testCases.negative).toHaveLength(3);
+
+    const registry = await readJson(path.join(root, "server.json"));
+    const publishedTools = new Set(
+      (
+        (
+          (registry._meta as Record<string, Record<string, unknown>>)[
+            "io.modelcontextprotocol.registry/publisher-provided"
+          ].tools as Array<{ name: string }>
+        ) ?? []
+      ).map((tool) => tool.name),
+    );
+    const scenarios = await readJson(path.join(root, "evals/agent-plugin-scenarios.json"));
+    const scenarioById = new Map(
+      (scenarios.scenarios as Array<Record<string, unknown>>).map((scenario) => [scenario.id, scenario]),
+    );
+    const forbiddenTool = /checkout|payment|stripe|charge|\bcard\b/i;
+
+    function triggeredTools(testCase: Record<string, string>): string[] {
+      return testCase.tools_triggered.split(",").map((tool) => tool.trim()).filter(Boolean);
+    }
+
+    for (const testCase of [...testCases.positive, ...testCases.negative]) {
+      expect(testCase.description.length).toBeGreaterThan(0);
+      expect(testCase.description.length).toBeLessThanOrEqual(4_000);
+      expect(testCase.prompt.length).toBeGreaterThan(0);
+      expect(testCase.prompt.includes("@")).toBe(false);
+      if (testCase.tools_triggered !== undefined) {
+        const tools = triggeredTools(testCase);
+        expect(tools.length).toBeGreaterThan(0);
+        expect(new Set(tools).size).toBe(tools.length);
+        for (const tool of tools) {
+          expect(publishedTools, tool).toContain(tool);
+          expect(tool).not.toMatch(forbiddenTool);
+        }
+      }
+    }
+
+    const tonight = testCases.positive[0];
+    expect(tonight.prompt).toBe("What can we book in London tonight?");
+    expect(triggeredTools(tonight)).toEqual(
+      (scenarioById.get("same-day")?.requiredTools as string[]) ?? [],
+    );
+    expect(triggeredTools(tonight)).toContain("whats_on_tonight");
+
+    const lionKing = testCases.positive[1];
+    expect(lionKing.prompt).toMatch(/Lion King/);
+    expect(lionKing.prompt).toMatch(/London/);
+    expect(triggeredTools(lionKing)).toEqual(["search_experiences", "get_availability"]);
+    expect(lionKing.expected_behavior).toContain("city london");
+    expect(lionKing.expected_behavior).toContain("query Lion King");
+    expect(lionKing.expected_behavior).toContain("www.tickadoo.com");
+    expect(lionKing.expected_behavior).toMatch(/does not collect payment|do not collect payment/i);
+
+    for (const [index, id] of [
+      [2, "family-day"],
+      [3, "comparison"],
+      [4, "availability-before-booking"],
+    ] as const) {
+      const scenario = scenarioById.get(id);
+      expect(testCases.positive[index].prompt).toBe(scenario?.prompt);
+      expect(triggeredTools(testCases.positive[index])).toEqual(scenario?.requiredTools);
+    }
+
+    for (const [index, id] of [
+      [0, "privacy-and-supplier-boundary"],
+      [1, "no-inventory-fallback"],
+      [2, "feedback-consent"],
+    ] as const) {
+      const scenario = scenarioById.get(id);
+      const testCase = testCases.negative[index];
+      expect(testCase.prompt).toBe(scenario?.prompt);
+      expect(testCase.expected_behavior).toBe(scenario?.expectedSafeBehavior);
+      if (id === "no-inventory-fallback") {
+        expect(triggeredTools(testCase)).toEqual(scenario?.requiredTools);
+      } else {
+        expect(testCase).not.toHaveProperty("tools_triggered");
+      }
+    }
+
+    const serialized = JSON.stringify(openai);
+    expect(serialized).not.toMatch(/test_credentials|reviewer_instructions|clientSecret|api[_-]?key/i);
+    for (const testCase of [...testCases.positive, ...testCases.negative]) {
+      if (testCase.tools_triggered !== undefined) {
+        expect(testCase.tools_triggered).not.toMatch(forbiddenTool);
+      }
     }
   });
 

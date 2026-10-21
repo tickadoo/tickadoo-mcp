@@ -49,9 +49,10 @@ Submit at [muse.ai/platform](https://muse.ai/platform) using [`connectors/muse/S
 This repository is also a portable Agent Plugins 1.0.0 package. Compatible
 clients discover the root [`plugin.json`](plugin.json), the seven workflows in
 [`skills/`](skills/), and the credential-free Streamable HTTP configuration in
-[`mcp.json`](mcp.json). Current Codex marketplace ingestion uses the parallel
-`.codex-plugin/plugin.json` adapter; the portable root manifest remains the
-vendor-neutral source of truth.
+[`mcp.json`](mcp.json). OpenAI's plugin directory reads `extensions.com.openai`
+from the root manifest. `.codex-plugin/plugin.json` remains the compatibility
+fallback when that object is absent, and for clients that still read the Codex
+manifest.
 
 Run `npm run test:plugin` to validate the package against the vendored official
 schemas and its containment, discovery, transport, and secret-safety checks.

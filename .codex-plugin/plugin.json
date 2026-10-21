@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "tickadoo Experiences",
     "shortDescription": "Find bookable experiences",
-    "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
+    "longDescription": "Search, compare, and plan theatre, tours, attractions, and live experiences with the public tickadoo catalogue. Calls https://mcp.tickadoo.com/mcp with no authentication. The plugin does not collect payment or run checkout; a person confirms any booking on https://www.tickadoo.com. Tool documentation: https://mcp.tickadoo.com/llms.txt.",
     "developerName": "tickadoo",
     "category": "Travel",
     "capabilities": ["Interactive"],

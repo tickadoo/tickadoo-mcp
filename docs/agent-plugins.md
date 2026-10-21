@@ -16,11 +16,12 @@ Explicit non-fits:
   embedding. Hive remains installed by its reviewed client-specific installers.
 - A new repository would duplicate the skill source, versioning, review, and
   release lifecycle without adding a portable capability.
-- Codex's current marketplace ingestion still requires
-  `.codex-plugin/plugin.json`, even though the Agent Plugins compatibility page
-  lists ChatGPT/Codex as supporting the portable components. That client
-  manifest is retained as a parallel adapter and tested against the portable
-  package for name/version alignment; it does not replace root `plugin.json`.
+- OpenAI's unified plugin directory reads `extensions.com.openai` from the
+  root `plugin.json`. When that object is present, OpenAI does not merge
+  `.codex-plugin/plugin.json`. The Codex manifest stays in the package as the
+  compatibility fallback for clients that still read it, and for OpenAI if the
+  extension object is absent. Tests keep the fallback aligned with the portable
+  package; it does not replace root `plugin.json`.
 
 ## Portable package
 
@@ -32,9 +33,12 @@ Explicit non-fits:
   never depends on retrieving mutable network content while loading a plugin.
   `SHA256SUMS` records the reviewed schema bytes and the tests enforce them.
 - `.codex-plugin/plugin.json` maps the same skills and public endpoint into the
-  current Codex marketplace shape. Its client-specific transport spelling is
+  Codex compatibility shape. Its client-specific transport spelling is
   `http`; the portable manifest uses the normative `streamable-http` spelling.
-  Tests pin both spellings and the identical endpoint.
+  Tests pin both spellings and the identical endpoint. Directory listing and
+  review cases live on the root `extensions.com.openai` object. The fallback
+  keeps the same listing copy except `interface.supportURL`, which the current
+  directory schema accepts on the portable extension.
 - `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, and
   `.mcp.json` provide Claude Code's native repository marketplace, plugin, and
   credential-free MCP adapters. The marketplace source is the repository root;
@@ -96,14 +100,14 @@ and idempotent.
 Client setup verified from primary documentation and installed CLIs on
 2026-08-06:
 
-- ChatGPT/Codex: current OpenAI documentation requires a
-  `.codex-plugin/plugin.json` manifest and marketplace installation; Codex CLI
-  0.147.0 exposes marketplace add/install commands but no direct local-path
-  mount. A temporary local marketplace successfully installed and listed
-  `tickadoo-experiences@tickadoo-agent-plugins-test` version `2.0.0`; the plugin
-  and marketplace were then removed successfully. The portable root package is
-  therefore accompanied by the live-tested Codex adapter rather than treated
-  as a replacement for it.
+- ChatGPT/Codex: the unified plugin directory reads `extensions.com.openai`
+  from root `plugin.json`. `.codex-plugin/plugin.json` is the compatibility
+  fallback when that object is absent; the two are not merged. On 2026-08-06,
+  Codex CLI 0.147.0 exposed marketplace add/install commands but no direct
+  local-path mount. A temporary local marketplace successfully installed and
+  listed `tickadoo-experiences@tickadoo-agent-plugins-test` version `2.0.0`;
+  the plugin and marketplace were then removed successfully. That check remains
+  evidence for the fallback adapter.
 - VS Code: set `chat.plugins.enabled`, then use **Chat: Install Plugin From
   Source**, or map the checkout in `chat.pluginLocations`. VS Code recognizes
   the canonical root `$schema`, discovers `skills/` and `mcp.json`, and supports
@@ -178,11 +182,11 @@ a parallel runtime:
   Codex/Claude/Gemini/Grok adapters, secure launchers, and the already-complete
   MCP 2026-07-28 dual-era compatibility layer. It is intentionally excluded
   from this public plugin.
-- OpenAI's current plugin documentation still describes the Codex-specific
-  manifest and marketplace packaging, while the published vendor-neutral 1.0
-  specification defines root `plugin.json` and `mcp.json`. Both are kept
-  side-by-side with explicit consistency tests until client ingestion
-  converges.
+- OpenAI's directory reads OpenAI-specific settings from
+  `extensions.com.openai` in root `plugin.json`. The published vendor-neutral
+  1.0 specification still defines root `plugin.json` and `mcp.json`, and
+  `.codex-plugin/plugin.json` remains the compatibility fallback. Both are
+  kept side-by-side with explicit consistency tests.
 
 Review gaps found and handled here: there was no root portable manifest, no
 portable typed MCP config, no pinned official schemas, and no tests for secret
@@ -254,11 +258,12 @@ silently regressing.
 
 OpenAI now documents [one universal public plugin directory](https://developers.openai.com/plugins/deploy/submission)
 shared by ChatGPT and Codex. The repository therefore includes
-`.agents/plugins/marketplace.json` for repo and workspace discovery, while the
-existing `.codex-plugin/plugin.json` remains the client manifest. Codex CLI
-0.153.4 successfully added the exact local marketplace, discovered the root
-plugin, installed version 2.0.0 with all seven skills and both brand assets,
-and then removed the plugin and marketplace cleanly.
+`.agents/plugins/marketplace.json` for repo and workspace discovery. Directory
+metadata belongs in root `extensions.com.openai`; `.codex-plugin/plugin.json`
+is the compatibility fallback, not the directory source. Codex CLI 0.153.4
+successfully added the exact local marketplace, discovered the root plugin,
+installed version 2.0.0 with all seven skills and both brand assets, and then
+removed the plugin and marketplace cleanly.
 
 The Codex listing now uses a 30-character-or-shorter subtitle, a live canonical
 terms URL, square SVG `composerIcon` and `logo` assets, HTTPS legal links, three
@@ -272,11 +277,11 @@ plugin that declares MCP configuration as desktop-only, even when the server
 uses a public HTTPS URL. Web availability therefore still requires either the
 public **With MCP** submission flow or an `.app.json` reference to a real
 ChatGPT-registered MCP connection. This repository does not invent an
-`asdk_app_...` identifier. OpenAI's final submission form also requires the
-support URL `https://www.tickadoo.com/contact`; the current local Plugin
-Creator 1.2.3 validator rejects the newly documented `interface.supportURL`
-field, so the value remains a portal field until the installed package schema
-accepts it.
+`asdk_app_...` identifier. The portable extension records the live support
+page `https://www.tickadoo.com/contact` as `interface.supportURL` and the
+mailbox `support@tickadoo.com` as `author.email`. A 2026-09-06 Plugin Creator
+1.2.3 build rejected `interface.supportURL`; the current directory field
+reference accepts that HTTPS field on `extensions.com.openai.interface`.
 
 Anthropic CLI 1.30.0 introduced [`ant apply`](https://platform.claude.com/docs/en/cli-sdks-libraries/cli/apply)
 for managed resources as code. The current 1.31.0 CLI accepted the exact shipped
@@ -312,6 +317,33 @@ does not create an Anthropic agent, environment, session, API key, or vault.
 Managed Agents is a beta service, so recheck Anthropic's beta header and model
 support before external account setup.
 
+## 2026-10-21 OpenAI directory metadata
+
+[Package your plugin](https://developers.openai.com/plugins/build/plugins) now
+tells directory clients to read `extensions.com.openai` from the root
+`plugin.json`. `.codex-plugin/plugin.json` is documented as the compatibility
+fallback used only when that object is absent. The two files are not merged, so
+the portable extension carries the full listing: display name, category,
+starter prompts, brand colour, existing `brand/` icons, website, privacy,
+terms, and the live contact page. `review.test_cases` prefills the five
+positive and three negative cases initial MCP review requires. The positive
+cases include London tonight through `whats_on_tonight` and a London Lion King
+search (`search_experiences` with city `london` and query `Lion King`, then
+`get_availability`). The other cases reuse prompts from
+`evals/agent-plugin-scenarios.json`. No case names a payment or checkout tool.
+`review.commerce` is false: the plugin returns booking links, and a person
+confirms the purchase on tickadoo.com.
+
+The extension does not declare hooks, an onboarding skill, an app binding, or
+another MCP server. `mcp.json` is unchanged. The pinned Agent Plugins 1.0.0
+schema rejects extra fields on a Streamable HTTP server, and OpenAI's own
+submission example omits `auth` for an unauthenticated server. No
+authentication is the absence of headers and credentials on
+`https://mcp.tickadoo.com/mcp`, which
+[https://mcp.tickadoo.com/llms.txt](https://mcp.tickadoo.com/llms.txt) also
+states. This repository has no demo recording, so `review.demo_recording_url`
+is omitted. Terms are the live page `https://www.tickadoo.com/terms`.
+
 ## Update and rollback
 
 Treat `plugin.json` version as the package release. Update the vendored schemas
@@ -327,5 +359,6 @@ the remote MCP service and npm bridge are unaffected by package rollback.
   the selected marketplaces provide a suitable mechanism.
 - Track the portable OAuth and credential-reference gap. Do not add Hive until
   the standard can express its existing secure client-managed auth path.
-- Add client extensions only for demonstrated client-specific value, under a
+- `extensions.com.openai` is the directory metadata extension. Add further
+  client extensions only for demonstrated client-specific value, under a
   stable reverse-domain namespace, with separate tests and ownership.
