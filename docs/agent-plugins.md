@@ -82,11 +82,12 @@ explicit gate (for example, feedback consent); an empty list means no tool call.
 The corpus has its own version so runner integrations can pin its field contract
 independently of the plugin version.
 
-The MCP Registry export preserves each live tool's standard title and
+The MCP Registry export lists every live tool name with its standard
 annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, and
-`openWorldHint`). This lets downstream registries evaluate safety and tool
-selection from the published artifact instead of receiving only names and
-descriptions. The feedback tool remains explicitly non-read-only; catalogue,
+`openWorldHint`). Display titles stay on the canonical remote `tools/list`,
+because the publisher extension holds at most 4096 bytes. Downstream
+registries can evaluate safety and tool selection from those annotations.
+The feedback tool remains explicitly non-read-only; catalogue,
 planning, availability and rendering tools remain read-only.
 `report_quality_signal` is also explicitly open-world because it submits the
 user-approved quality signal to the remote service; it remains non-destructive

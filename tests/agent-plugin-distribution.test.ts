@@ -370,11 +370,9 @@ describe("Agent Plugin distribution", () => {
     const registryTools = server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools;
     const knownTools = new Set(registryTools.map((tool) => tool.name));
     for (const tool of registryTools) {
-      expect(tool.title?.length, `${tool.name}: registry title`).toBeGreaterThan(0);
-      // A repeated annotation title is optional in the compact Registry index.
-      if (tool.annotations?.title !== undefined) {
-        expect(tool.annotations.title, `${tool.name}: annotation title`).toBe(tool.title);
-      }
+      // Display titles stay on the remote tools/list so this index fits in 4096 bytes.
+      expect(tool.title, `${tool.name}: registry title`).toBeUndefined();
+      expect(tool.annotations?.title, `${tool.name}: annotation title`).toBeUndefined();
       expect(typeof tool.annotations?.readOnlyHint, `${tool.name}: readOnlyHint`).toBe("boolean");
       expect(typeof tool.annotations?.destructiveHint, `${tool.name}: destructiveHint`).toBe("boolean");
       expect(typeof tool.annotations?.idempotentHint, `${tool.name}: idempotentHint`).toBe("boolean");

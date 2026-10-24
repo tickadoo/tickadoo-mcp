@@ -6,7 +6,6 @@
       "tools": [
         {
           "name": "search_experiences",
-          "title": "Search experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -16,7 +15,6 @@
         },
         {
           "name": "search_local_experiences",
-          "title": "Search local experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -26,7 +24,6 @@
         },
         {
           "name": "find_nearby_experiences",
-          "title": "Find nearby experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -36,7 +33,6 @@
         },
         {
           "name": "whats_on_tonight",
-          "title": "What is on tonight",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -46,7 +42,6 @@
         },
         {
           "name": "get_last_minute",
-          "title": "Last minute",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -56,7 +51,6 @@
         },
         {
           "name": "get_whats_on_this_week",
-          "title": "This week",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -66,7 +60,6 @@
         },
         {
           "name": "recommend_experiences",
-          "title": "Recommend experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -76,7 +69,6 @@
         },
         {
           "name": "get_city_highlights",
-          "title": "City guide",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -86,7 +78,6 @@
         },
         {
           "name": "search_experiences_by_topic",
-          "title": "Travel tips",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -96,7 +87,6 @@
         },
         {
           "name": "compare_experiences",
-          "title": "Compare experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -106,7 +96,6 @@
         },
         {
           "name": "get_hidden_gems",
-          "title": "Hidden gems",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -116,7 +105,6 @@
         },
         {
           "name": "get_family_day",
-          "title": "Family day",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -126,7 +114,6 @@
         },
         {
           "name": "get_date_night",
-          "title": "Date night",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -136,7 +123,6 @@
         },
         {
           "name": "get_itinerary_candidates",
-          "title": "Plan itinerary",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -146,7 +132,6 @@
         },
         {
           "name": "list_cities",
-          "title": "List cities",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -156,7 +141,42 @@
         },
         {
           "name": "get_experience_details",
-          "title": "Experience details",
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "name": "get_show_guide",
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "name": "get_theatre_weekend",
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "name": "ask_theatre_concierge",
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "name": "find_theatre_for_occasion",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -166,7 +186,6 @@
         },
         {
           "name": "get_related_experiences",
-          "title": "Related experiences",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -176,7 +195,6 @@
         },
         {
           "name": "get_availability",
-          "title": "Get availability",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -186,7 +204,6 @@
         },
         {
           "name": "check_availability",
-          "title": "Check availability",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -196,7 +213,6 @@
         },
         {
           "name": "search_by_mood",
-          "title": "Search by mood",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -206,7 +222,6 @@
         },
         {
           "name": "get_transfer_info",
-          "title": "Transfer info",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -216,7 +231,6 @@
         },
         {
           "name": "render_experience_cards",
-          "title": "Render experience cards",
           "annotations": {
             "readOnlyHint": true,
             "destructiveHint": false,
@@ -226,7 +240,6 @@
         },
         {
           "name": "report_quality_signal",
-          "title": "Report quality signal",
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
