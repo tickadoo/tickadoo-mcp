@@ -40,7 +40,10 @@ Explicit non-fits:
   credential-free MCP adapters. The marketplace source is the repository root;
   the plugin manifest alone owns the version, as Anthropic's
   [version-resolution guidance](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)
-  recommends.
+  recommends. The `.mcp.json` entry carries Claude Code's explicit `http`
+  transport spelling: Claude Code skips a remote entry that has a `url` but no
+  `type`, so without it the plugin installs but exposes no tools. Tests pin the
+  field and the identical endpoint.
 - `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
   for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
   transport spelling and an explicit eight-tool, read-only allowlist. It omits

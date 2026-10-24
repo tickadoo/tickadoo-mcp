@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fix the Claude Code plugin adapter: `.mcp.json` now declares
+  `"type": "http"`. Claude Code skips a remote entry that has a `url` but no
+  `type`, so `claude plugin install tickadoo@tickadoo-agent-plugins` succeeded
+  while exposing zero tools. A test pins the field and the endpoint, and the
+  README documents the `claude mcp add --transport http` route.
 - Document the OpenAI Agents API → public tickadoo MCP Book path
   (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
   London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.

@@ -125,6 +125,22 @@ describe("Agent Plugin distribution", () => {
     );
   });
 
+  it("declares an explicit http transport in the Claude Code .mcp.json adapter", async () => {
+    // Claude Code skips a remote `.mcp.json` entry that has a `url` but no
+    // `type` ("Skipped — MCP server has a url but no type", observed on
+    // Claude Code 2.1.310). Without this field the marketplace install
+    // succeeds yet the plugin exposes zero tools.
+    const claudeMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { type?: string; url: string }>;
+    };
+
+    expect(Object.keys(claudeMcp.mcpServers)).toEqual(["tickadoo"]);
+    expect(claudeMcp.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: "https://mcp.tickadoo.com/mcp",
+    });
+  });
+
   it("matches GitHub Copilot native plugin discovery conventions", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
       name: string;

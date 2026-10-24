@@ -108,6 +108,13 @@ claude plugin marketplace add tickadoo/tickadoo-mcp
 claude plugin install tickadoo@tickadoo-agent-plugins
 ```
 
+Or add the remote server to Claude Code directly. Claude Code requires an
+explicit `type` on remote entries in `.mcp.json`; a `url`-only entry is skipped:
+
+```bash
+claude mcp add --transport http tickadoo https://mcp.tickadoo.com/mcp
+```
+
 ## Configuration
 
 Set `TICKADOO_MCP_URL` to point the bridge at another compatible Streamable HTTP MCP endpoint:
