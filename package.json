@@ -1,6 +1,6 @@
 {
   "name": "@tickadoo/mcp-server",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "tickadoo MCP Server: a thin stdio bridge to the live remote MCP server at https://mcp.tickadoo.com/mcp. No API key required.",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,9 @@
     "skills/",
     "schemas/agent-plugins/1.0.0/",
     "evals/agent-plugin-scenarios.json",
+    "metadata/public-agent-tools.json",
     "docs/agent-plugins.md",
+    "docs/openai-plugin-submission.md",
     "server.json",
     "README.md",
     "LICENSE",
@@ -36,8 +38,11 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "sync:server-json": "node scripts/sync-server-json.mjs",
+    "sync:public-agent": "node scripts/sync-public-agent-contract.mjs",
+    "verify:public-agent": "node scripts/verify-public-agent-contract.mjs",
+    "build:openai-zip": "node scripts/build-openai-plugin-zip.mjs",
     "test": "vitest run",
-    "test:plugin": "vitest run tests/agent-plugin.test.ts tests/agent-plugin-distribution.test.ts",
+    "test:plugin": "vitest run tests/agent-plugin.test.ts tests/agent-plugin-distribution.test.ts tests/openai-plugin-security.test.ts tests/public-agent-contract.test.ts",
     "smoke:agents-api": "tsx examples/agents-api-tickadoo-smoke.ts",
     "prepublishOnly": "npm run build"
   },
@@ -61,16 +66,17 @@
   "author": "tickadoo Inc.",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.1"
+    "@modelcontextprotocol/sdk": "^1.32.2"
   },
   "devDependencies": {
-    "@types/node": "^22.19.15",
+    "@types/node": "^22.20.5",
     "ajv": "^8.20.0",
-    "esbuild": "^0.28.1",
-    "openai": "^7.15.0",
-    "tsx": "^4.19.4",
+    "esbuild": "^0.28.2",
+    "openai": "^7.43.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12",
+    "zod": "^4.6.7"
   },
   "repository": {
     "type": "git",

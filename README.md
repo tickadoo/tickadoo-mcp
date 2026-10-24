@@ -1,8 +1,9 @@
-# tickadoo MCP: bookable experiences for AI assistants
+# tickadoo MCP: live experiences for AI assistants
 
-tickadoo's MCP server lets any AI assistant discover, compare, and book real
-experiences (theatre, tours, attractions, hidden gems) across 1,100+ cities
-worldwide, with live availability and booking links. No account, no API key.
+tickadoo's MCP server lets AI assistants discover and compare theatre, tours,
+attractions, hidden gems, and other live experiences worldwide. The full MCP
+surface can return live availability and tickadoo booking links. No account or
+API key is required.
 
 ## Try it
 
@@ -49,20 +50,33 @@ Submit at [muse.ai/platform](https://muse.ai/platform) using [`connectors/muse/S
 This repository is also a portable Agent Plugins 1.0.0 package. Compatible
 clients discover the root [`plugin.json`](plugin.json), the seven workflows in
 [`skills/`](skills/), and the credential-free Streamable HTTP configuration in
-[`mcp.json`](mcp.json). Current Codex marketplace ingestion uses the parallel
-`.codex-plugin/plugin.json` adapter; the portable root manifest remains the
-vendor-neutral source of truth.
+[`mcp.json`](mcp.json). The portable OpenAI/Codex package uses the separate
+discovery-only endpoint `https://mcp.tickadoo.com/mcp/agents`; it does not
+return direct purchase, transaction, or checkout links. OpenAI's plugin
+directory reads `extensions.com.openai` from the root manifest.
+
+The npm stdio bridge, MCP Registry, Claude, the copy-ready Copilot cloud MCP
+adapter, Gemini, Smithery, Muse, and direct integrations retain the established
+full endpoint `https://mcp.tickadoo.com/mcp`. The Copilot portable-plugin
+marketplace entry installs the root public-agent package instead. The two
+surfaces are intentionally distinct. `.codex-plugin/plugin.json` remains the
+compatibility form of the portable public-agent package.
 
 Run `npm run test:plugin` to validate the package against the vendored official
 schemas and its containment, discovery, transport, and secret-safety checks.
 The same command verifies the exact npm tarball contents and the provider-neutral
 acceptance corpus in [`evals/agent-plugin-scenarios.json`](evals/agent-plugin-scenarios.json).
 See [`docs/agent-plugins.md`](docs/agent-plugins.md) for the architecture
-decision, compatibility evidence, update/rollback process, and follow-ups.
+decision, validation, release, and rollback process. The portal-only OpenAI
+handoff is in
+[`docs/openai-plugin-submission.md`](docs/openai-plugin-submission.md).
 
-OpenAI Agents API sessions that call the public MCP (Book path) are documented in
-[`docs/openai-agents-api.md`](docs/openai-agents-api.md). Use
-`https://mcp.tickadoo.com/mcp` — the bare host 404s.
+Direct OpenAI Agents API integrations that intentionally use the established
+full MCP surface are documented in
+[`docs/openai-agents-api.md`](docs/openai-agents-api.md). That integration is
+separate from the public Plugin Directory package. Use
+`https://mcp.tickadoo.com/mcp` — the bare host is a human-readable service
+landing page, not a Streamable HTTP endpoint.
 
 The package no longer defines tools, formats catalogue data, or calls a local tickadoo backend. It connects to the remote Streamable HTTP MCP server and proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping`. The live remote owns the tool list, schemas, results, and errors.
 
@@ -106,6 +120,19 @@ Use Claude Code's supported marketplace flow:
 ```bash
 claude plugin marketplace add tickadoo/tickadoo-mcp
 claude plugin install tickadoo@tickadoo-agent-plugins
+```
+
+Claude's native adapter explicitly uses HTTP transport and the full MCP URL:
+
+```json
+{ "mcpServers": { "tickadoo": { "type": "http", "url": "https://mcp.tickadoo.com/mcp" } } }
+```
+
+Or add that full remote server to Claude Code directly. Claude Code skips a
+remote entry that has a `url` but no explicit `type`:
+
+```bash
+claude mcp add --transport http tickadoo https://mcp.tickadoo.com/mcp
 ```
 
 ## Configuration
@@ -157,7 +184,7 @@ The current tool list is served by the remote MCP server. Visit [mcp.tickadoo.co
 
 ## Privacy & Data Handling
 
-- **No account or API key required.** The server is read-mostly: it exposes tickadoo's public experiences catalogue (search, recommendations, availability, comparison, itineraries) and returns booking links — it does not collect, store, or require personal data to function.
+- **No account or API key required.** The full server is read-mostly: it exposes tickadoo's public experiences catalogue (search, recommendations, availability, comparison, itineraries) and may return tickadoo booking links. The portable public-agent endpoint is read-only and omits direct purchase, transaction, and checkout links. Neither surface requires personal data to perform discovery.
 - **What is sent:** tool arguments (e.g. a city name, query text, or chosen experience id) are forwarded to the tickadoo backend to fulfil the request. The bridge adds no tracking and asks for no credentials.
 - **First-party service.** tickadoo is the operator of the catalogue and backend; supplier inventory is presented as tickadoo. Bookings are completed on tickadoo.com.
 - **Full policy:** [tickadoo.com/privacy](https://tickadoo.com/privacy). Questions: support@tickadoo.com.

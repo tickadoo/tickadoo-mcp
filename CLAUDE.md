@@ -10,17 +10,21 @@ This file is read automatically by Claude Code at session start. Lightweight pro
 
 Since **v2.0.0** this package is a **thin remote bridge** (GRO-573): the npm command is a stdio transport that proxies to the canonical remote server. It no longer defines tools, formats catalogue data, or calls a backend directly. The remote owns the tool list, schemas, results, and errors. The remote MCP server (and the embeddable widget bundle) now live in the **HowardOS repo** (`github.com/tickadoo/howard`), which is canonical (GRO-574).
 
-Agent-intelligence layer (served by the remote): search tools carry `_best_picks`, `_price_tiers`, `_group_summary`, `_conversation_starters`, `_available_filters`, `_related_searches`, `_next_step`; details tools carry `_booking_urgency`, `_cross_sell`, `_intent_token`, `_accessibility`.
+The established full remote can expose richer booking and agent-intelligence
+metadata. The portable public-plugin surface at
+`https://mcp.tickadoo.com/mcp/agents` is a separate discovery-only contract: it
+omits direct transaction links, purchase-oriented fields, renderer/write tools,
+coordinate-bearing tools, MCP resources, and Apps/widget metadata.
 
 ## Architecture at a glance
 
 - **Runtime**: TypeScript stdio bridge
   - `src/index.ts` → `src/bridge.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`) that proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping` to the remote.
   - `src/config.ts` — bridge config (remote URL via `TICKADOO_MCP_URL`, log level via `TICKADOO_LOG_LEVEL`).
-- **Canonical remote**: `https://mcp.tickadoo.com/mcp` — served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
+- **Canonical remotes**: `https://mcp.tickadoo.com/mcp` is the established full surface used by the npm bridge and direct integrations; `https://mcp.tickadoo.com/mcp/agents` is the reviewed discovery-only surface used by the portable OpenAI/Codex package. Both are served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
 - **Registry metadata**: `server.json` is refreshed from the live remote via `npm run sync:server-json`.
-- **Skills** (`skills/*/SKILL.md`, PR #96): 7 skills for Agent Plugins clients and the OpenAI **Plugin Directory** (a plugin = our MCP server + optional Skills for complex workflows) — the `tickadoo-experiences` discovery skill (mirrored to `.claude/skills/`; keep the two copies in sync) plus 6 workflow skills (`plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, `near-a-landmark`). Ground every tool reference in `server.json`; frontmatter `name` must match the folder. BAC-779 adds them to the npm published file set and verifies the exact tarball; OpenAI still snapshots uploaded or MCP-imported skills during its Platform submission flow.
+- **Portable skills** (`skills/*/SKILL.md`): 7 discovery-only workflows for Agent Plugins clients and the OpenAI **Plugin Directory** — `tickadoo-experiences` plus `plan-a-trip`, `family-day-out`, `tonight-and-last-minute`, `date-night`, `compare-before-you-book`, and `near-a-landmark`. Ground every tool reference in `metadata/public-agent-tools.json`; frontmatter `name` must match the folder. The repository-development skill at `.claude/skills/tickadoo-experiences/SKILL.md` follows the separate live full `/mcp` `tools/list` contract and is intentionally not a mirror. The npm tarball and deterministic OpenAI ZIP validate their exact, distinct closures.
 - **Testing**: vitest (`npm test`); `LIVE=1 npm test` runs the optional live integration test against the remote.
 - **No API key required.** Customer never sees supplier names; everything is presented as tickadoo.
 

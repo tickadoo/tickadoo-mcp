@@ -1,16 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const PUBLIC_DESCRIPTION =
+const FULL_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
+const PUBLIC_AGENT_DESCRIPTION =
+  "Discover theatre, tours, attractions, and live experiences worldwide. Search, compare, check availability, and plan itineraries with tickadoo. No API key required.";
 const REGISTRY_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. No API key required.";
 const GEMINI_DESCRIPTION =
   "Search and book theatre, attractions, tours, and live experiences worldwide with tickadoo.";
 const MCP_HOMEPAGE = "https://mcp.tickadoo.com";
-const MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
+const FULL_MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
+const PUBLIC_AGENT_ENDPOINT = `${FULL_MCP_ENDPOINT}/agents`;
 const COUNT_BEARING_COPY =
-  /\b\d[\d,]*\+?\s+(?:bookable\s+)?(?:products?|experiences?|cities|tools)\b/i;
+  /\b(?:\d[\d,]*\+?|(?:dozens|hundreds|thousands|millions)(?:\s+of)?)\s+(?:bookable\s+)?(?:products?|experiences?|cities|countries|tools)\b/i;
 
 function readJson<T>(relativePath: string): T {
   return JSON.parse(
@@ -34,6 +37,12 @@ const portablePlugin = readJson<{
   repository: string;
   keywords: string[];
 }>("../plugin.json");
+const portableMcp = readJson<{
+  mcpServers: Record<string, { type: string; url: string }>;
+}>("../mcp.json");
+const claudeMcp = readJson<{
+  mcpServers: Record<string, { type: string; url: string }>;
+}>("../.mcp.json");
 const claudePlugin = readJson<{
   version: string;
   description: string;
@@ -44,6 +53,7 @@ const claudePlugin = readJson<{
 const codexPlugin = readJson<{
   version: string;
   description: string;
+  mcpServers: Record<string, { type: string; url: string }>;
 }>("../.codex-plugin/plugin.json");
 const geminiExtension = readJson<{
   version: string;
@@ -74,6 +84,13 @@ const bridgeConfig = readFileSync(
 const agentGuidance = ["../AGENTS.md", "../CLAUDE.md"].map((relativePath) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8"),
 );
+const publicCopy = [
+  "../README.md",
+  "../connectors/muse/README.md",
+  "../connectors/muse/muse.md",
+  "../connectors/muse/SUBMISSION.md",
+  "../connectors/muse/FORM-OVERVIEW.md",
+].map((relativePath) => readFileSync(new URL(relativePath, import.meta.url), "utf8"));
 const [agentsGuidance, claudeGuidance] = agentGuidance;
 
 describe("public registry metadata", () => {
@@ -222,15 +239,21 @@ describe("public registry metadata", () => {
       /^\s{2}description:\s+"([^"]+)"\s*$/m,
     )?.[1];
 
-    expect(portablePlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(claudePlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(codexPlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(copilotMarketplace.plugins[0]?.description).toBe(PUBLIC_DESCRIPTION);
+    expect(portablePlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    expect(claudePlugin.description).toBe(FULL_DESCRIPTION);
+    expect(codexPlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    expect(copilotMarketplace.plugins[0]?.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    expect(copilotMarketplace.metadata.description).toBe(
+      "Official tickadoo plugins for discovering live experiences.",
+    );
     expect(geminiExtension.description).toBe(GEMINI_DESCRIPTION);
-    expect(claudePlugin.keywords).toEqual(portablePlugin.keywords);
+    expect(portablePlugin.keywords).toContain("discovery");
+    expect(portablePlugin.keywords).not.toContain("booking");
+    expect(claudePlugin.keywords).toContain("booking");
+    expect(claudePlugin.keywords).not.toContain("discovery");
     expect(serverJson.description).toBe(REGISTRY_DESCRIPTION);
     expect(serverJson.description.length).toBeLessThanOrEqual(100);
-    expect(smitheryDescription).toBe(PUBLIC_DESCRIPTION);
+    expect(smitheryDescription).toBe(FULL_DESCRIPTION);
     expect(syncScript).toContain(JSON.stringify(REGISTRY_DESCRIPTION));
 
     for (const description of [
@@ -244,8 +267,14 @@ describe("public registry metadata", () => {
       serverJson.description,
       smitheryDescription ?? "",
       ...agentGuidance,
+      ...publicCopy,
     ]) {
       expect(description).not.toMatch(COUNT_BEARING_COPY);
+    }
+
+    for (const museCopy of publicCopy.filter((_, index) => index > 0)) {
+      expect(museCopy).not.toMatch(/MCP version\s*\|\s*v?\d+\.\d+\.\d+/i);
+      expect(museCopy).not.toMatch(/\/mcp`?\s*\(v?\d+\.\d+\.\d+/i);
     }
   });
 
@@ -258,8 +287,20 @@ describe("public registry metadata", () => {
     expect(claudePlugin.repository).toBe(portablePlugin.repository);
     expect(serverJson.websiteUrl).toBe(MCP_HOMEPAGE);
     expect(serverJson.remotes).toEqual([
-      { type: "streamable-http", url: MCP_ENDPOINT },
+      { type: "streamable-http", url: FULL_MCP_ENDPOINT },
     ]);
+    expect(portableMcp.mcpServers.tickadoo).toEqual({
+      type: "streamable-http",
+      url: PUBLIC_AGENT_ENDPOINT,
+    });
+    expect(codexPlugin.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: PUBLIC_AGENT_ENDPOINT,
+    });
+    expect(claudeMcp.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: FULL_MCP_ENDPOINT,
+    });
     expect(syncScript).toContain("url: canonicalRemoteUrl");
     expect(syncScript).not.toContain("url: sourceRemoteUrl.href");
     expect(smitheryYaml).toMatch(

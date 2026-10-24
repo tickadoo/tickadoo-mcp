@@ -1,7 +1,7 @@
 {
   "name": "tickadoo-experiences",
-  "version": "2.1.1",
-  "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+  "version": "2.2.0",
+  "description": "Discover theatre, tours, attractions, and live experiences worldwide. Search, compare, check availability, and plan itineraries with tickadoo. No API key required.",
   "author": {
     "name": "tickadoo Inc.",
     "url": "https://www.tickadoo.com"
@@ -9,28 +9,28 @@
   "homepage": "https://mcp.tickadoo.com",
   "repository": "https://github.com/tickadoo/tickadoo-mcp",
   "license": "MIT",
-  "keywords": ["tickadoo", "experiences", "tickets", "travel", "mcp"],
+  "keywords": ["tickadoo", "experiences", "tickets", "travel", "discovery", "mcp"],
   "skills": "./skills/",
   "mcpServers": {
     "tickadoo": {
       "type": "http",
-      "url": "https://mcp.tickadoo.com/mcp"
+      "url": "https://mcp.tickadoo.com/mcp/agents"
     }
   },
   "interface": {
     "displayName": "tickadoo Experiences",
-    "shortDescription": "Find bookable experiences",
-    "longDescription": "Search, compare and plan theatre, tours, attractions and live experiences with current tickadoo catalogue data.",
+    "shortDescription": "Discover live experiences",
+    "longDescription": "Discover, compare, and plan theatre, tours, attractions, and live experiences with the public tickadoo catalogue. Calls the discovery-only endpoint at https://mcp.tickadoo.com/mcp/agents with no authentication. It does not return direct checkout or transaction links, create orders, reserve inventory, or collect payment.",
     "developerName": "tickadoo",
     "category": "Travel",
-    "capabilities": ["Interactive"],
-    "websiteURL": "https://www.tickadoo.com",
+    "capabilities": ["Read"],
+    "websiteURL": "https://mcp.tickadoo.com",
     "privacyPolicyURL": "https://www.tickadoo.com/privacy",
     "termsOfServiceURL": "https://www.tickadoo.com/terms",
     "defaultPrompt": [
       "Find memorable experiences in London this weekend.",
       "Plan a family day out in Paris.",
-      "Compare two tickadoo experiences before I book."
+      "Compare two tickadoo experiences before I choose."
     ],
     "brandColor": "#FF5A5F",
     "composerIcon": "./brand/apps-directory-icon-monochrome.svg",

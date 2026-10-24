@@ -17,7 +17,8 @@
  *   # or
  *   npx tsx examples/agents-api-tickadoo-smoke.ts
  *
- * The bare host https://mcp.tickadoo.com 404s — always use /mcp.
+ * The bare host https://mcp.tickadoo.com is a human-readable landing page;
+ * always use /mcp for Streamable HTTP.
  */
 
 import path from "node:path";

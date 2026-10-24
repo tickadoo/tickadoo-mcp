@@ -28,7 +28,7 @@ Preferred transport for Muse: plain HTTPS against the public Connect API and the
 | Short contract | https://www.tickadoo.com/llms.txt |
 | MCP endpoint | https://mcp.tickadoo.com/mcp |
 | MCP transport | Streamable HTTP JSON-RPC |
-| MCP version | 1.6.0 (protocol 2025-06-18; also 2025-11-25, 2026-07-28) |
+| MCP version | Read the current server version and negotiated protocol from the live initialize handshake. |
 | Auth | None. Do not invent a key. Do not ask the user for credentials to search. |
 | Content-Type | application/json |
 | CORS | `Access-Control-Allow-Origin: *` |
