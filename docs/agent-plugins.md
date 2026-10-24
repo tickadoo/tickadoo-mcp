@@ -1,364 +1,140 @@
-# Agent Plugins 1.0 package
+# Agent Plugins distribution
 
-## Decision
+## Architecture
 
-The canonical portable package lives at the root of `tickadoo/tickadoo-mcp`.
-This repository already owns the public MCP distribution, its release version,
-and the seven reusable tickadoo Agent Skills. Keeping `plugin.json`, `mcp.json`,
-and `skills/` together gives compatible clients one source and one update path.
+This repository publishes two deliberately different MCP entry points:
 
-Explicit non-fits:
+| Consumer | Endpoint | Purpose |
+| --- | --- | --- |
+| Portable Agent Plugins, OpenAI public plugin, Codex compatibility adapter, GitHub Copilot portable marketplace | `https://mcp.tickadoo.com/mcp/agents` | Read-only discovery and informational availability. No direct purchase, transaction, or checkout links. |
+| npm stdio bridge, MCP Registry, Claude, copy-ready GitHub Copilot cloud adapter, Gemini, Smithery, Muse, and direct integrators | `https://mcp.tickadoo.com/mcp` | The established full tickadoo MCP surface. |
 
-- `tickadoo/claude-platform` owns Hive's private coordination runtime. Its MCP
-  endpoint requires client-managed Cloudflare Access authentication. Agent
-  Plugins 1.0 has literal headers and no OAuth or credential-reference fields,
-  so packaging that endpoint would either be unusable or invite unsafe secret
-  embedding. Hive remains installed by its reviewed client-specific installers.
-- A new repository would duplicate the skill source, versioning, review, and
-  release lifecycle without adding a portable capability.
-- OpenAI's unified plugin directory reads `extensions.com.openai` from the
-  root `plugin.json`. When that object is present, OpenAI does not merge
-  `.codex-plugin/plugin.json`. The Codex manifest stays in the package as the
-  compatibility fallback for clients that still read it, and for OpenAI if the
-  extension object is absent. Tests keep the fallback aligned with the portable
-  package; it does not replace root `plugin.json`.
+The split is a policy boundary, not an alias. Do not change the portable root
+`mcp.json` or `.codex-plugin/plugin.json` back to the full endpoint. Do not
+change `server.json`, `.mcp.json`, the npm bridge, or the other client adapters
+to the public-agent endpoint.
+
+Howard owns both hosted endpoints. This repository snapshots the exact
+`/mcp/agents` tool contract in `metadata/public-agent-tools.json`; verification
+fails closed when the live descriptors, schemas, annotations, server
+instructions, or tool order drift.
+
+After a reviewed Howard commit is deployed, refresh the snapshot only with its
+exact 40-character commit:
+
+```bash
+HOWARD_COMMIT="$DEPLOYED_HOWARD_COMMIT" npm run sync:public-agent
+npm run verify:public-agent
+```
 
 ## Portable package
 
-- `plugin.json` targets the immutable Agent Plugins schema identifier `1.0.0`.
-- `skills/*/SKILL.md` are discovered from the standard fixed location.
-- `mcp.json` points directly to the public Streamable HTTP endpoint. It has no
-  headers, credentials, environment-variable substitutions, or customer data.
-- The official schemas are vendored under `schemas/agent-plugins/1.0.0/` so CI
-  never depends on retrieving mutable network content while loading a plugin.
-  `SHA256SUMS` records the reviewed schema bytes and the tests enforce them.
-- `.codex-plugin/plugin.json` maps the same skills and public endpoint into the
-  Codex compatibility shape. Its client-specific transport spelling is
-  `http`; the portable manifest uses the normative `streamable-http` spelling.
-  Tests pin both spellings and the identical endpoint. Directory listing and
-  review cases live on the root `extensions.com.openai` object. The fallback
-  keeps the same listing copy except `interface.supportURL`, which the current
-  directory schema accepts on the portable extension.
-- `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, and
-  `.mcp.json` provide Claude Code's native repository marketplace, plugin, and
-  credential-free MCP adapters. The marketplace source is the repository root;
-  the plugin manifest alone owns the version, as Anthropic's
-  [version-resolution guidance](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)
-  recommends.
-- `clients/github-copilot/mcp.json` is a copy-ready repository-settings adapter
-  for Copilot cloud agent and Copilot code review. It uses GitHub's `http`
-  transport spelling and an explicit eight-tool, read-only allowlist. It omits
-  the consent-gated feedback tool, the ChatGPT card renderer, wildcards,
-  headers, environment variables and credentials.
+- `plugin.json` is the canonical Agent Plugins 1.0 manifest. OpenAI-specific
+  listing, review, and release metadata is inline under
+  `extensions.com.openai`.
+- `mcp.json` selects the discovery-only `/mcp/agents` endpoint.
+- `skills/*/SKILL.md` contains seven reusable discovery workflows. They never
+  instruct a client to purchase, reserve, construct a checkout link, or call a
+  tool that is absent from the public-agent snapshot.
+- `.codex-plugin/plugin.json` mirrors the public portable identity for clients
+  that still use the Codex compatibility manifest.
+- `.github/plugin/marketplace.json` also points at the portable repository root,
+  so its listing copy describes the public-agent surface.
+- `.claude-plugin/`, `.mcp.json`, `clients/`, `gemini-extension.json`,
+  `smithery.yaml`, `server.json`, and the npm bridge remain on the full surface.
+  Claude Code requires the explicit `"type": "http"` in `.mcp.json`; it skips
+  a remote URL-only entry, leaving an otherwise successful plugin install with
+  no connected tools.
 
-The package does not reimplement MCP protocol behavior. The canonical remote
-server remains in Howard and the existing npm stdio bridge remains available
-to clients that prefer stdio.
+The public OpenAI plugin declares `review.commerce: false` because its endpoint
+is discovery-only. That declaration is valid only while `/mcp/agents` excludes
+direct transactional service links and purchase-oriented output fields. The
+same endpoint advertises tools only: it exposes no MCP resources and strips
+Apps/widget `_meta`, so it cannot bridge into the full-surface checkout UI.
 
-## Validation and compatibility
+## Validation
 
-Run `npm run test:plugin` for schema validation and tests covering manifest
-closure, fixed-location discovery, filesystem containment, forbidden secrets,
-schema-version agreement, HTTPS, Streamable HTTP transport selection, published
-tarball closure, and the provider-neutral acceptance-scenario corpus.
+Use Node.js 22 or newer:
 
-The npm distribution is a complete portable artifact rather than only a stdio
-bridge: its allowlist includes the portable manifests, seven skills, pinned
-schemas, client adapters, documentation and eval corpus. `npm pack --dry-run`
-is executed by the test suite so a future packaging change cannot silently ship
-the bridge while omitting the plugin.
+```bash
+npm ci
+npm run build
+npm test
+npm run verify:public-agent
+```
 
-The published `.mcp.json` and `.claude-plugin/` files are compatibility adapters
-for clients that install or unpack the npm artifact as a plugin source; they do
-not alter MCP configuration merely by existing under `node_modules`.
-The portable root `mcp.json` remains authoritative for Agent Plugins clients.
+`npm test` validates the closed manifests, schema checksums, endpoint split,
+exact npm tarball contents, client allowlists, provider-neutral evaluation
+corpus, and frozen public-agent contract. `verify:public-agent` additionally
+compares that frozen contract with the live endpoint without following
+redirects.
 
-`evals/agent-plugin-scenarios.json` defines the same discovery, grounding,
-availability, privacy, feedback-consent and booking-handoff expectations for
-every client. It is intentionally provider-neutral: client-specific runners
-may score ChatGPT, Claude, Copilot, Cursor, VS Code and Kiro without forking the
-acceptance contract. Nine positive cases include explicit fixture assumptions
-and expected result shapes; three negative cases define the safe fallback and
-why the requested action must not be completed. Tests enforce that split so the
-corpus remains directly reusable by review and evaluation runners. A negative
-case may name a tool when the expected safe behavior permits it only after an
-explicit gate (for example, feedback consent); an empty list means no tool call.
-The corpus has its own version so runner integrations can pin its field contract
-independently of the plugin version.
+## OpenAI review artifact
 
-The MCP Registry export lists every live tool name with its standard
-annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, and
-`openWorldHint`). Display titles stay on the canonical remote `tools/list`,
-because the publisher extension holds at most 4096 bytes. Downstream
-registries can evaluate safety and tool selection from those annotations.
-The feedback tool remains explicitly non-read-only; catalogue,
-planning, availability and rendering tools remain read-only.
-`report_quality_signal` is also explicitly open-world because it submits the
-user-approved quality signal to the remote service; it remains non-destructive
-and idempotent.
+After all package files are committed, create the deterministic, closed upload
+artifact:
 
-Client setup verified from primary documentation and installed CLIs on
-2026-08-06:
+```bash
+npm run build:openai-zip
+```
 
-- ChatGPT/Codex: the unified plugin directory reads `extensions.com.openai`
-  from root `plugin.json`. `.codex-plugin/plugin.json` is the compatibility
-  fallback when that object is absent; the two are not merged. On 2026-08-06,
-  Codex CLI 0.147.0 exposed marketplace add/install commands but no direct
-  local-path mount. A temporary local marketplace successfully installed and
-  listed `tickadoo-experiences@tickadoo-agent-plugins-test` version `2.0.0`;
-  the plugin and marketplace were then removed successfully. That check remains
-  evidence for the fallback adapter.
-- VS Code: set `chat.plugins.enabled`, then use **Chat: Install Plugin From
-  Source**, or map the checkout in `chat.pluginLocations`. VS Code recognizes
-  the canonical root `$schema`, discovers `skills/` and `mcp.json`, and supports
-  stdio, Streamable HTTP, and legacy SSE.
-- Cursor: install from its Plugins marketplace/source flow; it advertises Agent
-  Skills and all three portable MCP transports.
-- Claude Code: add `tickadoo/tickadoo-mcp` as a marketplace, then install
-  `tickadoo@tickadoo-agent-plugins`. Its strict marketplace entry resolves to
-  the repository root and relies on `.claude-plugin/plugin.json` as the single
-  version authority.
-- GitHub Copilot: CLI 1.0.78 successfully discovered this checkout through
-  `copilot --plugin-dir . plugin list` as external plugin
-  `tickadoo-experiences`. GitHub now also documents direct installation from a
-  repository or local path and declarative enablement through
-  `.github/copilot/settings.json`. Copilot discovers the portable root
-  `plugin.json`, standard `skills/`, and the credential-free `mcp.json`
-  without a second Copilot-specific manifest. On 2026-08-30, Copilot
-  CLI 1.0.80 installed the checkout and reported all seven skills, but warned
-  that direct installs are deprecated. The repository therefore also carries
-  `.github/plugin/marketplace.json` for the supported marketplace installation
-  and update path.
-- Kiro: import the plugin as a Power; it advertises Agent Skills and all three
-  portable MCP transports.
+The builder reads only committed files, includes the allowlist in
+`scripts/openai-plugin-files.json`, rejects credential-shaped content, checks
+archive limits and containment, and prints the ZIP SHA-256 digest. It excludes
+the full-surface client adapters, Registry manifest, npm bridge, source code,
+tests, and repository metadata.
 
-### GitHub Copilot cloud setup
+The existing OpenAI app ID currently has two observed surfaces: the current
+Apps record uses the full `/mcp` URL, while its still-public legacy Plugins page
+reports `/mcp/store-cards` and stale copy. OpenAI does not expose endpoint
+changes on an already submitted version, but its official review guidance
+permits changing the path in a new draft version when the scheme, hostname,
+and port stay the same. Reconcile both observed records in the portal, then
+submit the existing listing's new draft with
+`https://mcp.tickadoo.com/mcp/agents`; do not create a duplicate. Escalate to
+support only if the portal cannot reconcile the records. See
+`docs/openai-plugin-submission.md`.
 
-GitHub's [primary repository MCP documentation](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/configure-mcp-servers),
-rechecked on 2026-08-24, requires repository administrators to paste MCP JSON
-into **Settings → Copilot → MCP servers**.
-That configuration is available to Copilot cloud agent and Copilot code review;
-repository and CLI MCP configurations also become available in the
-[GitHub Copilot app](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app).
-GitHub requires a `tools` array and strongly recommends explicitly allowlisting
-read-only tools because cloud agents can invoke them autonomously without
-per-call approval.
+## npm and MCP Registry release
 
-Copy `clients/github-copilot/mcp.json` into that repository setting. The public
-tickadoo endpoint requires no authentication, so this adapter needs no Agents
-secret, header or environment variable. It deliberately exposes only the core
-discovery, comparison, details and live-availability journey. The tests prove
-that every allowlisted tool remains present and read-only in `server.json`, the
-URL remains identical to portable `mcp.json`, and the published npm tarball
-contains the adapter. This repository does not apply settings automatically;
-enabling it remains an explicit repository-administrator action.
+Every release-bearing file must use the same version. npm publication is a
+manual dispatch of `.github/workflows/publish-npm.yml` from `main`. An
+unprivileged verification job installs dependencies, rebuilds, type-checks,
+runs the complete test suite and live contract check, audits dependencies, and
+hashes the resulting tarball. Only the second job uses the protected `npm`
+environment and npm Trusted Publishing OIDC; it verifies and publishes that
+exact artifact, then reads back the exact version, `latest` tag, and SLSA
+provenance attestation. The workflow has no token fallback.
 
-Record exact live client results in the PR. A schema/discovery test is not a
-claim that a particular GUI successfully connected.
+The npm package must have this trusted publisher mapping before dispatch:
 
-Transport verification on 2026-08-06 sent a read-only MCP 2026-07-28
-`server/discover` request to the exact URL in `mcp.json`. It returned HTTP 200,
-advertised `2026-07-28`, `2025-11-25`, and `2025-06-18`, and exposed tools and
-resources capabilities. This validates endpoint/transport compatibility
-without duplicating the protocol implementation in this repository.
+- organization: `tickadoo`
+- repository: `tickadoo-mcp`
+- workflow: `publish-npm.yml`
+- environment: `npm`
+- permission: direct publish
 
-## Existing MCP and OpenAI/ChatGPT work reviewed
+MCP Registry publication is a separate manual dispatch of
+`.github/workflows/publish-mcp-registry.yml` from `main`. It publishes
+`server.json` through GitHub OIDC and reads back the exact version and `latest`
+record. The Registry export lists all 27 full-surface tool names and their
+standard behavioral hints. Display titles stay on canonical remote
+`tools/list` so the publisher extension remains within its 4096-byte limit.
 
-The implementation was checked against the existing work rather than creating
-a parallel runtime:
-
-- Howard owns the public `/mcp` protocol, tool registry, surface adapter,
-  public-field stripping, supplier aliases, telemetry, feedback controls, and
-  ChatGPT cards resources/widgets. Its recent history includes the MCP
-  2026-07-28 migration, live conformance tests, Apps SDK widget metadata,
-  domain verification, and adversarial privacy/honesty fixes. None belongs in
-  this package.
-- `tickadoo-mcp` v2.0.0 is intentionally a thin npm stdio bridge. Its
-  `server.json`, `.claude-plugin/plugin.json`, `.mcp.json`, Smithery metadata,
-  seven Plugin Directory skills, metadata consistency tests, and live-audited
-  ChatGPT-specific tool guidance already cover registry and legacy client
-  distribution. The portable files reuse those assets and do not fork them.
-- `claude-platform` owns independently authenticated Hive coordination,
-  Codex/Claude/Gemini/Grok adapters, secure launchers, and the already-complete
-  MCP 2026-07-28 dual-era compatibility layer. It is intentionally excluded
-  from this public plugin.
-- OpenAI's directory reads OpenAI-specific settings from
-  `extensions.com.openai` in root `plugin.json`. The published vendor-neutral
-  1.0 specification still defines root `plugin.json` and `mcp.json`, and
-  `.codex-plugin/plugin.json` remains the compatibility fallback. Both are
-  kept side-by-side with explicit consistency tests.
-
-Review gaps found and handled here: there was no root portable manifest, no
-portable typed MCP config, no pinned official schemas, and no tests for secret
-absence, containment, manifest closure, schema-version agreement, or portable
-client discovery. No missing MCP protocol or Apps SDK implementation was found.
-
-## 2026-08-06 upstream release audit
-
-The Agent Plugins specification repository's two changes on 2026-08-06 only
-renamed the project description from a community standard to an open standard.
-The 1.0.0 schema blobs did not change, so the reviewed vendored schemas and
-their checksums remain current; no package migration is warranted.
-
-Codex changes released the same day added plugin-root-aware skill loading,
-remote installed-plugin discovery across scopes, lazy startup of cached MCP
-servers for subagents, MCP discovery-timeout cleanup, and reuse of MCP handlers
-across sampling steps. The first of these confirms that portable skills must be
-immediate children of `skills/` and that every discovered path must remain
-inside the plugin root. The tests now recursively enforce that contract and
-reject symlinks throughout the portable skills and Codex adapter, nested skill
-entry points, schema extensions, non-HTTPS endpoint forms, and URL credentials.
-
-The remaining Codex changes are client lifecycle and performance improvements.
-They require no Howard or `tickadoo-mcp` protocol duplication: the package
-continues to advertise one canonical remote endpoint and lets each client own
-connection caching, lazy startup, discovery cancellation, and authentication.
-
-## 2026-08-28 upstream release audit
-
-Agent Plugins 1.0.0 is now published rather than a working draft. Its canonical
-schema files remain byte-for-byte identical to the copies pinned here. A 1.1.0
-working draft was opened on 2026-08-12; its current schemas differ from 1.0.0
-only in schema identifiers and descriptions, so this package remains on the
-published 1.0.0 line until a reviewed draft change adds material value.
-
-GitHub Copilot now documents plugins as first-class bundles across Copilot CLI,
-the cloud agent, and the GitHub Copilot app. Its discovery conventions include
-root `plugin.json`, `skills/`, and root `mcp.json`, all of which this package
-already ships. The separately tested `clients/github-copilot/mcp.json` remains
-useful for repository administrators who want the narrower eight-tool,
-default-deny cloud configuration rather than the full plugin tool surface.
-
-Copilot CLI 1.0.80 successfully installed this checkout in an isolated client
-home and discovered all seven skills. That release warns that direct repository
-and local-path installs will be removed in favor of marketplace installation.
-The checked-in marketplace manifest makes this repository locally testable as
-`tickadoo-experiences@tickadoo-agent-plugins`; adding the marketplace to a user,
-organization, or public catalog remains an explicit distribution decision.
-
-Anthropic's managed-agent MCP connector now separates reusable server URLs from
-session credentials held in vaults and supports disabling tools by default
-before explicitly enabling a reviewed subset. That validates this package's
-credential-free public manifest and least-privilege adapter pattern; it does
-not justify embedding Hive credentials or duplicating its authenticated MCP
-transport.
-
-## 2026-09-06 upstream release audit
-
-The published Agent Plugins specification remains 1.0.0. The 1.1.0 working
-draft still changes only schema identifiers and descriptions, so the portable
-package remains pinned to the published line.
-
-Kiro's [Powers documentation](https://kiro.dev/docs/powers/) now confirms that
-root `plugin.json` keywords drive on-demand activation as well as discovery.
-The portable manifest therefore carries explicit theatre, tour, attraction,
-event, and booking intent terms alongside the tickadoo brand and general
-experience/travel terms; a focused test keeps that activation vocabulary from
-silently regressing.
-
-OpenAI now documents [one universal public plugin directory](https://developers.openai.com/plugins/deploy/submission)
-shared by ChatGPT and Codex. The repository therefore includes
-`.agents/plugins/marketplace.json` for repo and workspace discovery. Directory
-metadata belongs in root `extensions.com.openai`; `.codex-plugin/plugin.json`
-is the compatibility fallback, not the directory source. Codex CLI 0.153.4
-successfully added the exact local marketplace, discovered the root plugin,
-installed version 2.0.0 with all seven skills and both brand assets, and then
-removed the plugin and marketplace cleanly.
-
-The Codex listing now uses a 30-character-or-shorter subtitle, a live canonical
-terms URL, square SVG `composerIcon` and `logo` assets, HTTPS legal links, three
-bounded starter prompts, and a brand colour that passes OpenAI's documented
-light-background contrast floor. Tests enforce those final-directory metadata
-limits and prove the assets ship in the npm tarball.
-
-OpenAI's [GitHub workspace-import documentation](https://learn.chatgpt.com/docs/enterprise/plugin-management)
-currently marks every imported
-plugin that declares MCP configuration as desktop-only, even when the server
-uses a public HTTPS URL. Web availability therefore still requires either the
-public **With MCP** submission flow or an `.app.json` reference to a real
-ChatGPT-registered MCP connection. This repository does not invent an
-`asdk_app_...` identifier. The portable extension records the live support
-page `https://www.tickadoo.com/contact` as `interface.supportURL` and the
-mailbox `support@tickadoo.com` as `author.email`. A 2026-09-06 Plugin Creator
-1.2.3 build rejected `interface.supportURL`; the current directory field
-reference accepts that HTTPS field on `extensions.com.openai.interface`.
-
-Anthropic CLI 1.30.0 introduced [`ant apply`](https://platform.claude.com/docs/en/cli-sdks-libraries/cli/apply)
-for managed resources as code. The current 1.31.0 CLI accepted the exact shipped
-adapter with an isolated, credential-free `ant apply --dry-run` and planned one
-agent create. That is local parse/plan evidence only, not an authenticated API
-rehearsal or remote mutation. Claude Code 2.1.263 also validated the native
-`.claude-plugin/plugin.json` with no manifest errors or warnings; its sole
-content warning correctly notes that the repository-level `CLAUDE.md` is not
-plugin-delivered context, because this package supplies reusable context under
-`skills/` instead.
-
-Howard issue #5053 and PR #5054 already own that operational apply/lockfile
-lane; this package keeps only the portable copy-ready, default-deny agent body
-and does not duplicate account mutation or lockfile infrastructure. Claude
-Code 2.1.259 introduced the machine-readable validation used above. Copilot CLI
-1.0.83 discovered this exact root package as an external plugin and also
-improved MCP lifecycle and OAuth support; both remain client concerns around
-the same credential-free public endpoint.
-
-### Claude Managed Agents setup
-
-`clients/anthropic-managed-agents/agent.json` is a copy-ready agent-create body
-for Anthropic's Managed Agents beta. It uses the pinned `claude-sonnet-5` model,
-declares only the public tickadoo MCP URL, disables newly discovered MCP tools
-by default, and explicitly enables the same eight read-only journey tools as
-the Copilot cloud adapter. Those reviewed read-only calls use `always_allow`;
-anything not listed remains disabled with the conservative `always_ask`
-fallback. No vault is required because the public endpoint is unauthenticated.
-
-Create the agent with Anthropic's current Managed Agents API or CLI, then create
-a session using the returned agent ID and an environment ID. This repository
-does not create an Anthropic agent, environment, session, API key, or vault.
-Managed Agents is a beta service, so recheck Anthropic's beta header and model
-support before external account setup.
-
-## 2026-10-21 OpenAI directory metadata
-
-[Package your plugin](https://developers.openai.com/plugins/build/plugins) now
-tells directory clients to read `extensions.com.openai` from the root
-`plugin.json`. `.codex-plugin/plugin.json` is documented as the compatibility
-fallback used only when that object is absent. The two files are not merged, so
-the portable extension carries the full listing: display name, category,
-starter prompts, brand colour, existing `brand/` icons, website, privacy,
-terms, and the live contact page. `review.test_cases` prefills the five
-positive and three negative cases initial MCP review requires. The positive
-cases include London tonight through `whats_on_tonight` and a London Lion King
-search (`search_experiences` with city `london` and query `Lion King`, then
-`get_availability`). The other cases reuse prompts from
-`evals/agent-plugin-scenarios.json`. No case names a payment or checkout tool.
-`review.commerce` is false: the plugin returns booking links, and a person
-confirms the purchase on tickadoo.com.
-
-The extension does not declare hooks, an onboarding skill, an app binding, or
-another MCP server. `mcp.json` is unchanged. The pinned Agent Plugins 1.0.0
-schema rejects extra fields on a Streamable HTTP server, and OpenAI's own
-submission example omits `auth` for an unauthenticated server. No
-authentication is the absence of headers and credentials on
-`https://mcp.tickadoo.com/mcp`, which
-[https://mcp.tickadoo.com/llms.txt](https://mcp.tickadoo.com/llms.txt) also
-states. This repository has no demo recording, so `review.demo_recording_url`
-is omitted. Terms are the live page `https://www.tickadoo.com/terms`.
+Neither workflow creates an OpenAI or Claude marketplace listing. Those remain
+human portal actions.
 
 ## Update and rollback
 
-Treat `plugin.json` version as the package release. Update the vendored schemas
-only when intentionally targeting a new specification version, review the
-normative diff, update both `$schema` values together, and rerun compatibility
-tests. Roll back by installing or checking out the last reviewed tag/commit;
-the remote MCP service and npm bridge are unaffected by package rollback.
+1. Update Howard first when the hosted contract must change.
+2. Capture and review the deployed `/mcp/agents` contract in this repository.
+3. Bump every release-bearing artifact together and run all checks.
+4. Merge only the exact reviewed head.
+5. Publish npm and MCP Registry from the merged `main` commit.
+6. Complete portal-only directory updates after their endpoint and policy
+   checks are satisfied.
 
-## Follow-ups
-
-- Decide marketplace and directory publication only after client-local testing.
-- Define distribution integrity/signing once the specification defines it or
-  the selected marketplaces provide a suitable mechanism.
-- Track the portable OAuth and credential-reference gap. Do not add Hive until
-  the standard can express its existing secure client-managed auth path.
-- `extensions.com.openai` is the directory metadata extension. Add further
-  client extensions only for demonstrated client-specific value, under a
-  stable reverse-domain namespace, with separate tests and ownership.
+Rollback the package by publishing a new patch version that restores the last
+reviewed manifests and bridge behavior. Registry and npm versions are
+immutable; never overwrite an existing version or move a portal listing back
+to the full endpoint to work around a review failure.

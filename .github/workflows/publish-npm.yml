@@ -1,0 +1,196 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package version to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@11.19.1 --ignore-scripts
+
+      - name: Verify requested version and unpublished state
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          test "${package_version}" = "${EXPECTED_VERSION}"
+          published_versions="$(npm view "${package_name}" versions --json)"
+          if node -e 'const versions = [].concat(JSON.parse(process.argv[1])); process.exit(versions.includes(process.argv[2]) ? 0 : 1)' "${published_versions}" "${package_version}"; then
+            echo "::error::${package_name}@${package_version} is already published"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run verify:public-agent
+      - run: npm audit --omit=dev
+      - run: npm audit
+
+      - name: Pack the verified release artifact
+        run: |
+          set -euo pipefail
+          npm pack --ignore-scripts --json > /tmp/npm-pack.json
+          package_file="$(node -p 'require("/tmp/npm-pack.json")[0].filename')"
+          test -f "${package_file}"
+          mkdir release-artifact
+          mv -- "${package_file}" release-artifact/
+          package_file="${package_file##*/}"
+          printf '%s\n' "${package_file}" > release-artifact/npm-package-name.txt
+          (cd release-artifact && sha256sum "${package_file}" | tee npm-package.sha256)
+
+      - name: Smoke-test the exact packed bridge against the full MCP endpoint
+        run: |
+          set -euo pipefail
+          package_file="$(tr -d '\r\n' < release-artifact/npm-package-name.txt)"
+          [[ "${package_file}" =~ ^[A-Za-z0-9._-]+\.tgz$ ]]
+          smoke_dir="${RUNNER_TEMP}/tickadoo-packed-bridge-smoke"
+          mkdir -p "${smoke_dir}"
+          npm install \
+            --prefix "${smoke_dir}" \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund \
+            --save-exact \
+            "${GITHUB_WORKSPACE}/release-artifact/${package_file}"
+          node scripts/smoke-packed-bridge.mjs \
+            "${smoke_dir}/node_modules/.bin/mcp-server"
+
+      - name: Upload the verified release artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-package
+          path: release-artifact/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@11.19.1 --ignore-scripts
+
+      - name: Download the verified release artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-package
+          path: release-artifact
+
+      - name: Verify, publish, and read back the exact npm artifact
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          cd release-artifact
+          sha256sum -c npm-package.sha256
+          cat npm-package.sha256
+          package_file="$(tr -d '\r\n' < npm-package-name.txt)"
+          [[ "${package_file}" =~ ^[A-Za-z0-9._-]+\.tgz$ ]]
+          test -f "${package_file}"
+          package_name="$(tar -xOf "${package_file}" package/package.json | node -e 'let data=""; process.stdin.on("data", chunk => data += chunk).on("end", () => process.stdout.write(JSON.parse(data).name))')"
+          package_version="$(tar -xOf "${package_file}" package/package.json | node -e 'let data=""; process.stdin.on("data", chunk => data += chunk).on("end", () => process.stdout.write(JSON.parse(data).version))')"
+          test "${package_name}" = "@tickadoo/mcp-server"
+          test "${package_version}" = "${EXPECTED_VERSION}"
+          local_integrity="$(node "${GITHUB_WORKSPACE}/scripts/npm-release-verification.mjs" integrity "${package_file}")"
+          published_versions="$(npm view "${package_name}" versions --json)"
+          if node -e 'const versions = [].concat(JSON.parse(process.argv[1])); process.exit(versions.includes(process.argv[2]) ? 0 : 1)' "${published_versions}" "${package_version}"; then
+            echo "::error::${package_name}@${package_version} is already published"
+            exit 1
+          fi
+          npm publish "./${package_file}" --access public --ignore-scripts
+          readback_verified=false
+          for attempt in {1..12}; do
+            exact="$(npm view "${package_name}@${EXPECTED_VERSION}" version 2>/dev/null || true)"
+            latest="$(npm view "${package_name}@latest" version 2>/dev/null || true)"
+            registry_integrity="$(npm view "${package_name}@${EXPECTED_VERSION}" dist.integrity 2>/dev/null || true)"
+            provenance="$(npm view "${package_name}@${EXPECTED_VERSION}" dist.attestations.provenance.predicateType 2>/dev/null || true)"
+            attestations_url="$(npm view "${package_name}@${EXPECTED_VERSION}" dist.attestations.url 2>/dev/null || true)"
+            if [ "${exact}" = "${EXPECTED_VERSION}" ] && \
+               [ "${latest}" = "${EXPECTED_VERSION}" ] && \
+               [ "${registry_integrity}" = "${local_integrity}" ] && \
+               [ "${provenance}" = "https://slsa.dev/provenance/v1" ] && \
+               [[ "${attestations_url}" = https://registry.npmjs.org/-/npm/v1/attestations/* ]]; then
+              readback_verified=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "${readback_verified}" != true ]; then
+            echo "::error::npm read-back, integrity, or provenance did not converge on ${package_name}@${EXPECTED_VERSION}"
+            exit 1
+          fi
+
+          audit_verified=false
+          for attempt in {1..12}; do
+            audit_dir="${RUNNER_TEMP}/tickadoo-npm-provenance-audit-${attempt}"
+            mkdir -p "${audit_dir}"
+            if npm install \
+              --prefix "${audit_dir}" \
+              --ignore-scripts \
+              --no-audit \
+              --no-fund \
+              --save-exact \
+              --prefer-online \
+              "${package_name}@${EXPECTED_VERSION}" && \
+              npm --prefix "${audit_dir}" audit signatures \
+                --omit=dev \
+                --json \
+                --include-attestations > "${audit_dir}/npm-signatures.json" && \
+              node "${GITHUB_WORKSPACE}/scripts/npm-release-verification.mjs" audit \
+                "${audit_dir}/npm-signatures.json" \
+                "${audit_dir}/package-lock.json" \
+                "${package_name}" \
+                "${EXPECTED_VERSION}" \
+                "${local_integrity}" \
+                "${GITHUB_SHA}"; then
+              audit_verified=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "${audit_verified}" != true ]; then
+            echo "::error::npm signature and exact-head provenance audit did not converge on ${package_name}@${EXPECTED_VERSION}"
+            exit 1
+          fi
+          echo "npm read-back, integrity, signature, and exact-head provenance verified: ${package_name}@${EXPECTED_VERSION}"

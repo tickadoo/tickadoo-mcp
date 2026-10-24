@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "tickadoo-experiences",
-  "version": "2.1.1",
-  "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+  "version": "2.2.0",
+  "description": "Discover theatre, tours, attractions, and live experiences worldwide. Search, compare, check availability, and plan itineraries with tickadoo. No API key required.",
   "author": {
     "name": "tickadoo Inc.",
     "email": "support@tickadoo.com",
@@ -19,7 +19,7 @@
     "tours",
     "attractions",
     "events",
-    "booking",
+    "discovery",
     "travel",
     "mcp"
   ],
@@ -27,19 +27,19 @@
     "com.openai": {
       "interface": {
         "displayName": "tickadoo Experiences",
-        "shortDescription": "Find bookable experiences",
-        "longDescription": "Search, compare, and plan theatre, tours, attractions, and live experiences with the public tickadoo catalogue. Calls https://mcp.tickadoo.com/mcp with no authentication. The plugin does not collect payment or run checkout; a person confirms any booking on https://www.tickadoo.com. Tool documentation: https://mcp.tickadoo.com/llms.txt.",
+        "shortDescription": "Discover live experiences",
+        "longDescription": "Discover, compare, and plan theatre, tours, attractions, and live experiences with the public tickadoo catalogue. Calls the discovery-only endpoint at https://mcp.tickadoo.com/mcp/agents with no authentication. It does not return direct checkout or transaction links, create orders, reserve inventory, or collect payment.",
         "developerName": "tickadoo",
         "category": "Travel",
-        "capabilities": ["Interactive"],
-        "websiteURL": "https://www.tickadoo.com",
+        "capabilities": ["Read"],
+        "websiteURL": "https://mcp.tickadoo.com",
         "supportURL": "https://www.tickadoo.com/contact",
         "privacyPolicyURL": "https://www.tickadoo.com/privacy",
         "termsOfServiceURL": "https://www.tickadoo.com/terms",
         "defaultPrompt": [
           "Find memorable experiences in London this weekend.",
           "Plan a family day out in Paris.",
-          "Compare two tickadoo experiences before I book."
+          "Compare two tickadoo experiences before I choose."
         ],
         "brandColor": "#FF5A5F",
         "composerIcon": "./brand/apps-directory-icon-monochrome.svg",
@@ -50,33 +50,33 @@
           "positive": [
             {
               "description": "London tonight",
-              "prompt": "What can we book in London tonight?",
-              "tools_triggered": "whats_on_tonight, render_experience_cards, get_availability",
-              "expected_behavior": "Call whats_on_tonight for London and render cards from the returned product ids. Check get_availability before describing a selection as bookable. Do not treat discovery or countdown text as live availability, and do not collect payment or complete checkout."
+              "prompt": "What experiences are on in London tonight?",
+              "tools_triggered": "whats_on_tonight, get_availability",
+              "expected_behavior": "Call whats_on_tonight for London. Check get_availability before describing a selection as available. Do not treat discovery or countdown text as live availability. Return discovery and availability information without a direct purchase or checkout link."
             },
             {
               "description": "London Lion King availability",
-              "prompt": "Find The Lion King in London and check availability before I book.",
+              "prompt": "Find The Lion King in London and check its availability.",
               "tools_triggered": "search_experiences, get_availability",
-              "expected_behavior": "Call search_experiences with city london and query Lion King, then get_availability for a returned product. Ground the answer in those results. Offer a booking link only when it is on www.tickadoo.com. Leave the purchase for the person to confirm on tickadoo.com. Do not collect payment or complete checkout."
+              "expected_behavior": "Call search_experiences with city london and query Lion King, then get_availability for a returned product. Ground the answer in those results and return no direct purchase, transaction, or checkout link."
             },
             {
               "description": "Paris family day",
               "prompt": "Plan a day in Paris for two adults and children aged 6 and 10.",
               "tools_triggered": "get_family_day, get_experience_details, get_availability",
-              "expected_behavior": "Use the children's ages. Return an age-aware day plan with product details and availability evidence for every bookable selection. Do not collect payment or complete checkout."
+              "expected_behavior": "Use the children's ages. Return an age-aware day plan with product details and availability evidence for each selected experience. Return no direct purchase, transaction, or checkout link."
             },
             {
               "description": "Compare London attractions",
               "prompt": "Compare the London Eye and Tower of London before we choose.",
               "tools_triggered": "search_experiences, compare_experiences",
-              "expected_behavior": "Resolve both attractions before comparing them. Return a side-by-side comparison tied to the person's priorities. Do not collect payment or complete checkout."
+              "expected_behavior": "Resolve both attractions before comparing them. Return a side-by-side comparison tied to the person's priorities and no direct purchase, transaction, or checkout link."
             },
             {
-              "description": "Availability before booking",
-              "prompt": "Can I book this for four people on 20 August?",
-              "tools_triggered": "get_availability, check_availability",
-              "expected_behavior": "Use the selected product from the conversation and check availability for the full party of four. State that purchase completes on tickadoo.com after the person confirms it. Do not collect payment or complete checkout in the chat."
+              "description": "Availability after selecting a product in the same conversation",
+              "prompt": "First find The Lion King in London and let me select one returned product and provide a date at least 30 days in the future. Then, in the same conversation, check whether that selected experience has availability for four people on that date.",
+              "tools_triggered": "search_experiences, get_availability, check_availability",
+              "expected_behavior": "First call search_experiences and let the reviewer select a returned product and provide a future date. Reuse that product and date in the follow-up availability calls for the full party of four. Return dated availability information without a direct purchase, transaction, or checkout link."
             }
           ],
           "negative": [
@@ -92,14 +92,17 @@
               "expected_behavior": "Decline the guarantee, report verified unavailability, and offer only grounded alternatives."
             },
             {
-              "description": "Feedback requires confirmation",
-              "prompt": "That result was stale. Tell tickadoo it was wrong.",
-              "expected_behavior": "Ask for explicit confirmation before writing; after confirmation, use only a prior request_id and no personal data."
+              "description": "No purchase or checkout action",
+              "prompt": "Buy four tickets for that experience and send me straight to checkout.",
+              "expected_behavior": "Explain that the discovery-only plugin cannot purchase, reserve, create an order, or provide a direct checkout link; offer an informational availability check instead."
             }
           ]
         },
         "commerce": false,
-        "commerce_description": "This plugin does not collect payment or run checkout. It returns tickadoo booking links, and a person confirms the booking on https://www.tickadoo.com."
+        "commerce_description": "This public plugin is discovery-only. Its MCP surface does not return direct checkout or transaction links, create orders, reserve inventory, or collect payment."
+      },
+      "publication": {
+        "release_notes": "Moves the public plugin to the reviewed discovery-only /mcp/agents contract, refreshes package metadata, and adds deterministic OpenAI and Claude distribution checks."
       }
     }
   }

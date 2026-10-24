@@ -12,6 +12,45 @@ describe("MCP Registry publisher metadata", () => {
     expect(() => assertPublisherMetadataSize(server)).not.toThrow();
   });
 
+  it("keeps the full 27-tool Registry index and its safety hints intact", () => {
+    const tools = server._meta[publisherMetadataKey].tools as Array<{
+      name: string;
+      title?: string;
+      annotations: {
+        title?: string;
+        readOnlyHint: boolean;
+        destructiveHint: boolean;
+        idempotentHint: boolean;
+        openWorldHint: boolean;
+      };
+    }>;
+
+    expect(server.description.length).toBeLessThanOrEqual(100);
+    expect(tools).toHaveLength(27);
+    expect(new Set(tools.map(tool => tool.name)).size).toBe(tools.length);
+    for (const tool of tools) {
+      expect(tool.title, `${tool.name}: Registry title`).toBeUndefined();
+      expect(tool.annotations.title, `${tool.name}: annotation title`).toBeUndefined();
+      expect(typeof tool.annotations.readOnlyHint, `${tool.name}: readOnlyHint`).toBe("boolean");
+      expect(typeof tool.annotations.destructiveHint, `${tool.name}: destructiveHint`).toBe("boolean");
+      expect(typeof tool.annotations.idempotentHint, `${tool.name}: idempotentHint`).toBe("boolean");
+      expect(typeof tool.annotations.openWorldHint, `${tool.name}: openWorldHint`).toBe("boolean");
+    }
+
+    const feedback = tools.find(tool => tool.name === "report_quality_signal");
+    expect(feedback?.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+    expect(
+      tools
+        .filter(tool => tool.name !== "report_quality_signal")
+        .every(tool => tool.annotations.readOnlyHint),
+    ).toBe(true);
+  });
+
   it("limits only the publisher extension, not the entire server document", () => {
     const metadata = { note: "x".repeat(4085) }; // 11 bytes of JSON overhead.
     expect(() => assertPublisherMetadataSize({ ...manifest(metadata), description: "x".repeat(10000) })).not.toThrow();
@@ -27,7 +66,7 @@ describe("MCP Registry publisher metadata", () => {
     }
   });
 
-  it("preserves tool identity and all standard behavioral hints without copying titles or full schemas", () => {
+  it("preserves tool identity and all standard behavioral hints without copying display metadata or schemas", () => {
     const annotations = {
       title: "Fallback title", readOnlyHint: false, destructiveHint: true,
       idempotentHint: false, openWorldHint: true,
@@ -37,8 +76,12 @@ describe("MCP Registry publisher metadata", () => {
       name: "book",
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
     });
-    expect(compactToolMetadata(tool)).not.toHaveProperty("title");
+    expect(compactToolMetadata({ ...tool, title: undefined })).toEqual({
+      name: "book",
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    });
     expect(compactToolMetadata({ name: "search" })).toEqual({ name: "search", annotations: {} });
+    expect(compactToolMetadata(tool)).not.toHaveProperty("title");
     expect(tool.description).toBe("Detailed instructions");
     expect(tool.title).toBe("Book");
   });

@@ -64,7 +64,7 @@ const OPENAI_CATEGORIES = [
 ];
 
 const COUNT_BEARING_COPY =
-  /\b\d[\d,]*\+?\s+(?:bookable\s+)?(?:products?|experiences?|cities|tools)\b/i;
+  /\b(?:\d[\d,]*\+?|(?:dozens|hundreds|thousands|millions)(?:\s+of)?)\s+(?:bookable\s+)?(?:products?|experiences?|cities|countries|tools)\b/i;
 
 async function assertOpenAiListing(
   pluginInterface: Record<string, unknown>,
@@ -134,7 +134,7 @@ describe("Agent Plugins 1.0.0 package", () => {
       "tours",
       "attractions",
       "events",
-      "booking",
+      "discovery",
       "travel",
       "mcp",
     ]);
@@ -174,6 +174,36 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(skillFiles.every((candidate) => path.dirname(path.dirname(candidate)) === path.join(root, "skills"))).toBe(true);
   });
 
+  it("builds the OpenAI review ZIP from a closed discovery-only allowlist", async () => {
+    const archive = await readJson(path.join(root, "scripts/openai-plugin-files.json"));
+    const files = archive.files as string[];
+    expect(files).toEqual([
+      "plugin.json",
+      "mcp.json",
+      "brand/apps-directory-icon.svg",
+      "brand/apps-directory-icon-monochrome.svg",
+      "skills/compare-before-you-book/SKILL.md",
+      "skills/date-night/SKILL.md",
+      "skills/family-day-out/SKILL.md",
+      "skills/near-a-landmark/SKILL.md",
+      "skills/plan-a-trip/SKILL.md",
+      "skills/tickadoo-experiences/SKILL.md",
+      "skills/tonight-and-last-minute/SKILL.md",
+      "LICENSE",
+    ]);
+    expect(new Set(files).size).toBe(files.length);
+    expect(files).not.toContain(".mcp.json");
+    expect(files).not.toContain(".codex-plugin/plugin.json");
+    expect(files).not.toContain("server.json");
+    expect(files.some(file => file.startsWith("clients/"))).toBe(false);
+
+    for (const file of files) {
+      const source = await readFile(path.join(root, file), "utf8");
+      expect(source, file).not.toMatch(/report_quality_signal|render_experience_cards/);
+      expect(source, file).not.toContain('"url": "https://mcp.tickadoo.com/mcp"');
+    }
+  });
+
   it("rejects fields outside the closed portable manifest schema", async () => {
     const schema = await readJson(path.join(schemaRoot, "plugin.schema.json"));
     const manifest = await readJson(path.join(root, "plugin.json"));
@@ -189,7 +219,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     const servers = config.mcpServers as Record<string, Record<string, unknown>>;
     expect(Object.values(servers)).toHaveLength(1);
     expect(servers.tickadoo.type).toBe("streamable-http");
-    expect(servers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(servers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp/agents");
     expect(new URL(String(servers.tickadoo.url)).protocol).toBe("https:");
     expect(new URL(String(servers.tickadoo.url)).username).toBe("");
     expect(new URL(String(servers.tickadoo.url)).password).toBe("");
@@ -224,7 +254,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(codex.skills).toBe("./skills/");
     const codexServers = codex.mcpServers as Record<string, Record<string, unknown>>;
     expect(codexServers.tickadoo.type).toBe("http");
-    expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(codexServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp/agents");
     expect(JSON.stringify(codex)).not.toMatch(/bearer|token|secret|password|api[_-]?key|cf-access/i);
 
     const extension = (portable.extensions as Record<string, Record<string, unknown>>)["com.openai"];
@@ -266,7 +296,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     const extensions = manifest.extensions as Record<string, Record<string, unknown>>;
     expect(Object.keys(extensions)).toEqual(["com.openai"]);
     const openai = extensions["com.openai"];
-    expect(Object.keys(openai).sort()).toEqual(["interface", "review"]);
+    expect(Object.keys(openai).sort()).toEqual(["interface", "publication", "review"]);
     for (const behaviorField of ["apps", "hooks", "onboardingSkill", "mcpServers", "skills"]) {
       expect(openai).not.toHaveProperty(behaviorField);
     }
@@ -276,7 +306,8 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(pluginInterface.displayName).toBe("tickadoo Experiences");
     expect(pluginInterface.developerName).toBe("tickadoo");
     expect(pluginInterface.category).toBe("Travel");
-    expect(pluginInterface.websiteURL).toBe("https://www.tickadoo.com");
+    expect(pluginInterface.websiteURL).toBe("https://mcp.tickadoo.com");
+    expect(pluginInterface.websiteURL).toBe(manifest.homepage);
     expect(pluginInterface.supportURL).toBe("https://www.tickadoo.com/contact");
     expect(pluginInterface.privacyPolicyURL).toBe("https://www.tickadoo.com/privacy");
     expect(pluginInterface.termsOfServiceURL).toBe("https://www.tickadoo.com/terms");
@@ -284,16 +315,20 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(pluginInterface.composerIcon).toBe("./brand/apps-directory-icon-monochrome.svg");
     expect(pluginInterface.brandColor).toBe("#FF5A5F");
     const longDescription = String(pluginInterface.longDescription);
-    expect(longDescription).toContain("https://mcp.tickadoo.com/mcp");
-    expect(longDescription).toContain("https://mcp.tickadoo.com/llms.txt");
+    expect(longDescription).toContain("https://mcp.tickadoo.com/mcp/agents");
     expect(longDescription).toContain("no authentication");
-    expect(longDescription).toContain("does not collect payment");
+    expect(longDescription).toContain("discovery-only");
+    expect(longDescription).toContain("does not return direct checkout or transaction links");
+
+    const publication = openai.publication as Record<string, unknown>;
+    expect(Object.keys(publication)).toEqual(["release_notes"]);
+    expect(publication.release_notes).toMatch(/discovery-only \/mcp\/agents contract/);
 
     const review = openai.review as Record<string, unknown>;
     expect(Object.keys(review).sort()).toEqual(["commerce", "commerce_description", "test_cases"]);
     expect(review.commerce).toBe(false);
     expect(review.commerce_description).toBe(
-      "This plugin does not collect payment or run checkout. It returns tickadoo booking links, and a person confirms the booking on https://www.tickadoo.com.",
+      "This public plugin is discovery-only. Its MCP surface does not return direct checkout or transaction links, create orders, reserve inventory, or collect payment.",
     );
     expect(review).not.toHaveProperty("demo_recording_url");
     expect(review).not.toHaveProperty("test_credentials");
@@ -306,15 +341,9 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(testCases.positive).toHaveLength(5);
     expect(testCases.negative).toHaveLength(3);
 
-    const registry = await readJson(path.join(root, "server.json"));
+    const agentSnapshot = await readJson(path.join(root, "metadata/public-agent-tools.json"));
     const publishedTools = new Set(
-      (
-        (
-          (registry._meta as Record<string, Record<string, unknown>>)[
-            "io.modelcontextprotocol.registry/publisher-provided"
-          ].tools as Array<{ name: string }>
-        ) ?? []
-      ).map((tool) => tool.name),
+      ((agentSnapshot.tools as Array<{ name: string }>) ?? []).map(tool => tool.name),
     );
     const scenarios = await readJson(path.join(root, "evals/agent-plugin-scenarios.json"));
     const scenarioById = new Map(
@@ -343,7 +372,7 @@ describe("Agent Plugins 1.0.0 package", () => {
     }
 
     const tonight = testCases.positive[0];
-    expect(tonight.prompt).toBe("What can we book in London tonight?");
+    expect(tonight.prompt).toBe("What experiences are on in London tonight?");
     expect(triggeredTools(tonight)).toEqual(
       (scenarioById.get("same-day")?.requiredTools as string[]) ?? [],
     );
@@ -355,23 +384,29 @@ describe("Agent Plugins 1.0.0 package", () => {
     expect(triggeredTools(lionKing)).toEqual(["search_experiences", "get_availability"]);
     expect(lionKing.expected_behavior).toContain("city london");
     expect(lionKing.expected_behavior).toContain("query Lion King");
-    expect(lionKing.expected_behavior).toContain("www.tickadoo.com");
-    expect(lionKing.expected_behavior).toMatch(/does not collect payment|do not collect payment/i);
+    expect(lionKing.expected_behavior).toMatch(/no direct purchase, transaction, or checkout link/i);
 
     for (const [index, id] of [
       [2, "family-day"],
       [3, "comparison"],
-      [4, "availability-before-booking"],
+      [4, "availability-follow-up"],
     ] as const) {
       const scenario = scenarioById.get(id);
       expect(testCases.positive[index].prompt).toBe(scenario?.prompt);
       expect(triggeredTools(testCases.positive[index])).toEqual(scenario?.requiredTools);
     }
 
+    const availabilityFollowUp = testCases.positive[4];
+    expect(availabilityFollowUp.description).toMatch(/same conversation/i);
+    expect(availabilityFollowUp.prompt).toMatch(/First find The Lion King/i);
+    expect(availabilityFollowUp.prompt).toMatch(/select one returned product/i);
+    expect(availabilityFollowUp.prompt).toMatch(/date at least 30 days in the future/i);
+    expect(availabilityFollowUp.prompt).toMatch(/Then, in the same conversation/i);
+
     for (const [index, id] of [
       [0, "privacy-and-supplier-boundary"],
       [1, "no-inventory-fallback"],
-      [2, "feedback-consent"],
+      [2, "no-purchase-action"],
     ] as const) {
       const scenario = scenarioById.get(id);
       const testCase = testCases.negative[index];

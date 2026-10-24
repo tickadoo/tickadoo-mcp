@@ -68,7 +68,7 @@ Public connector brief (fetch this first):
 https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/muse.md
 
 MCP (primary, no auth): POST https://mcp.tickadoo.com/mcp
-Protocol 2025-06-18, server tickadoo v1.6.0, 23 tools.
+Streamable HTTP MCP with no authentication; the live handshake and `tools/list` response own the current server version, protocol revision, and tool catalogue.
 Contract: https://mcp.tickadoo.com/llms-full.txt
 OpenAPI: https://mcp.tickadoo.com/openapi.json
 Source: https://github.com/tickadoo/tickadoo-mcp/tree/main/connectors/muse

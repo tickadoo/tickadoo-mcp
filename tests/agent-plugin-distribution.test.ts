@@ -125,12 +125,30 @@ describe("Agent Plugin distribution", () => {
     );
   });
 
-  it("matches GitHub Copilot native plugin discovery conventions", async () => {
+  it("declares an explicit http transport in the Claude Code .mcp.json adapter", async () => {
+    // Claude Code skips a remote `.mcp.json` entry that has a `url` but no
+    // `type` ("Skipped — MCP server has a url but no type", observed on
+    // Claude Code 2.1.310). Without this field the marketplace install
+    // succeeds yet the plugin exposes zero tools.
+    const claudeMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
+      mcpServers: Record<string, { type?: string; url: string }>;
+    };
+
+    expect(Object.keys(claudeMcp.mcpServers)).toEqual(["tickadoo"]);
+    expect(claudeMcp.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: "https://mcp.tickadoo.com/mcp",
+    });
+  });
+
+  it("uses the Agent Plugins 1.0 public MCP config for GitHub Copilot marketplace installs", async () => {
     const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8")) as {
+      $schema: string;
       name: string;
     };
-    const copilotMcp = JSON.parse(await readFile(path.join(root, ".mcp.json"), "utf8")) as {
-      mcpServers: Record<string, { url: string }>;
+    const copilotMcp = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
+      $schema: string;
+      mcpServers: Record<string, { type: string; url: string }>;
     };
     const skills = [
       "compare-before-you-book",
@@ -143,8 +161,13 @@ describe("Agent Plugin distribution", () => {
     ];
 
     expect(manifest.name).toBe("tickadoo-experiences");
+    expect(manifest.$schema).toBe("https://agent-plugins.org/schemas/1.0.0/plugin.schema.json");
+    expect(copilotMcp.$schema).toBe("https://agent-plugins.org/schemas/1.0.0/mcp.schema.json");
     expect(Object.keys(copilotMcp.mcpServers)).toEqual(["tickadoo"]);
-    expect(copilotMcp.mcpServers.tickadoo.url).toBe("https://mcp.tickadoo.com/mcp");
+    expect(copilotMcp.mcpServers.tickadoo).toEqual({
+      type: "streamable-http",
+      url: "https://mcp.tickadoo.com/mcp/agents",
+    });
     for (const skill of skills) {
       expect(await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")).toContain(
         `name: ${skill}`,
@@ -178,7 +201,9 @@ describe("Agent Plugin distribution", () => {
       "clients/github-copilot/mcp.json",
       "dist/index.js",
       "docs/agent-plugins.md",
+      "docs/openai-plugin-submission.md",
       "evals/agent-plugin-scenarios.json",
+      "metadata/public-agent-tools.json",
       "mcp.json",
       "package.json",
       "plugin.json",
@@ -214,9 +239,6 @@ describe("Agent Plugin distribution", () => {
         { type: string; url: string; tools: string[]; headers?: unknown; env?: unknown }
       >;
     };
-    const portable = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
-      mcpServers: Record<string, { url: string }>;
-    };
     const registry = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
       _meta: {
         "io.modelcontextprotocol.registry/publisher-provided": {
@@ -231,7 +253,7 @@ describe("Agent Plugin distribution", () => {
     expect(Object.keys(adapter.mcpServers)).toEqual(["tickadoo"]);
     const server = adapter.mcpServers.tickadoo;
     expect(server.type).toBe("http");
-    expect(server.url).toBe(portable.mcpServers.tickadoo.url);
+    expect(server.url).toBe("https://mcp.tickadoo.com/mcp");
     expect(server.tools.length).toBeGreaterThan(0);
     expect(new Set(server.tools).size).toBe(server.tools.length);
     expect(server.tools).not.toContain("*");
@@ -270,9 +292,6 @@ describe("Agent Plugin distribution", () => {
         }>;
       }>;
     };
-    const portable = JSON.parse(await readFile(path.join(root, "mcp.json"), "utf8")) as {
-      mcpServers: Record<string, { url: string }>;
-    };
     const copilot = JSON.parse(
       await readFile(path.join(root, "clients/github-copilot/mcp.json"), "utf8"),
     ) as { mcpServers: Record<string, { tools: string[] }> };
@@ -293,7 +312,7 @@ describe("Agent Plugin distribution", () => {
       {
         type: "url",
         name: "tickadoo",
-        url: portable.mcpServers.tickadoo.url,
+        url: "https://mcp.tickadoo.com/mcp",
       },
     ]);
     expect(adapter.tools).toHaveLength(1);
@@ -348,47 +367,39 @@ describe("Agent Plugin distribution", () => {
         rationale?: string;
       }>;
     };
-    const server = JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
-      description: string;
-      _meta: {
-        "io.modelcontextprotocol.registry/publisher-provided": {
-          tools: Array<{
-            name: string;
-            title?: string;
-            annotations?: {
-              title?: string;
-              readOnlyHint?: boolean;
-              destructiveHint?: boolean;
-              idempotentHint?: boolean;
-              openWorldHint?: boolean;
-            };
-          }>;
+    const snapshot = JSON.parse(
+      await readFile(path.join(root, "metadata/public-agent-tools.json"), "utf8"),
+    ) as {
+      endpoint: string;
+      tools: Array<{
+        name: string;
+        title?: string;
+        annotations?: {
+          title?: string;
+          readOnlyHint?: boolean;
+          destructiveHint?: boolean;
+          idempotentHint?: boolean;
+          openWorldHint?: boolean;
         };
-      };
+      }>;
     };
-    expect(server.description.length).toBeLessThanOrEqual(100);
-    const registryTools = server._meta["io.modelcontextprotocol.registry/publisher-provided"].tools;
-    const knownTools = new Set(registryTools.map((tool) => tool.name));
-    for (const tool of registryTools) {
-      // Display titles stay on the remote tools/list so this index fits in 4096 bytes.
-      expect(tool.title, `${tool.name}: registry title`).toBeUndefined();
-      expect(tool.annotations?.title, `${tool.name}: annotation title`).toBeUndefined();
+    expect(snapshot.endpoint).toBe("https://mcp.tickadoo.com/mcp/agents");
+    const agentTools = snapshot.tools;
+    const knownTools = new Set(agentTools.map(tool => tool.name));
+    for (const tool of agentTools) {
+      const displayTitle = tool.title ?? tool.annotations?.title;
+      expect(displayTitle?.length, `${tool.name}: display title`).toBeGreaterThan(0);
+      if (tool.title !== undefined && tool.annotations?.title !== undefined) {
+        expect(tool.annotations.title, `${tool.name}: annotation title`).toBe(tool.title);
+      }
       expect(typeof tool.annotations?.readOnlyHint, `${tool.name}: readOnlyHint`).toBe("boolean");
       expect(typeof tool.annotations?.destructiveHint, `${tool.name}: destructiveHint`).toBe("boolean");
       expect(typeof tool.annotations?.idempotentHint, `${tool.name}: idempotentHint`).toBe("boolean");
       expect(typeof tool.annotations?.openWorldHint, `${tool.name}: openWorldHint`).toBe("boolean");
+      expect(tool.annotations?.readOnlyHint, `${tool.name}: read-only public plugin`).toBe(true);
+      expect(tool.annotations?.destructiveHint, `${tool.name}: non-destructive public plugin`).toBe(false);
     }
-    expect(registryTools.find((tool) => tool.name === "report_quality_signal")?.annotations).toMatchObject({
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    });
-    expect(
-      registryTools
-        .filter((tool) => tool.name !== "report_quality_signal")
-        .every((tool) => tool.annotations?.readOnlyHint === true),
-    ).toBe(true);
+    expect(knownTools).not.toContain("report_quality_signal");
     const skillDirectories = new Set(
       [
         "compare-before-you-book",
@@ -400,7 +411,7 @@ describe("Agent Plugin distribution", () => {
         "tonight-and-last-minute",
       ],
     );
-    expect(corpus.version).toBe("1.1.0");
+    expect(corpus.version).toBe("2.0.0");
     expect(typeof corpus.description).toBe("string");
     expect(Array.isArray(corpus.scenarios)).toBe(true);
     expect(corpus.scenarios).toHaveLength(12);
@@ -435,9 +446,7 @@ describe("Agent Plugin distribution", () => {
       expect(corpus.scenarios.some((scenario) => scenario.expectedSkill === skill), `${skill} needs an eval scenario`).toBe(true);
     }
     expect(corpus.scenarios.find((scenario) => scenario.id === "privacy-and-supplier-boundary")?.requiredTools).toEqual([]);
-    expect(corpus.scenarios.find((scenario) => scenario.id === "feedback-consent")?.requiredTools).toEqual([
-      "report_quality_signal",
-    ]);
+    expect(corpus.scenarios.find((scenario) => scenario.id === "no-purchase-action")?.requiredTools).toEqual([]);
   });
 
   it("keeps shipped skills and Muse guidance on the live howard tool names", async () => {
@@ -472,8 +481,6 @@ describe("Agent Plugin distribution", () => {
     const topicSearchFiles = [
       ".claude/skills/tickadoo-experiences/SKILL.md",
       "connectors/muse/muse.md",
-      "skills/family-day-out/SKILL.md",
-      "skills/near-a-landmark/SKILL.md",
       "skills/tickadoo-experiences/SKILL.md",
     ];
     for (const relative of topicSearchFiles) {
