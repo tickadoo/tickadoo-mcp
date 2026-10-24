@@ -27,18 +27,19 @@ describe("MCP Registry publisher metadata", () => {
     }
   });
 
-  it("preserves tool identity, title and all standard behavioral hints without copying full schemas", () => {
+  it("preserves tool identity and all standard behavioral hints without copying titles or full schemas", () => {
     const annotations = {
       title: "Fallback title", readOnlyHint: false, destructiveHint: true,
       idempotentHint: false, openWorldHint: true,
     };
     const tool = { name: "book", title: "Book", description: "Detailed instructions", inputSchema: {}, annotations };
     expect(compactToolMetadata(tool)).toEqual({
-      name: "book", title: "Book",
+      name: "book",
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
     });
-    expect(compactToolMetadata({ ...tool, title: undefined }).title).toBe("Fallback title");
-    expect(compactToolMetadata({ name: "search" })).toEqual({ name: "search", title: undefined, annotations: {} });
+    expect(compactToolMetadata(tool)).not.toHaveProperty("title");
+    expect(compactToolMetadata({ name: "search" })).toEqual({ name: "search", annotations: {} });
     expect(tool.description).toBe("Detailed instructions");
+    expect(tool.title).toBe("Book");
   });
 });

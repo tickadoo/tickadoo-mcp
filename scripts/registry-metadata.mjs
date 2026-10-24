@@ -1,11 +1,12 @@
 export const publisherMetadataKey = "io.modelcontextprotocol.registry/publisher-provided";
 
 // Registry metadata is a compact discovery index. The remote tools/list owns
-// full descriptions and input schemas; retain every tool and behavioral hint.
+// full descriptions, input schemas, and display titles. The publisher
+// extension is capped at 4096 bytes, which cannot also hold a display title
+// for every live tool. Retain every tool name and behavioral hint.
 export function compactToolMetadata(tool) {
   return {
     name: tool.name,
-    title: tool.title ?? tool.annotations?.title,
     annotations: Object.fromEntries(
       ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"]
         .filter(key => tool.annotations?.[key] !== undefined)

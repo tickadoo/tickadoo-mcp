@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refresh `server.json` from the live MCP server. The registry index lists all
+  27 tool names and their behavioral hints, and leaves display titles on the
+  remote `tools/list` so the publisher extension stays within 4096 bytes.
 - Document the OpenAI Agents API → public tickadoo MCP Book path
   (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
   London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.
