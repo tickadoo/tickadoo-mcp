@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.1.2] - 2026-10-24
+
 - Refresh `server.json` from the live MCP server. The registry index lists all
   27 tool names and their behavioral hints, and leaves display titles on the
   remote `tools/list` so the publisher extension stays within 4096 bytes.
