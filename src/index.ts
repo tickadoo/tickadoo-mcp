@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { runStdioBridge } from "./bridge.js";
-import { TICKADOO_LOG_LEVEL, TICKADOO_MCP_URL } from "./config.js";
+import { TICKADOO_ELICITATION, TICKADOO_LOG_LEVEL, TICKADOO_MCP_URL } from "./config.js";
 
 if (process.env.CLAUDECODE) {
   process.stderr.write(
@@ -11,6 +11,7 @@ if (process.env.CLAUDECODE) {
 
 runStdioBridge({
   remoteUrl: TICKADOO_MCP_URL,
+  elicitation: TICKADOO_ELICITATION,
   logWriter:
     TICKADOO_LOG_LEVEL === "none"
       ? undefined

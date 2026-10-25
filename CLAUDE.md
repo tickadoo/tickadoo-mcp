@@ -19,8 +19,8 @@ coordinate-bearing tools, MCP resources, and Apps/widget metadata.
 ## Architecture at a glance
 
 - **Runtime**: TypeScript stdio bridge
-  - `src/index.ts` → `src/bridge.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`) that proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping` to the remote.
-  - `src/config.ts` — bridge config (remote URL via `TICKADOO_MCP_URL`, log level via `TICKADOO_LOG_LEVEL`).
+  - `src/index.ts` → `src/bridge.ts` — local stdio transport (shipped on npm as `@tickadoo/mcp-server`) that proxies `tools/list`, `tools/call`, `resources/list`, `resources/read`, and `ping` to the remote. With `TICKADOO_ELICITATION` on, a client that advertises form elicitation can be asked for a missing date, party size, or seat preference on the booking search, hold, and checkout-handoff tools, and must confirm a held price before checkout handoff. The flag is off by default, and clients without elicitation keep the plain proxy path.
+  - `src/config.ts` — bridge config (remote URL via `TICKADOO_MCP_URL`, log level via `TICKADOO_LOG_LEVEL`, elicitation via `TICKADOO_ELICITATION`, default off).
 - **Canonical remotes**: `https://mcp.tickadoo.com/mcp` is the established full surface used by the npm bridge and direct integrations; `https://mcp.tickadoo.com/mcp/agents` is the reviewed discovery-only surface used by the portable OpenAI/Codex package. Both are served and deployed from the **howard** repo, not this one. This repo does not deploy a Cloudflare Worker.
 - **Build**: `npm run build` → `dist/index.js` (esbuild bundle for stdio/npm).
 - **Registry metadata**: `server.json` is refreshed from the live remote via `npm run sync:server-json`.
