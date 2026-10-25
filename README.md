@@ -147,6 +147,8 @@ TICKADOO_MCP_URL=http://127.0.0.1:8787/mcp npx -y @tickadoo/mcp-server
 
 Set `TICKADOO_LOG_LEVEL=none` to silence bridge status logs on stderr.
 
+Set `TICKADOO_ELICITATION=1` (`true`, `yes`, and `on` also work) to let the bridge ask a client that advertises form elicitation for a missing date, party size, or seat preference on the booking search, hold, and checkout-handoff tools, and to confirm a held price before checkout handoff. The flag is off by default. Clients that do not advertise elicitation are proxied unchanged. Dismissing a missing-detail form keeps the original arguments, so the remote still returns its existing error or default. Dismissing the price confirmation does not start checkout. The bridge only asks for properties the tool schema accepts, and it does not invent a date, party size, seat, or price.
+
 ## Local Development
 
 Use Node.js 22+ and install Python 3 with a `python3` executable on `PATH`

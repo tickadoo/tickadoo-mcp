@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional MCP form elicitation on the stdio bridge, behind `TICKADOO_ELICITATION` (default off). When a client advertises form elicitation, booking search, hold, and checkout-handoff calls can ask for a missing date, party size, or seat preference, and checkout handoff asks the user to confirm the held price. Clients without elicitation, and every call while the flag is off, stay on the existing proxy path.
+
 ## [2.2.0] - 2026-10-24
 
 - Route the portable Agent Plugins and OpenAI/Codex public package to the

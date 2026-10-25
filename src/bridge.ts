@@ -15,10 +15,19 @@ import {
   type ServerCapabilities,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
+  clientSupportsFormElicitation,
+  readHeldPriceFromToolResult,
+  resolveBookingToolCall,
+  schemasFromToolsList,
+  type HeldPrice,
+  type ToolInputSchema,
+} from "./booking-elicitation.js";
+import {
   BRIDGE_NAME,
   BRIDGE_VERSION,
   BRIDGE_WEBSITE_URL,
   DEFAULT_TICKADOO_MCP_URL,
+  TICKADOO_ELICITATION,
   TICKADOO_MCP_URL,
 } from "./config.js";
 
@@ -28,6 +37,8 @@ export type TickadooBridgeOptions = {
   remoteUrl?: string;
   requestTimeoutMs?: number;
   logWriter?: LogWriter;
+  /** Off unless set. `undefined` uses TICKADOO_ELICITATION. */
+  elicitation?: boolean;
 };
 
 export type TickadooBridge = {
@@ -56,6 +67,9 @@ export async function createTickadooBridge(
   options: TickadooBridgeOptions = {},
 ): Promise<TickadooBridge> {
   const remoteUrl = resolveRemoteUrl(options.remoteUrl);
+  const elicitationEnabled = options.elicitation ?? TICKADOO_ELICITATION;
+  const toolSchemas = new Map<string, ToolInputSchema>();
+  let heldPrice: HeldPrice | undefined;
   const client = new Client<Request, Notification, Result>(
     {
       name: BRIDGE_NAME,
@@ -91,10 +105,53 @@ export async function createTickadooBridge(
       throw new McpError(ErrorCode.MethodNotFound, "Method not found");
     }
 
-    return forwardRequest(client, request, {
+    const forwardedOptions = {
       ...requestOptions(options),
       signal: extra.signal,
+    };
+
+    if (!elicitationEnabled || request.method !== "tools/call") {
+      const result = await forwardRequest(client, request, forwardedOptions);
+      if (elicitationEnabled && request.method === "tools/list") {
+        for (const [name, schema] of schemasFromToolsList(result)) {
+          toolSchemas.set(name, schema);
+        }
+      }
+      return result;
+    }
+
+    if (!clientSupportsFormElicitation(server.getClientCapabilities())) {
+      return forwardRequest(client, request, forwardedOptions);
+    }
+
+    const call = toolCallFromRequest(request);
+    if (!call) return forwardRequest(client, request, forwardedOptions);
+
+    const decision = await resolveBookingToolCall({
+      toolName: call.name,
+      args: call.args,
+      schema: toolSchemas.get(call.name),
+      heldPrice,
+      elicit: form =>
+        server.elicitInput(
+          {
+            mode: "form",
+            message: form.message,
+            requestedSchema: form.requestedSchema,
+          },
+          { signal: extra.signal },
+        ),
     });
+
+    if (decision.type === "result") return decision.result;
+
+    const outbound =
+      decision.args === call.args ? request : withToolArguments(request, decision.args);
+    const result = await forwardRequest(client, outbound, forwardedOptions);
+    if (decision.role === "hold") {
+      heldPrice = readHeldPriceFromToolResult(result) ?? heldPrice;
+    }
+    return result;
   };
 
   return {
@@ -117,7 +174,38 @@ export async function runStdioBridge(options: TickadooBridgeOptions = {}): Promi
     void bridge.client.close();
   };
 
-  options.logWriter?.(`tickadoo MCP bridge connected to ${bridge.remoteUrl.href}`);
+  const elicitationLabel = options.elicitation ? " (elicitation on)" : "";
+  options.logWriter?.(
+    `tickadoo MCP bridge connected to ${bridge.remoteUrl.href}${elicitationLabel}`,
+  );
+}
+
+function toolCallFromRequest(
+  request: JSONRPCRequest,
+): { name: string; args: Record<string, unknown> } | undefined {
+  const params = request.params;
+  if (!params || typeof params !== "object" || Array.isArray(params)) return undefined;
+  const name = (params as { name?: unknown }).name;
+  if (typeof name !== "string" || name.length === 0) return undefined;
+  const rawArgs = (params as { arguments?: unknown }).arguments;
+  if (rawArgs === undefined) return { name, args: {} };
+  if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) return undefined;
+  return { name, args: rawArgs as Record<string, unknown> };
+}
+
+function withToolArguments(
+  request: JSONRPCRequest,
+  args: Record<string, unknown>,
+): JSONRPCRequest {
+  const params = request.params;
+  if (!params || typeof params !== "object" || Array.isArray(params)) return request;
+  return {
+    ...request,
+    params: {
+      ...params,
+      arguments: args,
+    },
+  };
 }
 
 function requestOptions(options: TickadooBridgeOptions) {
