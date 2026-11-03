@@ -102,9 +102,25 @@ commits, or prompts.
 
 Sensitive surfaces in this repository include npm publication, bridge
 transport or trust-boundary changes, release workflows, `server.json`
-integrity, authentication, credentials, and public MCP behavior. They require
-the authority defined by the canonical policy and explicit Francis approval
-when classified as elevated risk.
+integrity, authentication, credentials, and public MCP behavior. Preserve their
+existing risk classification and operational authority. For code PR merges,
+the [company author-controlled merge policy](https://github.com/tickadoo/.github/blob/main/AGENTS.md)
+removes separate human PR approval, including for sensitive code. Retain all
+existing independent exact-head bot/AI review roles and counts, reviewer
+eligibility, source verification, required CI, resolved material findings and
+review threads. Author consent never satisfies an independent review role.
+The author must explicitly choose their own in-scope merge through native
+Merge/Enable auto-merge or an approved authenticated author-request path bound to the
+repository, PR, base and full head SHA;
+removing the human gate does not enable scheduled merging or clear an
+applicable existing merge hold.
+
+Npm publication, external release or workflow activation, credential/access
+changes and other elevated-risk operations retain their existing canonical
+authority and explicit Francis approval. PR merge readiness does not authorise
+those operations, widen access or add protection bypass rights. Adopt this
+proposed reconciliation through current governance gates with the company
+policy; it cannot authorise its own merge or activate a merge executor.
 
 ## Auto mode, Routines, and /ultrareview (Claude Code features, 17 April 2026)
 
