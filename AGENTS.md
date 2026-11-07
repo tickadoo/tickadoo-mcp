@@ -102,9 +102,27 @@ commits, or prompts.
 
 Sensitive surfaces in this repository include npm publication, bridge
 transport or trust-boundary changes, release workflows, `server.json`
-integrity, authentication, credentials, and public MCP behavior. They require
-the authority defined by the canonical policy and explicit Francis approval
-when classified as elevated risk.
+integrity, authentication, credentials, and public MCP behavior. When
+classified as elevated risk they are protected-risk work and need one
+eligible non-author human reviewer, as set out below.
+
+### Review and merge authority
+
+Approval and merge authority follow the company policy in
+[`tickadoo/.github/AGENTS.md`](https://github.com/tickadoo/.github/blob/main/AGENTS.md)
+(Francis, 2026-11-07), identical across every tickadoo repository:
+
+- Routine (standard-risk) work merges after independent bot review, green
+  required CI and resolved threads. An author cannot review or approve their
+  own pull request.
+- Protected-risk work, including Howard changes, money and pricing, and
+  cross-repository changes, needs one human reviewer who is not the author.
+  Eligible human reviewers are Francis (`@francistickadoo`), Mark
+  (`@MarkPrethero`), and Dominik (`@kolarskydominik`). Delegated pricing
+  changes are covered by this rule. Mark and Dominik may review each other's
+  protected changes and complete authorised merges without another personal
+  sign-off from Francis. Independent review, green required checks, and no
+  author self-approval remain required.
 
 ## Auto mode, Routines, and /ultrareview (Claude Code features, 17 April 2026)
 
