@@ -1,2 +1,4 @@
-# Francis is the accountable owner for every change.
-* @francistickadoo
+# Eligible non-author reviewers under tickadoo/.github AGENTS.md
+# (Francis, 2026-11-07). Any one of them who is not the author satisfies
+# the code-owner review. Author self-approval never counts.
+* @francistickadoo @MarkPrethero @kolarskydominik
