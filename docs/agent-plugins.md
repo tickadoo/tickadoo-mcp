@@ -40,7 +40,15 @@ npm run verify:public-agent
   that still use the Codex compatibility manifest.
 - `.github/plugin/marketplace.json` also points at the portable repository root,
   so its listing copy describes the public-agent surface.
-- `.claude-plugin/`, `.mcp.json`, `clients/`, `gemini-extension.json`,
+- `plugins/tickadoo/` is the Claude plugin, and the folder submitted to
+  Anthropic's directory. It is self-contained (manifest, `.mcp.json`, skills,
+  README, licence, icon) because the directory installs only that folder: it
+  must never gain a `package.json`, lockfile, script or server source. Its
+  skills are the Claude variants of `skills/`. They use the full surface and
+  share a returned `booking_url`, where the portable skills are discovery-only.
+  When a portable skill changes, carry the change across by hand.
+  `.claude-plugin/marketplace.json` at the root points Claude Code at it.
+- `.mcp.json`, `clients/`, `gemini-extension.json`,
   `smithery.yaml`, `server.json`, and the npm bridge remain on the full surface.
   Claude Code requires the explicit `"type": "http"` in `.mcp.json`; it skips
   a remote URL-only entry, leaving an otherwise successful plugin install with

@@ -11,11 +11,11 @@
   "plugins": [
     {
       "name": "tickadoo",
-      "source": "./",
-      "description": "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.",
+      "source": "./plugins/tickadoo",
+      "description": "Find theatre, tours, attractions and live experiences worldwide with tickadoo. Search, compare, check live availability, plan itineraries, and get a tickadoo booking link to complete the purchase yourself. No account or API key required.",
       "author": {
         "name": "tickadoo",
-        "url": "https://tickadoo.com"
+        "url": "https://www.tickadoo.com"
       },
       "homepage": "https://mcp.tickadoo.com",
       "repository": "https://github.com/tickadoo/tickadoo-mcp",
@@ -29,8 +29,7 @@
         "attractions",
         "events",
         "booking",
-        "travel",
-        "mcp"
+        "travel"
       ],
       "category": "travel",
       "tags": [
