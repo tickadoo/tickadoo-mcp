@@ -16,7 +16,7 @@ Use a pair of clearly identified product names or previously returned results. I
 1. **Resolve 2-5 specific contenders** — search each prose name with `search_experiences(city, query)`. If a search returns several plausible products or ticket variants, show the distinctions and ask the user to choose. Never take the first slug silently. If the contenders came from a prior result set, reuse those exact slugs.
 2. **Compare** — `compare_experiences(slugs)` with 2-5 slugs. It returns a comparison table plus documented per-axis winners (value, rating, popularity, family-fit) — echo those, don't bury them.
 3. **Check before recommending** — if accessibility, cancellation terms or a fixed date could change the decision, fetch `get_experience_details(product_id)` for both finalists and live-check both (`get_availability` with the date and party size, fresh when supported) BEFORE making the final recommendation. The eventual winner may be unavailable while the runner-up is available.
-4. **Recommend and close** — give one clear recommendation tied to the user's stated priority. Use `check_availability(slug, date, party_size)` only for a date-specific informational check.
+4. **Recommend and close** — give one clear recommendation tied to the user's stated priority. Use `check_availability(slug, date, party_size)` when the user asks about exactly one date: whether it is available that day, the price for the party, or a booking link for that date.
 5. **Weak field?** — run `recommend_experiences` with the city and the user's priorities, `search_experiences` with a precise query, or `get_related_experiences(product_id)` to resolve one new specific contender, then compare again.
 
 ## Present the comparison

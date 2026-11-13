@@ -14,7 +14,7 @@ The user wants activities arranged across at least two days in one city, such as
 ## The workflow (tool chain)
 
 1. **Orient** — `get_city_highlights(city)` returns a ranked list of the city's popular experiences, which you can use to gauge dominant categories and price levels. Do not promise or invent highlights, price bands, best-for hints or seasonal notes; state only what the returned rows contain. If the city is unclear or ambiguous, ask the user to clarify (use `list_cities` only to browse, optionally by country; it has no free-text query).
-2. **Build the backbone** — call `get_itinerary_candidates` with `city` and `days`, plus `audience` when known. It returns a flat candidate list rather than structured day slots or a running cost: arrange the returned candidates into morning/afternoon/evening slots yourself, grouping geographically by venue, and compute any cost total from returned `price` fields only.
+2. **Build the backbone** — call `get_itinerary_candidates` with `city` and `days`, plus `interests`, `audience`, `budget` (low/medium/high) and `pace` (relaxed/moderate/packed) when the user has given them. It returns a flat candidate list rather than structured day slots or a running cost: arrange the returned candidates into morning/afternoon/evening slots yourself, grouping geographically by venue, and compute any cost total from returned `price` fields only.
 3. **Replace or widen only when needed** — use `search_experiences` for a named category, `recommend_experiences` for a natural-language preference, `search_by_mood` for a supported mood, or `get_hidden_gems` for alternative pulls (verify they differ from the main list before presenting them as hidden gems) — only when the user asks to replace a slot or browse alternatives. Do not imply that an earlier candidate pool is consumed by `get_itinerary_candidates`.
 4. **Enrich and check selected items** — fetch `get_experience_details` for experiences the user is considering, then follow the live-availability sequence for each selected slot.
 
@@ -24,7 +24,7 @@ Summarise only returned experience facts, keep internal product identifiers out 
 
 ## Availability discipline (composite plan)
 
-Treat the returned plan as proposed until every selected slot has been checked for the user's date and party size: `get_availability` per slot (product_id, or slug + city_slug; pass the date range and party size; request a fresh check when supported). Use `check_availability(slug, date, party_size)` only for a date-specific informational check. If the user has not asked to check every slot, label unchecked slots as suggestions rather than confirmed available plans.
+Treat the returned plan as proposed until every selected slot has been checked for the user's date and party size: `get_availability` per slot (product_id, or slug + city_slug; pass the date range and party size; request a fresh check when supported). Use `check_availability(slug, date, party_size)` when the user asks about exactly one date: whether it is available that day, the price for the party, or a booking link for that date. If the user has not asked to check every slot, label unchecked slots as suggestions rather than confirmed available plans.
 
 ## Optional metadata
 

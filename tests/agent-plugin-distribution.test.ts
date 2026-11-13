@@ -178,6 +178,32 @@ describe("Agent Plugin distribution", () => {
       expect(source, file).toMatch(new RegExp(`^---\\nname: ${path.basename(path.dirname(file))}\\n`));
     }
     expect(await readFile(path.join(folder, "README.md"), "utf8")).toContain("https://mcp.tickadoo.com/mcp");
+
+    // The general map must describe the full surface it is connected to, not
+    // the narrower public-agent contract: every tool it names is live on
+    // /mcp, the write tool keeps its consent safeguards, coordinates are
+    // never solicited, and the unapplied topic parameter is stated as such.
+    const liveTools = new Set(
+      (
+        JSON.parse(await readFile(path.join(root, "server.json"), "utf8")) as {
+          _meta: Record<string, { tools: Array<{ name: string }> }>;
+        }
+      )._meta["io.modelcontextprotocol.registry/publisher-provided"].tools.map((tool) => tool.name),
+    );
+    const generalMap = await readFile(path.join(folder, "skills/tickadoo-experiences/SKILL.md"), "utf8");
+    const mapped = [...generalMap.matchAll(/^\|[^|]*\|\s*((?:`[a-z_]+`(?:\s*\/\s*)?)+)\s*\|/gm)].flatMap((row) =>
+      [...row[1].matchAll(/`([a-z_]+)`/g)].map((tool) => tool[1]),
+    );
+    expect(mapped.length).toBeGreaterThan(20);
+    for (const tool of mapped) expect(liveTools.has(tool), `general map names ${tool}`).toBe(true);
+    for (const tool of ["report_quality_signal", "render_experience_cards", "find_nearby_experiences", "get_transfer_info"]) {
+      expect(generalMap, tool).toContain(tool);
+    }
+    expect(generalMap).toContain("Only after the user agrees, call `report_quality_signal`");
+    expect(generalMap).toContain("no personal data in notes");
+    expect(generalMap).toContain("Never ask the user for, infer, or guess coordinates in chat");
+    expect(generalMap).toContain("accepted but not applied");
+    expect(generalMap).not.toMatch(/ChatGPT|does not expose coordinate-bearing or write tools/);
   });
 
   it("declares an explicit http transport in the Claude Code .mcp.json adapter", async () => {
@@ -261,6 +287,20 @@ describe("Agent Plugin distribution", () => {
       "mcp.json",
       "package.json",
       "plugin.json",
+      // The marketplace adapter above resolves to this folder, so the tarball
+      // must carry all of it or a local marketplace install finds no plugin.
+      "plugins/tickadoo/.claude-plugin/plugin.json",
+      "plugins/tickadoo/.mcp.json",
+      "plugins/tickadoo/LICENSE",
+      "plugins/tickadoo/README.md",
+      "plugins/tickadoo/icon.svg",
+      "plugins/tickadoo/skills/compare-before-you-book/SKILL.md",
+      "plugins/tickadoo/skills/date-night/SKILL.md",
+      "plugins/tickadoo/skills/family-day-out/SKILL.md",
+      "plugins/tickadoo/skills/near-a-landmark/SKILL.md",
+      "plugins/tickadoo/skills/plan-a-trip/SKILL.md",
+      "plugins/tickadoo/skills/tickadoo-experiences/SKILL.md",
+      "plugins/tickadoo/skills/tonight-and-last-minute/SKILL.md",
       "schemas/agent-plugins/1.0.0/mcp.schema.json",
       "schemas/agent-plugins/1.0.0/plugin.schema.json",
       "schemas/agent-plugins/1.0.0/SHA256SUMS",

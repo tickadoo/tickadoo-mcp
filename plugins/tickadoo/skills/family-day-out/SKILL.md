@@ -13,10 +13,10 @@ Use this skill when the user wants a full or substantial single-day family plan 
 
 ## The workflow (tool chain)
 
-1. **Build the day** — call `get_family_day` with `city` and, when known, `date`. It returns a flat list of family-suitable candidates rather than a structured morning/lunch/afternoon/evening plan: build the day arc yourself from the returned rows, apply the children's ages when choosing among candidates, verify age-suitability per pick via `get_experience_details(product_id)`, and treat any activity as proposed until availability has been checked for the full party.
+1. **Build the day** — call `get_family_day` with `city` and, when known, `kids_ages` (an array of the children's ages), `date` and a numeric `budget`. It returns a flat list of family-suitable candidates rather than a structured morning/lunch/afternoon/evening plan: build the day arc yourself from the returned rows, apply the children's ages when choosing among candidates, verify age-suitability per pick via `get_experience_details(product_id)`, and treat any activity as proposed until availability has been checked for the full party.
 2. **Widen if asked** — `search_experiences(city, tags: ["family"])` for a broader family list (tags is an array; `family` is the canonical tag), or `search_by_mood(city, mood: "family_fun")` for a vibe-led pull.
 3. **Enrich the picks** — `get_experience_details(product_id)` for age restrictions and accessibility fields before committing the family to anything.
-4. **Check every selected product** — a family day has multiple selected products. For each one, call `get_availability` with the date range and the FULL party size (count the kids), requesting a fresh check when the schema supports it. Use `check_availability(slug, date, party_size)` only for a date-specific informational check. Label unchecked slots as suggestions.
+4. **Check every selected product** — a family day has multiple selected products. For each one, call `get_availability` with the date range and the FULL party size (count the kids), requesting a fresh check when the schema supports it. Use `check_availability(slug, date, party_size)` when the user asks about exactly one date: whether it is available that day, the price for the party, or a booking link for that date. Label unchecked slots as suggestions.
 5. **Logistics** — use returned venue and neighbourhood facts to keep the plan coherent. Never ask for, infer, or guess precise coordinates.
 
 ## Present the day

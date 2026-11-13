@@ -15,7 +15,7 @@ Use the tickadoo MCP tools (`mcp.tickadoo.com/mcp`) when the user wants to do so
 
 1. **Pull time-sensitive options** — by horizon: `whats_on_tonight(city)` for tonight, `get_last_minute(city, hours?)` for the next few hours. Use `start_time` and `countdown_text` when present in the response; do not assume they exist or invent them.
 2. **Narrow to a pick** — `get_experience_details(product_id)` on the one they react to; keep it quick.
-3. **Live-check the pick** — `get_availability` for the selected product with the party size, requesting a fresh check when the callable schema supports it. Use the local calendar date contained in the selected result's `start_time`; do not derive "today" from the assistant's system timezone. Use `check_availability(slug, date, party_size)` only for a date-specific informational check.
+3. **Live-check the pick** — `get_availability` for the selected product with the party size, requesting a fresh check when the callable schema supports it. Use the local calendar date contained in the selected result's `start_time`; do not derive "today" from the assistant's system timezone. Use `check_availability(slug, date, party_size)` when the user asks about exactly one date: whether it is available that day, the price for the party, or a booking link for that date.
 4. **Fallback** — if the first pick is unavailable or has started, refresh `get_last_minute` or `whats_on_tonight`, then live-check the next candidate. Use `get_related_experiences(product_id)` only if a related alternative is useful.
 
 ## Present same-day results
