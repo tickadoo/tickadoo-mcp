@@ -21,3 +21,7 @@ CODEX_TASK.md
 mcp-publisher
 .env*.local
 .env.production
+
+# Local agent worktrees. Never commit: they land as submodule pointers with no
+# .gitmodules entry, which plugin directory scanners refuse.
+.claude/worktrees/

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Move the Claude plugin into a self-contained `plugins/tickadoo/` folder for
+  Anthropic's directory, which installs only the plugin folder. The folder
+  holds the manifest, the remote `/mcp` reference, skills, a README, the
+  licence and an icon, and no package manifest or server source.
+- Give the Claude plugin its own skill variants. The portable discovery-only
+  wording told Claude to withhold purchase links even though the full `/mcp`
+  surface it connects to returns `booking_url`; the Claude skills now share
+  the returned link and still never construct one or imply an order.
+- Add directory listing fields (`displayName`, `icon`, documentation, support,
+  privacy and terms URLs) and a description that states the user completes
+  the purchase themselves.
+- Remove four committed agent worktree pointers that made the directory refuse
+  the repository before scanning.
+
 ## [2.2.0] - 2026-10-24
 
 - Route the portable Agent Plugins and OpenAI/Codex public package to the

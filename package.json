@@ -13,6 +13,7 @@
     "mcp.json",
     ".codex-plugin/plugin.json",
     ".claude-plugin/",
+    "plugins/tickadoo/",
     ".mcp.json",
     "clients/github-copilot/mcp.json",
     "clients/anthropic-managed-agents/agent.json",

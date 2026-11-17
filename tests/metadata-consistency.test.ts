@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const FULL_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
+const CLAUDE_DIRECTORY_DESCRIPTION =
+  "Find theatre, tours, attractions and live experiences worldwide with tickadoo. Search, compare, check live availability, plan itineraries, and get a tickadoo booking link to complete the purchase yourself. No account or API key required.";
 const PUBLIC_AGENT_DESCRIPTION =
   "Discover theatre, tours, attractions, and live experiences worldwide. Search, compare, check availability, and plan itineraries with tickadoo. No API key required.";
 const REGISTRY_DESCRIPTION =
@@ -49,7 +51,7 @@ const claudePlugin = readJson<{
   homepage: string;
   repository: string;
   keywords: string[];
-}>("../.claude-plugin/plugin.json");
+}>("../plugins/tickadoo/.claude-plugin/plugin.json");
 const codexPlugin = readJson<{
   version: string;
   description: string;
@@ -221,7 +223,7 @@ describe("public registry metadata", () => {
       ["package-lock.json root package", packageLock.packages[""].version],
       ["src/config.ts", bridgeVersion],
       ["plugin.json", portablePlugin.version],
-      [".claude-plugin/plugin.json", claudePlugin.version],
+      ["plugins/tickadoo/.claude-plugin/plugin.json", claudePlugin.version],
       [".codex-plugin/plugin.json", codexPlugin.version],
       ["gemini-extension.json", geminiExtension.version],
       ["server.json", serverJson.version],
@@ -240,7 +242,9 @@ describe("public registry metadata", () => {
     )?.[1];
 
     expect(portablePlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
-    expect(claudePlugin.description).toBe(FULL_DESCRIPTION);
+    // The Claude directory listing states exactly what the plugin does: it
+    // returns a booking link and the user completes the purchase themselves.
+    expect(claudePlugin.description).toBe(CLAUDE_DIRECTORY_DESCRIPTION);
     expect(codexPlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
     expect(copilotMarketplace.plugins[0]?.description).toBe(PUBLIC_AGENT_DESCRIPTION);
     expect(copilotMarketplace.metadata.description).toBe(
