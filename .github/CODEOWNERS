@@ -1,6 +1,8 @@
-# Owner review applies only to governance files. Any one listed owner who
-# is not the author satisfies it; an author never approves their own PR.
-# Everything else merges on green required CI (Francis, 2026-11-20).
+# This file only routes automatic owner review requests, here for
+# governance files. It does not grant merge authority: the merge gates
+# (required CI, the exact-head AI review, and a non-author human approval
+# for protected-risk work such as money, auth, secrets and governance)
+# are defined in AGENTS.md.
 /.github/CODEOWNERS @francistickadoo @MarkPrethero @kolarskydominik
 /AGENTS.md @francistickadoo @MarkPrethero @kolarskydominik
 /CLAUDE.md @francistickadoo @MarkPrethero @kolarskydominik
