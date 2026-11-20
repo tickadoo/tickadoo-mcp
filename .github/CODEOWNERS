@@ -1,4 +1,7 @@
-# Eligible non-author reviewers under tickadoo/.github AGENTS.md
-# (Francis, 2026-11-07). Any one of them who is not the author satisfies
-# the code-owner review. Author self-approval never counts.
-* @francistickadoo @MarkPrethero @kolarskydominik
+# Owner review applies only to governance files. Any one listed owner who
+# is not the author satisfies it; an author never approves their own PR.
+# Everything else merges on green required CI (Francis, 2026-11-20).
+/.github/CODEOWNERS @francistickadoo @MarkPrethero @kolarskydominik
+/AGENTS.md @francistickadoo @MarkPrethero @kolarskydominik
+/CLAUDE.md @francistickadoo @MarkPrethero @kolarskydominik
+/.github/workflows/ @francistickadoo @MarkPrethero @kolarskydominik
