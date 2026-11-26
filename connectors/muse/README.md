@@ -25,7 +25,11 @@ https://raw.githubusercontent.com/tickadoo/tickadoo-mcp/main/connectors/muse/mus
 
 Meta opened the directory on 18 September 2026 with a three-step page and a work-email login. There is no published SDK. The pattern that already works in the wild is: publish a brief, point Muse at a public HTTPS API or MCP server, declare hosts, keep secrets out of the repo.
 
-tickadoo already has that server: `https://mcp.tickadoo.com/mcp` (v1.6.0, no auth). Hotel CONNECT routes under `/api/connect/*` need a property context and are out of scope for the consumer listing.
+tickadoo already has that unauthenticated server at `https://mcp.tickadoo.com/mcp`.
+Treat its MCP initialize handshake and live `tools/list` response as authoritative for
+the current server version, negotiated protocol, and tool catalogue. Hotel CONNECT
+routes under `/api/connect/*` need a property context and are out of scope for the
+consumer listing.
 
 ## Submit today
 

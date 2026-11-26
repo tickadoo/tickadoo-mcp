@@ -12,7 +12,11 @@ Always use:
 https://mcp.tickadoo.com/mcp
 ```
 
-The bare host `https://mcp.tickadoo.com` is not the Streamable HTTP endpoint and **404s**. The `/mcp` path is required (openai-node [PR #2719](https://github.com/openai/openai-node/pull/2719) / [v7.15.0](https://github.com/openai/openai-node/releases/tag/v7.15.0) Agents API MCP transport).
+The bare host `https://mcp.tickadoo.com` is a human-readable service landing
+page, not the Streamable HTTP endpoint. The `/mcp` path is required
+(openai-node [PR #2719](https://github.com/openai/openai-node/pull/2719) /
+[v7.15.0](https://github.com/openai/openai-node/releases/tag/v7.15.0) Agents API
+MCP transport).
 
 No tickadoo API key is required. Do not attach Cloudflare Access headers, ads keys, or other credentials.
 

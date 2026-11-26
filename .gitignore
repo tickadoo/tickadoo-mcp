@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 *.tgz
+artifacts/
 .wrangler/
 .dev.vars
 
@@ -21,5 +22,6 @@ mcp-publisher
 .env*.local
 .env.production
 
-# Local Claude Code worktrees (never commit; they were once added as stray gitlinks)
+# Local agent worktrees. Never commit: they land as submodule pointers with no
+# .gitmodules entry, which plugin directory scanners refuse.
 .claude/worktrees/

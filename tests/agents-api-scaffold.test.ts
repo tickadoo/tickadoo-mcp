@@ -120,7 +120,9 @@ describe("OpenAI Agents API → tickadoo MCP scaffold", () => {
     expect(doc).toContain('"required": true');
     expect(doc).toContain("OpenAI-Beta: agents=v1");
     expect(doc).toMatch(/openai.*≥ 7\.15\.0|openai-node.*v7\.15\.0/i);
-    expect(doc).toContain("404");
+    expect(doc).toContain("human-readable service landing");
+    expect(doc).toContain("not the Streamable HTTP endpoint");
+    expect(doc).not.toMatch(/bare host[^.]*404/i);
     expect(doc).toContain("https://mcp.tickadoo.com/mcp");
     expect(doc).toContain("npm run smoke:agents-api");
     expect(doc).toContain("CI/dev-only");

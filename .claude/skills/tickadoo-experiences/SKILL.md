@@ -28,24 +28,24 @@ Use this skill only when none of those is the primary shape of the request.
 | Live dates/times/prices/spaces | `get_availability` | product_id or slug + city_slug, date_from/to, party_size, fresh |
 | Date-specific link (legacy interface) | `check_availability` | slug, date, party_size |
 | Compare 2-5 specific products | `compare_experiences` | slugs |
-| City overview | `get_city_guide` | city |
+| City overview | `get_city_highlights` | city |
 | Tonight / next hours / this week | `whats_on_tonight` / `get_last_minute` / `get_whats_on_this_week` | city |
-| Multi-day plan | `plan_itinerary` | city, days, interests?, audience?, budget?, pace? |
+| Multi-day plan | `get_itinerary_candidates` | city, days, interests?, audience?, budget?, pace? |
 | Family day | `get_family_day` | city (+ kids_ages array, date, numeric budget where known) |
 | Evening for two | `get_date_night` | city (+ date, budget band low/medium/high where known) |
 | Less-popular options (may overlap with headline results) | `get_hidden_gems` | city (optional max_results, default 5) |
-| Travel advice | `get_travel_tips` | city, topic? |
+| Travel advice | `search_experiences_by_topic` | city, topic? |
 | Browse cities | `list_cities` | country?, limit? (no free-text query — if the city is unclear, ask the user) |
 | Show visual cards | `render_experience_cards` | experience_ids (the product_id values from the discovery result, verbatim), required render_type, optional render_context.intent_summary |
 | Report an agreed quality issue | `report_quality_signal` | request_id (only if a prior result returned one), signal_type, optional non-personal notes |
 
 Non-ChatGPT only (do not call from ChatGPT): `find_nearby_experiences` (needs real coordinates), `get_related_experiences` (reserved for a non-ChatGPT widget/client).
 
-`get_transfer_info` requires precise destination coordinates: use it only when a supported client supplies them through an approved location channel and the city is supported. Never ask the user for, infer, or guess coordinates in chat; prefer `get_travel_tips(city, topic: "transport")`.
+`get_transfer_info` requires precise destination coordinates: use it only when a supported client supplies them through an approved location channel and the city is supported. Never ask the user for, infer, or guess coordinates in chat; prefer `search_experiences_by_topic(city, topic: "transport")`.
 
 ## The universal card rule
 
-When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only the `product_id` values exactly as returned by the discovery tool in `experience_ids` (IDs are internal — pass them verbatim, never display or read them aloud), pass a required `render_type` allowed by the callable schema, and optionally `render_context.intent_summary`. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `plan_itinerary`, `get_city_guide`, `compare_experiences`).
+When a renderer-supported discovery tool (`search_experiences`, `whats_on_tonight`, `get_last_minute`, `get_whats_on_this_week`, `recommend_experiences`, `search_by_mood`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `search_local_experiences`) returns a result set that will be shown, immediately call `render_experience_cards` exactly once for that set. Pass only the `product_id` values exactly as returned by the discovery tool in `experience_ids` (IDs are internal — pass them verbatim, never display or read them aloud), pass a required `render_type` allowed by the callable schema, and optionally `render_context.intent_summary`. Do not enumerate or reproduce the same products in surrounding text — add only non-duplicative synthesis, constraints, or a follow-up question. Do not render output from tools not on that list (e.g. `get_itinerary_candidates`, `get_city_highlights`, `compare_experiences`).
 
 ## The live-availability rule
 

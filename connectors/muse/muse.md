@@ -28,7 +28,7 @@ Preferred transport for Muse: plain HTTPS against the public Connect API and the
 | Short contract | https://www.tickadoo.com/llms.txt |
 | MCP endpoint | https://mcp.tickadoo.com/mcp |
 | MCP transport | Streamable HTTP JSON-RPC |
-| MCP version | 1.6.0 (protocol 2025-06-18; also 2025-11-25, 2026-07-28) |
+| MCP version | Read the current server version and negotiated protocol from the live initialize handshake. |
 | Auth | None. Do not invent a key. Do not ask the user for credentials to search. |
 | Content-Type | application/json |
 | CORS | `Access-Control-Allow-Origin: *` |
@@ -183,7 +183,7 @@ If a future Connect property session is provisioned for Meta and `/api/connect/b
 
 ## Optional extras
 
-MCP tools the connector may also call when they match the ask: `get_city_guide`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `plan_itinerary`, `get_related_experiences`, `get_travel_tips`, `get_transfer_info` (supported cities only, and only with real destination coordinates), `render_experience_cards` (if Muse has a card renderer).
+MCP tools the connector may also call when they match the ask: `get_city_highlights`, `get_hidden_gems`, `get_family_day`, `get_date_night`, `get_itinerary_candidates`, `get_related_experiences`, `search_experiences_by_topic`, `get_transfer_info` (supported cities only, and only with real destination coordinates), `render_experience_cards` (if Muse has a card renderer).
 
 ## Also available as MCP
 

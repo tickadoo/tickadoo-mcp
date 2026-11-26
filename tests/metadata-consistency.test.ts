@@ -1,16 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const PUBLIC_DESCRIPTION =
+const FULL_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. Search, compare, check live availability, plan itineraries, and get direct tickadoo booking links. No API key required.";
+const CLAUDE_DIRECTORY_DESCRIPTION =
+  "Find theatre, tours, attractions and live experiences worldwide with tickadoo. Search, compare, check live availability, plan itineraries, and get a tickadoo booking link to complete the purchase yourself. No account or API key required.";
+const PUBLIC_AGENT_DESCRIPTION =
+  "Discover theatre, tours, attractions, and live experiences worldwide. Search, compare, check availability, and plan itineraries with tickadoo. No API key required.";
 const REGISTRY_DESCRIPTION =
   "Discover and book theatre, tours, attractions, and live experiences worldwide. No API key required.";
 const GEMINI_DESCRIPTION =
   "Search and book theatre, attractions, tours, and live experiences worldwide with tickadoo.";
 const MCP_HOMEPAGE = "https://mcp.tickadoo.com";
-const MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
+const FULL_MCP_ENDPOINT = `${MCP_HOMEPAGE}/mcp`;
+const PUBLIC_AGENT_ENDPOINT = `${FULL_MCP_ENDPOINT}/agents`;
 const COUNT_BEARING_COPY =
-  /\b\d[\d,]*\+?\s+(?:bookable\s+)?(?:products?|experiences?|cities|tools)\b/i;
+  /\b(?:\d[\d,]*\+?|(?:dozens|hundreds|thousands|millions)(?:\s+of)?)\s+(?:bookable\s+)?(?:products?|experiences?|cities|countries|tools)\b/i;
 
 function readJson<T>(relativePath: string): T {
   return JSON.parse(
@@ -34,16 +39,23 @@ const portablePlugin = readJson<{
   repository: string;
   keywords: string[];
 }>("../plugin.json");
+const portableMcp = readJson<{
+  mcpServers: Record<string, { type: string; url: string }>;
+}>("../mcp.json");
+const claudeMcp = readJson<{
+  mcpServers: Record<string, { type: string; url: string }>;
+}>("../.mcp.json");
 const claudePlugin = readJson<{
   version: string;
   description: string;
   homepage: string;
   repository: string;
   keywords: string[];
-}>("../.claude-plugin/plugin.json");
+}>("../plugins/tickadoo/.claude-plugin/plugin.json");
 const codexPlugin = readJson<{
   version: string;
   description: string;
+  mcpServers: Record<string, { type: string; url: string }>;
 }>("../.codex-plugin/plugin.json");
 const geminiExtension = readJson<{
   version: string;
@@ -74,8 +86,133 @@ const bridgeConfig = readFileSync(
 const agentGuidance = ["../AGENTS.md", "../CLAUDE.md"].map((relativePath) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8"),
 );
+const publicCopy = [
+  "../README.md",
+  "../connectors/muse/README.md",
+  "../connectors/muse/muse.md",
+  "../connectors/muse/SUBMISSION.md",
+  "../connectors/muse/FORM-OVERVIEW.md",
+].map((relativePath) => readFileSync(new URL(relativePath, import.meta.url), "utf8"));
+const [agentsGuidance, claudeGuidance] = agentGuidance;
 
 describe("public registry metadata", () => {
+  it("keeps live agent work on GitHub Issues and completed Slack mirrors", () => {
+    const prohibitiveContext =
+      /\b(?:do not|don't|never|must not|mustn't|should not|shouldn't|avoid|forbid|prohibit|no longer)\b/i;
+    const historicalContext =
+      /\b(?:read[- ]only|historical|archive(?:d)?|frozen|legacy|retired|pre-cutover)\b/i;
+    const linearWorkflowPlaceholder = /[<{]linear[-_ ]?id[}>]/i;
+    const activeLinearWorkflowActions = [
+      /\b(?:assign|close|comment(?:\s+on)?|create|link|open|transition|update)\s+(?:an?\s+|the\s+)?linear(?:\s+(?:issue|ticket|project|workflow|workspace))?\b/i,
+      /\b(?:use|adopt)\s+linear\b/i,
+      /\b(?:file|log|record)\s+(?:an?\s+|the\s+)?(?:issue|ticket)\s+(?:in|on)\s+linear\b/i,
+      /\b(?:manage|track|triage)\b[^.;!?]{0,60}\b(?:in|on|with)\s+linear\b/i,
+      /\b(?:link|move|transition)\b[^.;!?]{0,60}\b(?:into|to)\s+linear\b/i,
+    ];
+    const deprecatedLifecycleInstructions = [
+      /\b(?:deterministic\s+)?(?:human-visible\s+)?lifecycle (?:events|updates|mirrors)\b/i,
+      /\buse distinct\b[^\n]{0,160}\b(?:started|review[- ]ready|paused)\b/i,
+      /\bsession (?:active|started|paused)\b/i,
+      /\broutine\b[^\n]{0,100}\b(?:starting|progress update)\b/i,
+      /:\s*(?:started|review[- ]ready|paused)\s*(?:—|-)\s*/i,
+      /(?:^|\n)\s*(?:[-*]\s*)?(?:post|send|write|announce)\s+(?:a\s+)?(?:start(?:ed)?|review[- ]ready|pause(?:d)?)(?:\s+(?:message|update|mirror|chatter))?\b/im,
+    ];
+    const staleLifecycleExamples = [
+      "Post deterministic lifecycle mirrors to #activity",
+      "Use distinct STARTED, REVIEW READY, and PAUSED states",
+      "session active — working on the task",
+      "Routine [weekly]: progress update",
+      "[agent]: STARTED — scope",
+      "Post START message",
+      "Slack provides visibility after deterministic lifecycle events.",
+    ];
+    const allowedHistoricalOrProhibitiveExamples = [
+      "Do not post deterministic lifecycle updates to #activity.",
+      "Never announce STARTED, REVIEW READY, or PAUSED states.",
+      "Avoid session active notices.",
+      "Agents must not post routine progress updates.",
+      "Legacy routine progress update formats are archived.",
+      "Linear has been frozen; do not open Linear issues.",
+      "Legacy GRO-196 is a read-only historical reference.",
+      "Use GitHub rather than Linear for live tracking.",
+      "Use GitHub instead of Linear for issue tracking.",
+      "Move work from Linear to GitHub.",
+    ];
+    const activeLinearWorkflowExamples = [
+      "Create a Linear issue for this work.",
+      "Update the Linear ticket before review.",
+      "Track live work in Linear.",
+      "Use Linear for issue tracking.",
+      "File a ticket in Linear.",
+    ];
+    const activeLinearMixedContextExamples = [
+      "Never disclose secrets; create a Linear issue for live work.",
+      "Legacy IDs are archived; file a ticket in Linear for this work.",
+      "Do not omit validation, and use Linear for issue tracking.",
+      "Legacy notes are retained, but create a Linear issue for new work.",
+    ];
+    const staleLifecycleMixedContextExamples = [
+      "Never disclose secrets; post deterministic lifecycle events.",
+      "Legacy formats are archived; announce session active for this run.",
+      "Never omit validation, and post STARTED — scope.",
+      "Historical formats are archived, but announce session active now.",
+    ];
+
+    const instructionClauses = (text: string) =>
+      text
+        .split(/\r?\n/)
+        .flatMap((line) =>
+          line.split(/;\s+|[.!?]\s+|,\s+(?:and|but)\s+|\s+but\s+/i),
+        )
+        .map((clause) => clause.trim())
+        .filter(Boolean);
+    const isHistoricalOrProhibitive = (clause: string) =>
+      prohibitiveContext.test(clause) || historicalContext.test(clause);
+    const hasDeprecatedLifecycleInstruction = (text: string) =>
+      instructionClauses(text).some(
+        (clause) =>
+          !isHistoricalOrProhibitive(clause) &&
+          deprecatedLifecycleInstructions.some((pattern) =>
+            pattern.test(clause),
+          ),
+      );
+    const hasActiveLinearWorkflowInstruction = (text: string) =>
+      instructionClauses(text).some(
+        (clause) =>
+          !isHistoricalOrProhibitive(clause) &&
+          activeLinearWorkflowActions.some((pattern) => pattern.test(clause)),
+      );
+
+    for (const example of staleLifecycleExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(true);
+    }
+    for (const example of activeLinearWorkflowExamples) {
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(true);
+    }
+    for (const example of activeLinearMixedContextExamples) {
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(true);
+    }
+    for (const example of staleLifecycleMixedContextExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(true);
+    }
+    for (const example of allowedHistoricalOrProhibitiveExamples) {
+      expect(hasDeprecatedLifecycleInstruction(example), example).toBe(false);
+      expect(hasActiveLinearWorkflowInstruction(example), example).toBe(false);
+      expect(example, example).not.toMatch(linearWorkflowPlaceholder);
+    }
+
+    for (const guidance of agentGuidance) {
+      expect(guidance).not.toMatch(linearWorkflowPlaceholder);
+      expect(hasDeprecatedLifecycleInstruction(guidance)).toBe(false);
+      expect(hasActiveLinearWorkflowInstruction(guidance)).toBe(false);
+    }
+
+    expect(agentsGuidance).toContain("GitHub issue number");
+    expect(agentsGuidance).toContain("completed-action mirror");
+    expect(claudeGuidance).toContain("#<github-issue-number>");
+    expect(claudeGuidance).toContain("completed-action mirror");
+  });
+
   it("keeps every release-bearing artifact aligned with package.json", () => {
     expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
     const bridgeVersion = bridgeConfig.match(
@@ -86,7 +223,7 @@ describe("public registry metadata", () => {
       ["package-lock.json root package", packageLock.packages[""].version],
       ["src/config.ts", bridgeVersion],
       ["plugin.json", portablePlugin.version],
-      [".claude-plugin/plugin.json", claudePlugin.version],
+      ["plugins/tickadoo/.claude-plugin/plugin.json", claudePlugin.version],
       [".codex-plugin/plugin.json", codexPlugin.version],
       ["gemini-extension.json", geminiExtension.version],
       ["server.json", serverJson.version],
@@ -104,15 +241,23 @@ describe("public registry metadata", () => {
       /^\s{2}description:\s+"([^"]+)"\s*$/m,
     )?.[1];
 
-    expect(portablePlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(claudePlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(codexPlugin.description).toBe(PUBLIC_DESCRIPTION);
-    expect(copilotMarketplace.plugins[0]?.description).toBe(PUBLIC_DESCRIPTION);
+    expect(portablePlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    // The Claude directory listing states exactly what the plugin does: it
+    // returns a booking link and the user completes the purchase themselves.
+    expect(claudePlugin.description).toBe(CLAUDE_DIRECTORY_DESCRIPTION);
+    expect(codexPlugin.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    expect(copilotMarketplace.plugins[0]?.description).toBe(PUBLIC_AGENT_DESCRIPTION);
+    expect(copilotMarketplace.metadata.description).toBe(
+      "Official tickadoo plugins for discovering live experiences.",
+    );
     expect(geminiExtension.description).toBe(GEMINI_DESCRIPTION);
-    expect(claudePlugin.keywords).toEqual(portablePlugin.keywords);
+    expect(portablePlugin.keywords).toContain("discovery");
+    expect(portablePlugin.keywords).not.toContain("booking");
+    expect(claudePlugin.keywords).toContain("booking");
+    expect(claudePlugin.keywords).not.toContain("discovery");
     expect(serverJson.description).toBe(REGISTRY_DESCRIPTION);
     expect(serverJson.description.length).toBeLessThanOrEqual(100);
-    expect(smitheryDescription).toBe(PUBLIC_DESCRIPTION);
+    expect(smitheryDescription).toBe(FULL_DESCRIPTION);
     expect(syncScript).toContain(JSON.stringify(REGISTRY_DESCRIPTION));
 
     for (const description of [
@@ -126,8 +271,14 @@ describe("public registry metadata", () => {
       serverJson.description,
       smitheryDescription ?? "",
       ...agentGuidance,
+      ...publicCopy,
     ]) {
       expect(description).not.toMatch(COUNT_BEARING_COPY);
+    }
+
+    for (const museCopy of publicCopy.filter((_, index) => index > 0)) {
+      expect(museCopy).not.toMatch(/MCP version\s*\|\s*v?\d+\.\d+\.\d+/i);
+      expect(museCopy).not.toMatch(/\/mcp`?\s*\(v?\d+\.\d+\.\d+/i);
     }
   });
 
@@ -140,8 +291,20 @@ describe("public registry metadata", () => {
     expect(claudePlugin.repository).toBe(portablePlugin.repository);
     expect(serverJson.websiteUrl).toBe(MCP_HOMEPAGE);
     expect(serverJson.remotes).toEqual([
-      { type: "streamable-http", url: MCP_ENDPOINT },
+      { type: "streamable-http", url: FULL_MCP_ENDPOINT },
     ]);
+    expect(portableMcp.mcpServers.tickadoo).toEqual({
+      type: "streamable-http",
+      url: PUBLIC_AGENT_ENDPOINT,
+    });
+    expect(codexPlugin.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: PUBLIC_AGENT_ENDPOINT,
+    });
+    expect(claudeMcp.mcpServers.tickadoo).toEqual({
+      type: "http",
+      url: FULL_MCP_ENDPOINT,
+    });
     expect(syncScript).toContain("url: canonicalRemoteUrl");
     expect(syncScript).not.toContain("url: sourceRemoteUrl.href");
     expect(smitheryYaml).toMatch(

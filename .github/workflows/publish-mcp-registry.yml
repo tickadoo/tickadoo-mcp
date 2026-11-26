@@ -1,0 +1,140 @@
+# Publish server.json to the Official MCP Registry via GitHub OIDC.
+#
+# Why this exists: `mcp-publisher login github` (device flow) cannot publish
+# the io.github.tickadoo/* namespace while the tickadoo org restricts
+# third-party OAuth apps. OIDC from Actions runs as the repo itself, so no
+# OAuth app approval is needed.
+#
+# SECURITY: configure the `mcp-registry` environment before dispatching this
+# job: allow only the `main` branch (no tags) and require maintainer review.
+# A missing environment is automatically created WITHOUT protection rules.
+# These controls govern jobs that declare this environment; they do not
+# prevent a writer from removing the declaration in another branch workflow.
+# The Registry's OIDC exchange grants io.github.tickadoo/* based on
+# repository_owner alone, so the environment is not a Registry-side trust
+# restriction. That owner-wide trust exists independently of this workflow.
+#
+# Run manually: Actions -> "Publish to MCP Registry" -> Run workflow.
+
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: publish-mcp-registry
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: mcp-registry
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pinned mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -sL "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" -o /tmp/mcp-publisher.tar.gz
+          echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  /tmp/mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf /tmp/mcp-publisher.tar.gz -C /tmp mcp-publisher
+          /tmp/mcp-publisher --version
+
+      - name: Validate server.json
+        run: /tmp/mcp-publisher validate server.json
+
+      - name: Login via OIDC and publish
+        run: |
+          set -euo pipefail
+          /tmp/mcp-publisher login github-oidc
+          /tmp/mcp-publisher publish server.json
+
+      - name: Verify exact version and latest in registry
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import json
+          import time
+          from datetime import datetime
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+          from urllib.request import urlopen
+
+          PUBLISHER_META = 'io.modelcontextprotocol.registry/publisher-provided'
+          OFFICIAL_META = 'io.modelcontextprotocol.registry/official'
+          PUBLICATION_FIELDS = (
+              '$schema',
+              'name',
+              'version',
+              'title',
+              'description',
+              'websiteUrl',
+              'repository',
+              'remotes',
+          )
+
+          def canonical(value):
+              return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+          def publication_projection(server):
+              metadata = server.get('_meta')
+              if not isinstance(metadata, dict):
+                  raise ValueError('server has no metadata object')
+              projection = {field: server.get(field) for field in PUBLICATION_FIELDS}
+              projection['_meta'] = {PUBLISHER_META: metadata.get(PUBLISHER_META)}
+              return projection
+
+          def require_registry_metadata(record):
+              metadata = record.get('_meta')
+              if not isinstance(metadata, dict):
+                  raise ValueError('response has no Registry metadata object')
+              official = metadata.get(OFFICIAL_META)
+              if not isinstance(official, dict):
+                  raise ValueError('response has no official Registry metadata')
+              if official.get('status') != 'active' or official.get('isLatest') is not True:
+                  raise ValueError('Registry record is not active and latest')
+              for field in ('publishedAt', 'updatedAt', 'statusChangedAt'):
+                  value = official.get(field)
+                  if not isinstance(value, str):
+                      raise ValueError(f'Registry metadata has no {field} timestamp')
+                  parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                  if parsed.tzinfo is None:
+                      raise ValueError(f'Registry metadata {field} timestamp has no timezone')
+
+          with open('server.json', encoding='utf-8') as manifest_file:
+              manifest = json.load(manifest_file)
+          name, version = manifest['name'], manifest['version']
+          expected = canonical(publication_projection(manifest))
+          base = f'https://registry.modelcontextprotocol.io/v0.1/servers/{quote(name, safe="")}/versions'
+
+          for lookup in (version, 'latest'):
+              url = f'{base}/{quote(lookup, safe="")}'
+              last_error = None
+              for attempt in range(1, 13):
+                  try:
+                      with urlopen(url, timeout=30) as response:
+                          record = json.load(response)
+                      server = record.get('server')
+                      if not isinstance(server, dict):
+                          raise ValueError('response has no server object')
+                      actual = canonical(publication_projection(server))
+                      if actual != expected:
+                          raise ValueError('publisher-owned server metadata differs from server.json')
+                      require_registry_metadata(record)
+                      print(f'Registry {lookup} full metadata read-back verified: {name}@{version}')
+                      break
+                  except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, TypeError, ValueError) as error:
+                      last_error = error
+                      if attempt < 12:
+                          time.sleep(5)
+              else:
+                  raise RuntimeError(
+                      f'Registry {lookup} read-back did not converge on {name}@{version}: {last_error}'
+                  ) from last_error
+          EOF

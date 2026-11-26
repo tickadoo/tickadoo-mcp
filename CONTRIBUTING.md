@@ -35,9 +35,16 @@ TICKADOO_MCP_URL=http://127.0.0.1:8787/mcp npm run dev
 
 ## Testing
 
+Install Python 3 and ensure `python3 --version` succeeds before running
+`npm test`, including on Windows. The registry read-back regression tests use
+Python's standard library to execute the publishing workflow's verifier with
+local fixtures; no Python packages or network requests are required. CI's
+GitHub-hosted Ubuntu runner already provides Python 3.
+
 Run the main checks before opening a pull request:
 
 ```bash
+python3 --version
 npm run build
 npm test
 ```

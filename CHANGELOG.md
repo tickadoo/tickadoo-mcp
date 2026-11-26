@@ -2,12 +2,64 @@
 
 ## Unreleased
 
+- Move the Claude plugin into a self-contained `plugins/tickadoo/` folder for
+  Anthropic's directory, which installs only the plugin folder. The folder
+  holds the manifest, the remote `/mcp` reference, skills, a README, the
+  licence and an icon, and no package manifest or server source.
+- Give the Claude plugin its own skill variants. The portable discovery-only
+  wording told Claude to withhold purchase links even though the full `/mcp`
+  surface it connects to returns `booking_url`; the Claude skills now share
+  the returned link and still never construct one or imply an order.
+- Add directory listing fields (`displayName`, `icon`, documentation, support,
+  privacy and terms URLs) and a description that states the user completes
+  the purchase themselves.
+- Remove four committed agent worktree pointers that made the directory refuse
+  the repository before scanning.
+
+## [2.2.0] - 2026-10-24
+
+- Route the portable Agent Plugins and OpenAI/Codex public package to the
+  discovery-only `https://mcp.tickadoo.com/mcp/agents` contract while keeping
+  the npm bridge, MCP Registry, Claude, copy-ready Copilot cloud adapter,
+  Gemini, Smithery, Muse, and direct integrators on the established full `/mcp`
+  surface. Copilot's portable marketplace entry follows the root public-agent
+  package.
+- Refresh `server.json` from the live full MCP server. The Registry index lists
+  all 27 tool names and their behavioral hints while leaving display titles on
+  remote `tools/list`, keeping the publisher extension within 4096 bytes.
+- Add OpenAI listing, review, and release metadata under
+  `extensions.com.openai`, with five positive cases, three negative cases, and
+  an explicit non-commerce boundary for the public-agent endpoint.
+- Freeze and verify the exact deployed public-agent tool contract, including
+  schemas, safety annotations, server instructions, and transactional-field
+  exclusions; the public endpoint advertises no resources and strips
+  Apps/widget metadata.
+- Remove stale fixed coverage and tool-count claims from package and Muse
+  handoff copy; live catalogue and MCP discovery remain authoritative.
+- Add a deterministic, allowlisted OpenAI review ZIP builder and document the
+  existing-listing draft flow for changing its endpoint path to `/mcp/agents`,
+  including reconciliation of the observed current and legacy records.
+- Add a manual, main-only npm Trusted Publishing workflow that keeps release
+  verification outside the OIDC job, passes a hashed tarball into the protected
+  environment, has no token fallback, and verifies exact read-back plus SLSA
+  provenance; also make the existing MCP Registry publisher main-only and
+  serialized.
+- Refresh the locked dependency graph within its declared ranges so both the
+  production and development audits report zero current vulnerabilities.
+- Declare Claude Code's remote MCP transport explicitly as `http`; Claude Code
+  skips URL-only entries, so the plugin otherwise installs while exposing zero
+  tools.
+- Document the OpenAI Agents API → full tickadoo MCP integration
+  (`https://mcp.tickadoo.com/mcp`, rather than the bare-host service landing)
+  and add a Lion King / London smoke plus a CI job that requires
+  `secrets.OPENAI_API_KEY`.
+
+## [2.1.1] - 2026-10-10
+
 - Require Node.js 22 or newer (`engines.node >=22`); Node.js 20 is end-of-life
   and the bundle already targets `node22`. Take `@modelcontextprotocol/sdk`
-  `^1.30.1` and build with TypeScript 6.0.3.
-- Document the OpenAI Agents API → public tickadoo MCP Book path
-  (`https://mcp.tickadoo.com/mcp`, not the bare host) and add a Lion King /
-  London smoke plus a CI job that requires `secrets.OPENAI_API_KEY`.
+  `^1.32.1` ([GHSA-6qxp-vccf-f47h](https://github.com/advisories/GHSA-6qxp-vccf-f47h))
+  and build with TypeScript 6.0.3.
 
 ## [2.1.0] - 2026-09-06
 

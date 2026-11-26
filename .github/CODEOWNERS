@@ -1,2 +1,9 @@
-# Francis is the accountable owner for every change.
-* @francistickadoo
+# This file only routes automatic owner review requests, here for
+# governance files. It does not grant merge authority: the merge gates
+# (required CI, the exact-head AI review, and a non-author human approval
+# for protected-risk work such as money, auth, secrets and governance)
+# are defined in AGENTS.md.
+/.github/CODEOWNERS @francistickadoo @MarkPrethero @kolarskydominik
+/AGENTS.md @francistickadoo @MarkPrethero @kolarskydominik
+/CLAUDE.md @francistickadoo @MarkPrethero @kolarskydominik
+/.github/workflows/ @francistickadoo @MarkPrethero @kolarskydominik

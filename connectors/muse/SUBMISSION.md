@@ -23,7 +23,7 @@ tickadoo
 
 ## Short description (what it does)
 
-Find and book official primary tickets for West End theatre, Broadway, attractions, tours and experiences in 1,100+ cities. Muse searches live inventory, confirms dates and prices, then opens checkout on tickadoo.
+Find and book official primary tickets for West End theatre, Broadway, attractions, tours and experiences worldwide. Muse searches live inventory, confirms dates and prices, then opens checkout on tickadoo.
 
 ## How users will use it
 
@@ -57,7 +57,7 @@ Two public surfaces, same catalogue:
 
 1. **MCP (primary for this connector)**  
    `POST https://mcp.tickadoo.com/mcp`  
-   Streamable HTTP JSON-RPC. Server `tickadoo` v1.6.0. Protocol `2025-06-18` (also `2025-11-25`, `2026-07-28`). No auth. 23 tools including `search_experiences`, `whats_on_tonight`, `recommend_experiences`, `get_availability`, `check_availability`, `compare_experiences`.  
+   Streamable HTTP JSON-RPC with no authentication. The live handshake owns the server version and supported protocol revisions. The tool catalogue includes `search_experiences`, `whats_on_tonight`, `recommend_experiences`, `get_availability`, `check_availability`, and `compare_experiences`.
    Contract: https://mcp.tickadoo.com/llms-full.txt  
    Source: https://github.com/tickadoo/tickadoo-mcp
 
