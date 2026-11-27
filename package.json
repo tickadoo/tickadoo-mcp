@@ -76,7 +76,7 @@
     "openai": "^7.43.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.12",
+    "vitest": "^5.1.1",
     "zod": "^4.6.7"
   },
   "repository": {
